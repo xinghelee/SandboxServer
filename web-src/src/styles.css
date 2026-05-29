@@ -600,6 +600,8 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 .h3d-tree-row .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .h3d-tree-row .cls { font-family: var(--mono); color: var(--ink); }
 .h3d-tree-row .lbl { color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; }
+.h3d-resizer { flex: 0 0 7px; align-self: stretch; cursor: col-resize; border-radius: 4px; background: transparent; transition: background 0.12s; }
+.h3d-resizer:hover { background: var(--line-2); }
 .h3d-wrap {
   position: relative; flex: 1; min-width: 300px; height: calc(100vh - 210px);
   border: 1px solid var(--line); border-radius: 14px; background: var(--bg-1);

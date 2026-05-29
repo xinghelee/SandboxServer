@@ -72,13 +72,21 @@ export function HierarchyPanel() {
   const [maxDepth, setMaxDepth] = useState(60);
   const [showHidden, setShowHidden] = useState(false);
   const [showContent, setShowContent] = useState(true);
+  const [showBorders, setShowBorders] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [rx, setRx] = useState(-18);
   const [ry, setRy] = useState(-26);
+  const [showDetail, setShowDetail] = useState(true);
+  const [treeWidth, setTreeWidth] = useState<number>(() => {
+    const n = Number(typeof localStorage !== 'undefined' ? localStorage.getItem('sbx_hier_tw') : '');
+    return n >= 160 && n <= 640 ? n : 240;
+  });
 
   const stackRef = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
   const rotRef = useRef({ rx: -18, ry: -26 });
   const dragRef = useRef<{ x: number; y: number; rx: number; ry: number; id: number | null; moved: boolean } | null>(null);
+  const resizeRef = useRef<{ startX: number; startW: number; cur: number } | null>(null);
 
   const load = useCallback(
     (signal?: AbortSignal) => {
@@ -119,6 +127,13 @@ export function HierarchyPanel() {
 
   useEffect(() => {
     const move = (e: MouseEvent) => {
+      const rz = resizeRef.current;
+      if (rz) {
+        const nw = Math.max(160, Math.min(640, rz.startW + (e.clientX - rz.startX)));
+        rz.cur = nw;
+        if (treeRef.current) treeRef.current.style.flexBasis = `${nw}px`;
+        return;
+      }
       const d = dragRef.current;
       if (!d) return;
       if (Math.abs(e.clientX - d.x) > 3 || Math.abs(e.clientY - d.y) > 3) d.moved = true;
@@ -128,6 +143,17 @@ export function HierarchyPanel() {
       applyRot(rxv, ryv);
     };
     const up = () => {
+      const rz = resizeRef.current;
+      if (rz) {
+        resizeRef.current = null;
+        setTreeWidth(rz.cur);
+        try {
+          localStorage.setItem('sbx_hier_tw', String(rz.cur));
+        } catch {
+          /* private mode */
+        }
+        return;
+      }
       const d = dragRef.current;
       if (!d) return;
       dragRef.current = null;
@@ -177,10 +203,11 @@ export function HierarchyPanel() {
           showContent && n.thumb
             ? `background-image:url(data:image/png;base64,${n.thumb});background-size:100% 100%;background-repeat:no-repeat;`
             : `background:${depthColor(n.depth)}1f;`;
+        const border = showBorders ? `border-color:${depthColor(n.depth)};` : 'border-color:transparent;';
         const style =
           `left:${n.x * scale}px;top:${n.y * scale}px;width:${Math.max(n.w * scale, 1)}px;` +
           `height:${Math.max(n.h * scale, 1)}px;transform:translateZ(${n.depth * gap}px);` +
-          `border-color:${depthColor(n.depth)};${fill}`;
+          `${border}${fill}`;
         return (
           <div
             key={n.id}
@@ -191,7 +218,7 @@ export function HierarchyPanel() {
           />
         );
       }),
-    [visible, gap, scale, selectedId, showContent],
+    [visible, gap, scale, selectedId, showContent, showBorders],
   );
 
   const reset = () => {
@@ -235,8 +262,14 @@ export function HierarchyPanel() {
         <button class={`btn ${showContent ? 'primary' : ''}`} onClick={() => setShowContent((v) => !v)}>
           {t('hier.content')}
         </button>
+        <button class={`btn ${showBorders ? 'primary' : ''}`} onClick={() => setShowBorders((v) => !v)}>
+          {t('hier.borders')}
+        </button>
         <button class={`btn ${showHidden ? 'primary' : ''}`} onClick={() => setShowHidden((v) => !v)}>
           {t('hier.hidden')}
+        </button>
+        <button class={`btn ${showDetail ? 'primary' : ''}`} onClick={() => setShowDetail((v) => !v)}>
+          {t('hier.props')}
         </button>
         <button class="btn" onClick={reset}>
           {t('hier.reset')}
@@ -249,7 +282,17 @@ export function HierarchyPanel() {
       {error ? <div class="error-banner">{error}</div> : null}
 
       <div class="h3d-layout">
-        <div class="h3d-tree">{tree?.root ? <TreeRows node={tree.root} selectedId={selectedId} onSelect={setSelectedId} /> : null}</div>
+        <div class="h3d-tree" ref={treeRef} style={`flex:0 0 ${treeWidth}px`}>
+          {tree?.root ? <TreeRows node={tree.root} selectedId={selectedId} onSelect={setSelectedId} /> : null}
+        </div>
+        <div
+          class="h3d-resizer"
+          title={t('hier.resize')}
+          onMouseDown={(e) => {
+            const w = treeRef.current?.offsetWidth ?? treeWidth;
+            resizeRef.current = { startX: e.clientX, startW: w, cur: w };
+          }}
+        />
 
         <div class="h3d-wrap" onMouseDown={onMouseDown}>
           <div
@@ -262,6 +305,7 @@ export function HierarchyPanel() {
           <div class="h3d-hint">{t('hier.hint')}</div>
         </div>
 
+        {showDetail ? (
         <div class="h3d-side">
           {selected ? (
             <div class="h3d-detail">
@@ -299,6 +343,7 @@ export function HierarchyPanel() {
             <div class="h3d-detail muted">{t('hier.pick')}</div>
           )}
         </div>
+        ) : null}
       </div>
     </div>
   );

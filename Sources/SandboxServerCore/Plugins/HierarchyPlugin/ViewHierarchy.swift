@@ -84,8 +84,11 @@ enum ViewHierarchy {
     @MainActor private static func thumbnail(_ v: UIView) -> String? {
         let b = v.bounds
         guard b.width >= 8, b.height >= 8 else { return nil }
+        let displayScale = v.window?.traitCollection.displayScale ?? 2
         let fmt = UIGraphicsImageRendererFormat()
-        fmt.scale = max(0.3, min(200 / max(b.width, b.height), 1.5))
+        // Capture at ~640px on the long edge (capped at the device scale) so slabs stay crisp
+        // when the browser scales them up; small content views render at full device scale.
+        fmt.scale = max(0.5, min(640 / max(b.width, b.height), displayScale))
         fmt.opaque = false
         let image = UIGraphicsImageRenderer(bounds: b, format: fmt).image { _ in
             _ = v.drawHierarchy(in: b, afterScreenUpdates: false)
