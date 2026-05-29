@@ -52,21 +52,21 @@
 
 ## B. 日常体验更顺(可用性 / 体验)
 
-### [ ] B1 · 在 net 面板提示抓包盲区(测试看到空面板不再误判)
+### [x] B1 · 在 net 面板提示抓包盲区(测试看到空面板不再误判) ✅ 已完成 (037995a)
 **工作量** S · **影响** 中 · 〔原 P2-3〕
 **问题** `SandboxURLProtocol` 覆盖 `URLSession.shared` + `.default`/`.ephemeral`,但 background session、WKWebView、raw socket、非 http scheme 被静默丢弃。今天没有任何信号——调 WKWebView 的人看到空面板会以为没发请求,白白排查半天。
 **做法** `NetworkPlugin.capabilities` 加 limitations 说明(或放进 `GET requests` 的 meta);控制台 net 面板头渲染成一行 caption;可选 `activate()` 打一次性 warning。
 **涉及** `NetworkPlugin.swift` · `SandboxURLProtocol.swift` · `web-src/src/panels/network.tsx`
 **验收** plugins manifest 含 limitations;`npm run build` 后 net 头显示 caption。
 
-### [ ] B2 · README/文档对齐已发布插件 + MCP 工具表(开发者找得到全部能力)
+### [x] B2 · README/文档对齐已发布插件 + MCP 工具表(开发者找得到全部能力) ✅ 已完成 (48f102a)
 **工作量** S · **影响** 中 · 〔原 P2-4〕
 **问题** SDK 发布**六个**插件(`SandboxConfig.swift` 的 `.all` 含 `.hierarchy`),但两个 README 止于五个(net·fs·db·logs·screen);`mcp-bridge/README.md:75-83` 还说"多数 fs/db 端点返回 501"——已过时(fs 已活、db 只读、logs/screen/hierarchy 工具都已发)。开发者据此**低估了工具能力、以为 fs/db 不可用**。
 **做法** 两个 README 加 实时视图层级/3D 图层检查器 一条并把 `hierarchy` 追加进架构图(中英平行 1:1);重写 bridge 工具表加 logs/screen/hierarchy + fs_roots,替换 501 为准确 v1 状态,标注 ui_screenshot 图块与 readOnly/destructive 提示。
 **涉及** `README.md` · `README.zh-CN.md` · `mcp-bridge/README.md`
 **验收** 三个 README `grep -n hierarchy` 命中;bridge README 不再有 "501"。
 
-### [ ] B3 · 虚拟化 network/logs/DB 列表 + 键盘/ARIA(海量日志仍流畅)
+### [x] B3 · 虚拟化 network/logs/DB 列表 + 键盘/ARIA(海量日志仍流畅) ✅ 已完成 (9005f89)
 **工作量** L · **影响** 中 · 〔原 P2-9〕
 **问题** 每行都进 DOM——network 1000(`network.tsx:16,188`)、logs 2000(`logs.tsx:10,166`)、DB 无界 loadMore(`db.tsx:129,205`),每条 live WS 行触发整列重渲,**高负载下卡顿**。nav 缺 aria-current、行是裸 `tr onClick`、抽屉不 trap/restore 焦点。
 **做法** 做一个无依赖窗口化列表在三处复用(MAX_ROWS 作数据上限);nav 带 aria-current,行 role=button+tabindex+Enter/Space,抽屉 role=dialog、开聚焦关闭键、关时还原;重建 web-src。
@@ -77,14 +77,14 @@
 
 ## C. 功能补全(更趁手)
 
-### [ ] C1 · 实现 `net_replay_request`(重放抓到的请求)
+### [x] C1 · 实现 `net_replay_request`(重放抓到的请求) ✅ 已完成 (201398a)
 **工作量** M · **影响** 中 · 〔原 P2-1〕
 **问题** NetworkPlugin 注册了 `net_replay_request` 工具与 `POST requests/{id}/replay` 路由,但 handler 返回 `.notImplemented('Replay arrives in v2.')`(line 82-83)——bridge 暴露了一个**永远失败的工具**。对开发/测试来说"重放一个请求"是很趁手的能力,且 `SandboxURLProtocol.internalSession` 正好可无递归重发。
 **做法** CapturedTransaction 存完整请求 body(或小则重取);`replayPayload(id)` 返回 method/url/headers/body,接受 `{headers,body}` 覆盖;经 internalSession 重发不被再抓;返回新响应。加端到端测试。
 **涉及** `NetworkPlugin.swift` · `TransactionStore.swift` · `SandboxURLProtocol.swift`
 **验收** `swift test --traits SandboxServerEnabled` 覆盖重放返回新响应。
 
-### [ ] C2 · DB 表清单在大库变廉价 + 支持 HTTP 后缀 Range
+### [x] C2 · DB 表清单在大库变廉价 + 支持 HTTP 后缀 Range ✅ 已完成 (1eed493)
 **工作量** S · **影响** 中 · 〔原 P2-2〕
 **问题** (1) `SQLiteReader.tables` 每次 `/tables` 对每表跑 `SELECT COUNT(*)`(line 62-65)——真实 Core Data 库上数秒全表扫,**每次开 DB 面板都卡**。(2) `byteRange`(`HTTPMessage.swift:38-45`)丢掉后缀 range `bytes=-500`,静默以 200 返整文件(影响断点续传/媒体预览)。
 **做法** COUNT(*) 放到 `?counts=true` 后,否则 rowCount 返 null、面板展开前显示"—";`byteRange` 解析扩成枚举 `{explicit, suffix(Int)}`,在 `FilePlugin.read` 对已知大小解析(start=max(0,size-n))。配套单测。
