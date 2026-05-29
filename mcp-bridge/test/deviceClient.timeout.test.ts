@@ -1,6 +1,6 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { DeviceClient } from "../src/deviceClient.js";
+import { DeviceClient, TransportError } from "../src/deviceClient.js";
 
 const ENDPOINT = { host: "127.0.0.1", port: 1, token: "t" } as const;
 const realFetch = globalThis.fetch;
@@ -38,7 +38,7 @@ test("request() rejects with a TimeoutError when the device hangs, instead of ha
   const started = Date.now();
   await assert.rejects(
     () => client.request("GET", "/healthz"),
-    (err: unknown) => err instanceof Error && err.name === "TimeoutError",
+    (err: unknown) => err instanceof TransportError && err.reason === "timeout",
   );
   assert.ok(Date.now() - started < 1000, "should reject promptly, not hang");
 });
@@ -48,7 +48,7 @@ test("fetchBody() also honours the timeout", async () => {
   const client = new DeviceClient(ENDPOINT, { timeoutMs: 50 });
   await assert.rejects(
     () => client.fetchBody("/fs/file", { path: "/x" }),
-    (err: unknown) => err instanceof Error && err.name === "TimeoutError",
+    (err: unknown) => err instanceof TransportError && err.reason === "timeout",
   );
 });
 

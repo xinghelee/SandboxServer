@@ -56,6 +56,110 @@ export class DeviceApiError extends Error {
   }
 }
 
+/**
+ * Thrown when the request never got an answer from the device — a connection
+ * failure, a DNS failure, our own timeout, or a caller abort. Distinct from
+ * DeviceApiError (the device answered with a non-2xx). `reason` is an internal
+ * sub-discriminator used only for hint precision; the consumer-facing taxonomy
+ * collapses every TransportError to the single kind "unreachable".
+ */
+export class TransportError extends Error {
+  readonly reason:
+    | "timeout"
+    | "aborted"
+    | "connect_refused"
+    | "dns"
+    | "reset"
+    | "host_unreachable"
+    | "network";
+  /** Raw underlying code when known (ECONNREFUSED, ENOTFOUND, ETIMEDOUT, …). */
+  readonly code?: string;
+
+  constructor(reason: TransportError["reason"], message: string, code?: string, cause?: unknown) {
+    super(message, cause !== undefined ? { cause } : undefined); // Error.cause: Node >=18
+    this.name = "TransportError";
+    this.reason = reason;
+    this.code = code;
+  }
+}
+
+/** Read a Node SystemError code off `err.cause` defensively (it may be absent, primitive, or throw). */
+function readCauseCode(err: unknown): string | undefined {
+  try {
+    const c = (err as { cause?: unknown }).cause;
+    if (c && typeof c === "object") {
+      const code = (c as { code?: unknown }).code;
+      if (typeof code === "string") return code;
+      // happy-eyeballs / dual-stack failures wrap an AggregateError; peek one level.
+      const errs = (c as { errors?: unknown }).errors;
+      if (Array.isArray(errs) && errs[0] && typeof errs[0] === "object") {
+        const ic = (errs[0] as { code?: unknown }).code;
+        if (typeof ic === "string") return ic;
+      }
+    }
+  } catch {
+    /* a throwing getter on cause — fall through */
+  }
+  return undefined;
+}
+
+function reasonForCode(code: string | undefined): TransportError["reason"] {
+  switch (code) {
+    case "ECONNREFUSED":
+      return "connect_refused";
+    case "ENOTFOUND":
+    case "EAI_AGAIN":
+      return "dns";
+    case "ECONNRESET":
+      return "reset";
+    case "ETIMEDOUT":
+      return "timeout";
+    case "EHOSTUNREACH":
+    case "ENETUNREACH":
+      return "host_unreachable";
+    default:
+      return "network"; // incl. UND_ERR_SOCKET and undefined
+  }
+}
+
+/**
+ * Convert a thrown value into a TransportError, or return null to rethrow it
+ * unchanged. Detection ORDER is load-bearing: the name-based DOMException checks
+ * (TimeoutError, then AbortError) MUST precede the `TypeError('fetch failed')`
+ * branch, because those abort DOMExceptions are NOT instanceof TypeError.
+ */
+export function toTransportError(err: unknown, host: string, port: number): TransportError | null {
+  if (err instanceof DeviceApiError) return null; // device answered → protocol case
+  if (err instanceof TransportError) return err; // idempotent
+
+  const name = (err as { name?: unknown })?.name;
+  // (1) our deadline() timeout — a DOMException named TimeoutError, re-thrown verbatim by fetch.
+  if (name === "TimeoutError") {
+    return new TransportError("timeout", err instanceof Error ? err.message : "request timed out", "ETIMEDOUT", err);
+  }
+  // (2) a caller abort with the default/empty reason → AbortError DOMException.
+  if (name === "AbortError") {
+    return new TransportError(
+      "aborted",
+      err instanceof Error && err.message ? err.message : "request aborted",
+      undefined,
+      err,
+    );
+  }
+  // (3) an undici network failure. Must be after the name checks above.
+  if (err instanceof TypeError && /fetch failed/i.test(err.message)) {
+    const code = readCauseCode(err);
+    return new TransportError(
+      reasonForCode(code),
+      `cannot reach ${host}:${port}` + (code ? ` (${code})` : ""),
+      code,
+      err,
+    );
+  }
+  // (4) anything else (a caller's custom abort reason, a JSON.parse SyntaxError, a bug) — not transport.
+  return null;
+}
+
 export interface HealthzData {
   apiVersion: string;
   buildConfig: string;
@@ -240,6 +344,13 @@ export class DeviceClient {
 
       // Body had no envelope (shouldn't happen for v1 endpoints) — return as-is.
       return parsed as T;
+    } catch (err) {
+      // This catch MUST enclose the body reads above, so a timeout firing during a slow
+      // read is classified too (not leaked as an unclassified Error). A DeviceApiError
+      // (non-2xx) returns null from toTransportError and is rethrown as the device case.
+      const te = toTransportError(err, this.endpoint.host, this.endpoint.port);
+      if (te) throw te;
+      throw err;
     } finally {
       done();
     }
@@ -321,6 +432,11 @@ export class DeviceClient {
         contentType,
         truncated: false,
       };
+    } catch (err) {
+      // Must enclose the arrayBuffer() read above (see request()).
+      const te = toTransportError(err, this.endpoint.host, this.endpoint.port);
+      if (te) throw te;
+      throw err;
     } finally {
       done();
     }

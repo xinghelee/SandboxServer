@@ -18,6 +18,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z, type ZodRawShape } from "zod";
 import type { DeviceClient, McpToolDescriptor, PluginDescriptor } from "./deviceClient.js";
+import { DeviceApiError, TransportError } from "./deviceClient.js";
 import { log } from "./log.js";
 
 type ContentBlock =
@@ -290,18 +291,105 @@ function resultContent(data: unknown): CallResult {
   };
 }
 
-function buildCallback(device: DeviceClient, descriptor: McpToolDescriptor, binding: ToolBinding) {
+// ---------------------------------------------------------------------------
+// Failure classification — tell the consumer WHICH kind of failure occurred so
+// it can choose fix-args vs treat-as-device-error vs wait/wake-the-device.
+// ---------------------------------------------------------------------------
+
+export type ErrorKind = "input" | "device" | "unreachable";
+
+interface Classified {
+  kind: ErrorKind;
+  code?: string;
+  status?: number;
+  /** TransportError sub-reason, carried for hint precision only (not the public kind). */
+  reason?: string;
+  message: string;
+}
+
+/**
+ * Map any thrown value to a stable failure kind via a pure instanceof ladder
+ * (no message sniffing). Order is load-bearing: DeviceApiError is only thrown
+ * when the device answered non-2xx; TransportError only at the fetch reject
+ * site; everything else is a pre-call/programmer error the model can fix.
+ */
+export function classifyError(err: unknown): Classified {
+  if (err instanceof DeviceApiError) {
+    return { kind: "device", code: err.code, status: err.status, message: err.message };
+  }
+  if (err instanceof TransportError) {
+    return { kind: "unreachable", code: err.code ?? err.reason, reason: err.reason, message: err.message };
+  }
+  return { kind: "input", message: err instanceof Error ? err.message : String(err) };
+}
+
+/** One imperative remediation sentence. Advisory prose; the machine signal is `kind` (+ status/code). */
+export function hintFor(c: Classified): string {
+  if (c.kind === "device") {
+    switch (c.status) {
+      case 401:
+        return "Auth token rejected. Set SANDBOX_TOKEN to a fresh token (re-open the console URL or restart the device server to mint one), then retry.";
+      case 403:
+        return "Forbidden: the path escaped its allowed root, or this is a read-only/blocked operation (e.g. DB exec, fs traversal). Don't retry as-is — pick a different path/operation.";
+      case 404:
+        return "Not found: that id/path/table/dbId doesn't exist on the device. List first (net_list_requests, db_list_tables, fs_list_dir), then retry with a real id.";
+      case 400:
+        return "The device rejected the arguments. Fix the parameter values per the message, then retry.";
+      case 501:
+        return "Not implemented in this SDK version — the route is wired but not live. Skip it; don't retry.";
+      default:
+        if (c.status !== undefined && c.status >= 500) {
+          return `Device internal error (HTTP ${c.status}). Retry once; if it persists, inspect logs_tail.`;
+        }
+        return `Device returned HTTP ${c.status ?? "?"}${c.code ? ` (${c.code})` : ""}.`;
+    }
+  }
+  if (c.kind === "unreachable") {
+    switch (c.reason) {
+      case "timeout":
+        return "No response within the timeout. The device may be backgrounded/asleep — foreground the app (or raise SANDBOX_TIMEOUT_MS), then retry.";
+      case "connect_refused":
+        return "Connection refused — nothing is listening. The host app's server isn't started (it must call start() in a DEBUG build); confirm host/port, then retry.";
+      case "dns":
+        return "Host could not be resolved. Re-discover the device (mDNS) or fix the host/IP, then retry.";
+      case "reset":
+        return "Connection reset mid-flight. Retry.";
+      case "host_unreachable":
+        return "Network unreachable — check the device is on the same Wi-Fi/LAN, then retry.";
+      case "aborted":
+        return "The request was cancelled by the caller. Re-issue only if still needed.";
+      default:
+        return "Could not reach the device (connection failed). Confirm it's awake and reachable, then retry.";
+    }
+  }
+  return "Fix the tool arguments and call again — the request never left the bridge.";
+}
+
+/** Shared failure formatter used by every tool callback (machine-readable + human-readable). */
+export function errorResult(err: unknown, tool: string): CallResult {
+  const c = classifyError(err);
+  const hint = hintFor(c);
+  const error: Record<string, unknown> = { kind: c.kind, message: c.message, hint, tool };
+  if (c.code !== undefined) error.code = c.code;
+  if (c.status !== undefined) error.status = c.status;
+  const head = `Error [${c.kind}${c.status !== undefined ? " " + c.status : ""}${c.code ? "/" + c.code : ""}]`;
+  return {
+    isError: true,
+    content: [{ type: "text", text: `${head}: ${c.message}\n${hint}` }],
+    structuredContent: { error },
+  };
+}
+
+export function buildCallback(device: DeviceClient, descriptor: McpToolDescriptor, binding: ToolBinding) {
   return async (args: Record<string, unknown>): Promise<CallResult> => {
     try {
       const data = await binding.invoke(device, descriptor, args ?? {});
       return resultContent(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.warn(`tool ${descriptor.name} failed: ${message}`);
-      return {
-        content: [{ type: "text", text: `Error: ${message}` }],
-        isError: true,
-      };
+      log.warn(
+        `tool ${descriptor.name} failed [${classifyError(err).kind}]: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return errorResult(err, descriptor.name);
     }
   };
 }
@@ -330,8 +418,7 @@ function registerStatusTool(server: McpServer, device: DeviceClient): void {
           structuredContent: data as unknown as Record<string, unknown>,
         };
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+        return errorResult(err, "sandbox_status");
       }
     },
   );
