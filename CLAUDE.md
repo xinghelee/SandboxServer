@@ -97,10 +97,15 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
   /screen/paste {text}`. Capture is `UIGraphicsImageRenderer` + `drawHierarchy`; tap is hitTest →
   text-field focus / `UIControl.sendActions` / a recursive accessibility-element frame search +
   `accessibilityActivate` (this is what drives **SwiftUI** buttons — they aren't UIViews); text/paste
-  target the first responder (`UIKeyInput` / `UIPasteboard`). Public API only, so no pixel-level
-  gestures (swipe/drag/pinch) yet — those need private touch synthesis, acceptable here since the SDK
-  never ships ([[positioning-debug-tool-no-appstore]]) but deferred. `ScreenControl` is UIKit-gated;
-  non-UIKit hosts report `supported=false` and 503 the capture routes.
+  target the first responder (`UIKeyInput` / `UIPasteboard`) — all public API. `POST /screen/swipe`
+  (`ui_swipe`) does real swipe/drag via **private** in-process touch synthesis (`SyntheticTouch`:
+  IOKit digitizer HID events `dlsym`'d from IOKit, tagged with `BKSHIDEventSetDigitizerInfo` + the
+  window's `_contextId`, injected through `UIApplication._enqueueHIDEvent:` — the Lyft Hammer recipe;
+  finger coords are window points, transducer=3, stable per-gesture touch id). Acceptable because the
+  SDK never ships ([[positioning-debug-tool-no-appstore]]); **verified working on the iOS 26
+  Simulator** (a synthesized swipe scrolls a real List). Every private symbol/selector is resolved at
+  runtime, so `info.gestures=false` (and swipe no-ops) if a future OS drops one. `ScreenControl` is
+  UIKit-gated; non-UIKit hosts report `supported=false` and 503 the capture routes.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

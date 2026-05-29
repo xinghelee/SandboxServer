@@ -193,6 +193,15 @@ const BINDINGS: Record<string, ToolBinding> = {
     shape: { x: z.number().describe("window point x"), y: z.number().describe("window point y") },
     invoke: (device, _d, args) => device.post("/screen/tap", { x: args.x, y: args.y }),
   },
+  ui_swipe: {
+    shape: {
+      from: z.object({ x: z.number(), y: z.number() }).describe("start window point"),
+      to: z.object({ x: z.number(), y: z.number() }).describe("end window point"),
+      duration: optNum.describe("seconds (default 0.3)"),
+    },
+    invoke: (device, _d, args) =>
+      device.post("/screen/swipe", { from: args.from, to: args.to, duration: args.duration ?? 0.3 }),
+  },
   ui_type: {
     shape: { text: str.describe("text to insert into the focused field"), clear: z.boolean().optional() },
     invoke: (device, _d, args) => device.post("/screen/text", { text: args.text, clear: args.clear ?? false }),

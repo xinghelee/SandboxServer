@@ -26,10 +26,10 @@ enum ScreenControl {
         return windows.first { $0.isKeyWindow } ?? windows.first
     }
 
-    @MainActor static func info() -> (w: Double, h: Double, scale: Double)? {
+    @MainActor static func info() -> (w: Double, h: Double, scale: Double, gestures: Bool)? {
         guard let win = keyWindow() else { return nil }
         let scale = win.traitCollection.displayScale > 0 ? win.traitCollection.displayScale : 2
-        return (Double(win.bounds.width), Double(win.bounds.height), Double(scale))
+        return (Double(win.bounds.width), Double(win.bounds.height), Double(scale), SyntheticTouch.isAvailable)
     }
 
     @MainActor static func snapshot(maxWidth: Int, quality: Double) -> Frame? {
@@ -101,6 +101,16 @@ enum ScreenControl {
         return false
     }
 
+    /// Real synthesized swipe/drag via private touch injection (covers scroll views, SwiftUI
+    /// gestures — anything semantic tap can't reach). No-op detail when the private path is absent.
+    @MainActor static func swipe(from: CGPoint, to: CGPoint, duration: Double) async -> Action {
+        guard SyntheticTouch.isAvailable else {
+            return Action(ok: false, detail: "synthetic touch unavailable (private injection API absent on this OS)")
+        }
+        await SyntheticTouch.swipe(from: from, to: to, duration: duration)
+        return Action(ok: true, detail: "swiped (\(Int(from.x)),\(Int(from.y)))→(\(Int(to.x)),\(Int(to.y))) in \(String(format: "%.2f", duration))s")
+    }
+
     @MainActor static func typeText(_ text: String, clear: Bool) -> Action {
         guard let responder = currentFirstResponder() else {
             return Action(ok: false, detail: "no focused field — tap a text field first")
@@ -140,9 +150,10 @@ enum ScreenControl {
     }
     #else
     static var isSupported: Bool { false }
-    @MainActor static func info() -> (w: Double, h: Double, scale: Double)? { nil }
+    @MainActor static func info() -> (w: Double, h: Double, scale: Double, gestures: Bool)? { nil }
     @MainActor static func snapshot(maxWidth: Int, quality: Double) -> Frame? { nil }
     @MainActor static func tap(x: Double, y: Double) -> Action { Action(ok: false, detail: "screen control is iOS-only") }
+    @MainActor static func swipe(from: CGPoint, to: CGPoint, duration: Double) async -> Action { Action(ok: false, detail: "screen control is iOS-only") }
     @MainActor static func typeText(_ text: String, clear: Bool) -> Action { Action(ok: false, detail: "screen control is iOS-only") }
     @MainActor static func paste(_ text: String) -> Action { Action(ok: false, detail: "screen control is iOS-only") }
     #endif

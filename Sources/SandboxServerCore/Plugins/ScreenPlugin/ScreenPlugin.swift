@@ -13,16 +13,18 @@ final class ScreenPlugin: SandboxPlugin, @unchecked Sendable {
 
     init() {}
 
-    private struct ScreenInfo: Encodable { let supported: Bool; let width, height, scale: Double }
+    private struct ScreenInfo: Encodable { let supported: Bool; let width, height, scale: Double; let gestures: Bool }
     private struct SnapshotDTO: Encodable { let jpegBase64: String; let width, height: Double }
     private struct ActionResult: Encodable { let ok: Bool; let detail: String }
     private struct TapCmd: Decodable { let x, y: Double }
     private struct TextCmd: Decodable { let text: String; let clear: Bool? }
+    private struct PointDTO: Decodable { let x, y: Double }
+    private struct SwipeCmd: Decodable { let from: PointDTO; let to: PointDTO; let duration: Double? }
 
     var capabilities: PluginCapabilities {
         PluginCapabilities(
             id: id.rawValue, version: "1.0.0", title: "Screen", panelKey: "screen",
-            routes: ["GET (info)", "GET frame", "GET snapshot", "POST tap", "POST text", "POST paste"],
+            routes: ["GET (info)", "GET frame", "GET snapshot", "POST tap", "POST swipe", "POST text", "POST paste"],
             mcpTools: [
                 .init(name: "ui_info", title: "Screen info",
                       description: "Key window size + scale, and whether screen control is supported on this device.",
@@ -33,6 +35,9 @@ final class ScreenPlugin: SandboxPlugin, @unchecked Sendable {
                 .init(name: "ui_tap", title: "Tap",
                       description: "Tap at window point {x,y}: focuses a text field, fires a UIControl, or activates the accessible element there.",
                       backingMethod: "POST", backingPathSuffix: "tap", readOnlyHint: false, destructiveHint: false),
+                .init(name: "ui_swipe", title: "Swipe / drag",
+                      description: "Synthesized real touch drag from {from:{x,y}} to {to:{x,y}} over `duration` seconds — scrolls lists, drives gestures (iOS, private touch injection).",
+                      backingMethod: "POST", backingPathSuffix: "swipe", readOnlyHint: false, destructiveHint: false),
                 .init(name: "ui_type", title: "Type text",
                       description: "Insert text into the focused field (tap a field first). Optional clear=true replaces existing text.",
                       backingMethod: "POST", backingPathSuffix: "text", readOnlyHint: false, destructiveHint: false),
@@ -48,7 +53,8 @@ final class ScreenPlugin: SandboxPlugin, @unchecked Sendable {
             HTTPRoute("GET", "", annotations: .read) { _, _ in
                 let info = await ScreenControl.info()
                 return .json(ScreenInfo(supported: ScreenControl.isSupported,
-                                        width: info?.w ?? 0, height: info?.h ?? 0, scale: info?.scale ?? 0))
+                                        width: info?.w ?? 0, height: info?.h ?? 0, scale: info?.scale ?? 0,
+                                        gestures: info?.gestures ?? false))
             },
             // Raw JPEG for the live browser mirror (polled). 503 when there's no window to capture.
             HTTPRoute("GET", "frame", annotations: RouteAnnotations(readOnly: true, streaming: true)) { req, _ in
@@ -71,6 +77,15 @@ final class ScreenPlugin: SandboxPlugin, @unchecked Sendable {
             HTTPRoute("POST", "tap", annotations: .write) { req, _ in
                 let cmd = try await req.decodeJSON(TapCmd.self)
                 let r = await ScreenControl.tap(x: cmd.x, y: cmd.y)
+                return .json(ActionResult(ok: r.ok, detail: r.detail))
+            },
+            HTTPRoute("POST", "swipe", annotations: .write) { req, _ in
+                let cmd = try await req.decodeJSON(SwipeCmd.self)
+                let r = await ScreenControl.swipe(
+                    from: CGPoint(x: cmd.from.x, y: cmd.from.y),
+                    to: CGPoint(x: cmd.to.x, y: cmd.to.y),
+                    duration: cmd.duration ?? 0.3
+                )
                 return .json(ActionResult(ok: r.ok, detail: r.detail))
             },
             HTTPRoute("POST", "text", annotations: .write) { req, _ in

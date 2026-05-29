@@ -261,6 +261,10 @@ export const api = {
     return request<ScreenAction>('/screen/tap', { method: 'POST', body: { x, y } });
   },
 
+  screenSwipe(from: { x: number; y: number }, to: { x: number; y: number }, duration: number): Promise<ScreenAction> {
+    return request<ScreenAction>('/screen/swipe', { method: 'POST', body: { from, to, duration } });
+  },
+
   screenType(text: string, clear = false): Promise<ScreenAction> {
     return request<ScreenAction>('/screen/text', { method: 'POST', body: { text, clear } });
   },

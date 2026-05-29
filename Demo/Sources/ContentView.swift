@@ -36,6 +36,13 @@ struct ContentView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
 
+                Section("Scroll test (swipe me from the browser)") {
+                    ForEach(1...30, id: \.self) { i in
+                        Text("Row \(i) — swipe up on the screen mirror to scroll")
+                            .font(.footnote)
+                    }
+                }
+
                 Section("Live network capture") {
                     labeled("Requests fired", "\(model.requestCount)")
                     labeled("Last", model.lastRequest, mono: true)

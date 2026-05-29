@@ -166,6 +166,7 @@ export interface ScreenInfo {
   width: number; // window points
   height: number;
   scale: number;
+  gestures: boolean; // real swipe/drag available (private touch injection)
 }
 
 export interface ScreenAction {

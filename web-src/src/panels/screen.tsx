@@ -84,25 +84,52 @@ export function ScreenPanel() {
     [],
   );
 
-  const onClick = useCallback(
+  const dragRef = useRef<{ px: number; py: number; x: number; y: number; t: number } | null>(null);
+
+  const mapPoint = useCallback(
     (e: MouseEvent) => {
-      if (!interact || !info) return;
-      const img = imgRef.current;
-      if (!img) return;
+      const img = imgRef.current!;
       const rect = img.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
-      const x = Math.round((px / rect.width) * info.width);
-      const y = Math.round((py / rect.height) * info.height);
-      const key = rippleKey.current++;
-      setRipples((r) => [...r, { x: px, y: py, key }]);
-      setTimeout(() => setRipples((r) => r.filter((it) => it.key !== key)), 500);
-      api
-        .screenTap(x, y)
-        .then((res) => setLastAction(`tap (${x},${y}) → ${res.detail}`))
-        .catch((err: unknown) => setLastAction(err instanceof ApiRequestError ? err.message : String(err)));
+      return {
+        px,
+        py,
+        x: Math.round((px / rect.width) * (info?.width ?? 1)),
+        y: Math.round((py / rect.height) * (info?.height ?? 1)),
+      };
     },
-    [interact, info],
+    [info],
+  );
+
+  const onDown = useCallback(
+    (e: MouseEvent) => {
+      if (!interact || !info || !imgRef.current) return;
+      dragRef.current = { ...mapPoint(e), t: Date.now() };
+    },
+    [interact, info, mapPoint],
+  );
+
+  const onUp = useCallback(
+    (e: MouseEvent) => {
+      const start = dragRef.current;
+      dragRef.current = null;
+      if (!interact || !info || !start || !imgRef.current) return;
+      const end = mapPoint(e);
+      const ripKey = rippleKey.current++;
+      setRipples((r) => [...r, { x: end.px, y: end.py, key: ripKey }]);
+      setTimeout(() => setRipples((r) => r.filter((it) => it.key !== ripKey)), 500);
+      const dist = Math.hypot(end.px - start.px, end.py - start.py);
+      const report = (label: string) => (res: { detail: string }) => setLastAction(`${label} → ${res.detail}`);
+      const fail = (err: unknown) => setLastAction(err instanceof ApiRequestError ? err.message : String(err));
+      if (dist < 8) {
+        api.screenTap(end.x, end.y).then(report(`tap (${end.x},${end.y})`)).catch(fail);
+      } else {
+        const dur = Math.max(0.05, Math.min((Date.now() - start.t) / 1000 || 0.25, 1.5));
+        api.screenSwipe({ x: start.x, y: start.y }, { x: end.x, y: end.y }, dur).then(report('swipe')).catch(fail);
+      }
+    },
+    [interact, info, mapPoint],
   );
 
   const send = useCallback(
@@ -142,6 +169,7 @@ export function ScreenPanel() {
             {Math.round(info.width)}×{Math.round(info.height)} @{info.scale}x
           </span>
         ) : null}
+        {info?.gestures ? <span class="count-chip">{t('screen.gestures')}</span> : null}
         <div class="spacer" />
         <button class={`btn ${interact ? 'primary' : ''}`} onClick={() => setInteract((v) => !v)}>
           {interact ? t('screen.interact.on') : t('screen.interact.off')}
@@ -157,7 +185,18 @@ export function ScreenPanel() {
         <div class={`screen-stage ${interact ? 'interactive' : ''}`}>
           {frameUrl ? (
             <div class="screen-frame">
-              <img ref={imgRef} class="screen-img" src={frameUrl} onClick={onClick} alt="device screen" />
+              <img
+                ref={imgRef}
+                class="screen-img"
+                src={frameUrl}
+                draggable={false}
+                onMouseDown={onDown}
+                onMouseUp={onUp}
+                onMouseLeave={() => {
+                  dragRef.current = null;
+                }}
+                alt="device screen"
+              />
               {ripples.map((r) => (
                 <span class="screen-ripple" key={r.key} style={`left:${r.x}px;top:${r.y}px`} />
               ))}

@@ -56,6 +56,7 @@ final class ServerEndToEndTests: XCTestCase {
         let uiTools = (screen?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
         XCTAssertTrue(uiTools.contains("ui_tap"))
         XCTAssertTrue(uiTools.contains("ui_screenshot"))
+        XCTAssertTrue(uiTools.contains("ui_swipe"))
     }
 
     func testScreenControlUnsupportedOnHost() async throws {
