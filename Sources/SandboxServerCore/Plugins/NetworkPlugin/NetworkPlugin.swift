@@ -25,7 +25,7 @@ final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
                       description: "Full headers and bodies for one captured request.",
                       backingMethod: "GET", backingPathSuffix: "requests/{id}", readOnlyHint: true, destructiveHint: false),
                 .init(name: "net_replay_request", title: "Replay request",
-                      description: "Re-issue a captured request, optionally with overrides (v2).",
+                      description: "Re-issue a captured request, optionally overriding headers/body; returns the new response.",
                       backingMethod: "POST", backingPathSuffix: "requests/{id}/replay", readOnlyHint: false, destructiveHint: false),
                 .init(name: "net_clear", title: "Clear captured requests",
                       description: "Discard all captured requests.",
@@ -83,8 +83,49 @@ final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
                 let cleared = await store.clear()
                 return .json(["cleared": cleared])
             },
-            HTTPRoute("POST", "requests/{id}/replay", annotations: .write) { _, _ in
-                .notImplemented("Replay arrives in v2.")
+            HTTPRoute("POST", "requests/{id}/replay", annotations: .write) { req, _ in
+                guard let id = req.pathParams["id"] else {
+                    return .error("bad_request", "Missing request id.", status: 400)
+                }
+                guard let payload = await store.replayPayload(id: id) else {
+                    return .error("not_found", "No captured request '\(id)'.", status: 404)
+                }
+                guard let url = URL(string: payload.url) else {
+                    return .error("bad_request", "Captured request has no replayable URL.", status: 400)
+                }
+                // Optional overrides: { "headers": {…}, "body": "<base64>" }. Omitted fields keep
+                // the original; headers fully replace (not merge) so auth can be swapped cleanly.
+                struct Overrides: Decodable { let headers: [String: String]?; let body: String? }
+                let overrides = try? await req.decodeJSON(Overrides.self)
+                let headers = overrides?.headers ?? payload.headers
+                let body = overrides?.body.flatMap { Data(base64Encoded: $0) } ?? payload.body
+
+                var urlReq = URLRequest(url: url)
+                urlReq.httpMethod = payload.method
+                urlReq.allHTTPHeaderFields = headers
+                urlReq.httpBody = body
+
+                // Record the replay as a NEW transaction, then issue it through the non-capturing
+                // session (so it isn't double-recorded) and complete that same transaction.
+                let newID = UUID().uuidString
+                await store.begin(id: newID, method: payload.method, url: url, headers: headers, reqBody: body)
+                do {
+                    let (data, http) = try await SandboxURLProtocol.sendUncaptured(urlReq)
+                    await store.complete(
+                        id: newID, status: http?.statusCode,
+                        headers: SandboxURLProtocol.normalize(http?.allHeaderFields),
+                        body: data, contentType: http?.value(forHTTPHeaderField: "Content-Type")
+                    )
+                } catch {
+                    await store.fail(id: newID, error: error)
+                    return .error("replay_failed", "\(error)", status: 502)
+                }
+                guard let detail = await store.detail(
+                    id: newID, include: ["reqHeaders", "respHeaders", "reqBody", "respBody"]
+                ) else {
+                    return .error("internal_error", "Replayed request vanished from the store.", status: 500)
+                }
+                return .json(detail)
             },
         ]
     }

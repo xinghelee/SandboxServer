@@ -81,7 +81,20 @@ final class SandboxURLProtocol: URLProtocol, @unchecked Sendable {
 
     override func stopLoading() { proxyTask?.cancel() }
 
-    private static func normalize(_ headers: [AnyHashable: Any]?) -> [String: String] {
+    /// Issues a request through the internal session whose config is excluded from interception,
+    /// so the sent request is **not** re-captured. Used by `net_replay_request`. iOS 14-safe: wraps
+    /// the completion-handler `dataTask` (the async `URLSession.data(for:)` API is iOS 15+).
+    static func sendUncaptured(_ request: URLRequest) async throws -> (Data, HTTPURLResponse?) {
+        try await withCheckedThrowingContinuation { continuation in
+            let task = internalSession.dataTask(with: request) { data, response, error in
+                if let error { continuation.resume(throwing: error); return }
+                continuation.resume(returning: (data ?? Data(), response as? HTTPURLResponse))
+            }
+            task.resume()
+        }
+    }
+
+    static func normalize(_ headers: [AnyHashable: Any]?) -> [String: String] {
         (headers ?? [:]).reduce(into: [:]) { $0["\($1.key)"] = "\($1.value)" }
     }
 }

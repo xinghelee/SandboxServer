@@ -19,6 +19,11 @@ struct CapturedTransaction: Sendable {
     var reqBytes: Int
     var respBytes: Int
     var error: String?
+    /// Unredacted request headers + full request body, retained **only** so `net_replay_request`
+    /// can re-issue the request faithfully (auth header included). Never serialized into any DTO —
+    /// the wire-facing `reqHeaders`/`reqBodyPreview` stay redacted/truncated.
+    var reqHeadersRaw: [String: String]
+    var reqBodyFull: Data?
 }
 
 // MARK: - Wire payloads (shared by REST list/detail and the WS 'net' channel)
@@ -58,6 +63,14 @@ struct NetDetail: Encodable, Sendable {
     let error: String?
 }
 
+/// Everything needed to faithfully re-issue a captured request (raw headers + full body).
+struct ReplayPayload: Sendable {
+    let method: String
+    let url: String
+    let headers: [String: String]
+    let body: Data?
+}
+
 /// Actor-guarded bounded ring buffer. Evicts oldest by BOTH count and total bytes. Redacts
 /// sensitive headers at write time. The single store that backs both the console and MCP.
 actor TransactionStore {
@@ -71,6 +84,9 @@ actor TransactionStore {
         "authorization", "cookie", "set-cookie", "proxy-authorization", "x-api-key",
     ]
     private let bodyPreviewLimit = 64 * 1024
+    /// Cap on the full request body retained for replay. Bodies above this can't be replayed
+    /// (the replay sends an empty body) — acceptable for a debug tool; keeps memory bounded.
+    private let replayBodyLimit = 1024 * 1024
 
     init(maxCount: Int = 1000, maxBytes: Int = 8 * 1024 * 1024) {
         self.maxCount = maxCount
@@ -94,7 +110,9 @@ actor TransactionStore {
             respHeaders: [:],
             reqBodyPreview: preview(reqBody, contentType: headers["content-type"]),
             respBodyPreview: nil,
-            reqBytes: reqBody?.count ?? 0, respBytes: 0, error: nil
+            reqBytes: reqBody?.count ?? 0, respBytes: 0, error: nil,
+            reqHeadersRaw: headers,
+            reqBodyFull: (reqBody?.count ?? 0) <= replayBodyLimit ? reqBody : nil
         )
         append(txn)
         await publisher?.publish(channel: .net, type: "request.started",
@@ -150,6 +168,14 @@ actor TransactionStore {
             respBody: include.contains("respBody") ? txn.respBodyPreview : nil,
             error: txn.error
         )
+    }
+
+    /// The raw material to re-issue a captured request (unredacted headers + full body), or nil
+    /// if the id is unknown / has been evicted.
+    func replayPayload(id: String) -> ReplayPayload? {
+        guard let pos = index[id] else { return nil }
+        let txn = items[pos]
+        return ReplayPayload(method: txn.method, url: txn.url, headers: txn.reqHeadersRaw, body: txn.reqBodyFull)
     }
 
     func clear() -> Int {

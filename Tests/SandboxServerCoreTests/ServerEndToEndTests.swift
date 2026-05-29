@@ -147,6 +147,46 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertTrue(captured.contains { ($0["url"] as? String)?.contains("/healthz") ?? false })
     }
 
+    func testNetReplayRequest() async throws {
+        // Capture a probe through our protocol, then replay it (C1).
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [SandboxURLProtocol.self] + (config.protocolClasses ?? [])
+        let session = URLSession(configuration: config)
+
+        var probe = URLRequest(url: try XCTUnwrap(URL(string: "\(apiBase!)/healthz")))
+        probe.setValue("Bearer \(token!)", forHTTPHeaderField: "Authorization")
+        _ = try await session.data(for: probe)
+
+        var capturedID: String?
+        for _ in 0..<20 {
+            let (json, _) = try await getJSON("\(apiBase!)/net/requests", token: token)
+            let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
+            if let hit = items.first(where: { ($0["url"] as? String)?.contains("/healthz") ?? false }) {
+                capturedID = hit["id"] as? String
+                break
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        let id = try XCTUnwrap(capturedID, "the probe was not captured")
+
+        // Replay with no overrides: it re-issues GET /healthz with the original (unredacted) auth.
+        let (replayJSON, replayStatus) = try await getJSON("\(apiBase!)/net/requests/\(id)/replay",
+                                                           token: token, method: "POST")
+        XCTAssertEqual(replayStatus, 200)
+        let detail = replayJSON["data"] as? [String: Any]
+        XCTAssertEqual(detail?["method"] as? String, "GET")
+        XCTAssertTrue((detail?["url"] as? String)?.contains("/healthz") ?? false)
+        XCTAssertEqual(detail?["status"] as? Int, 200, "replay should re-hit /healthz with the original auth")
+        let newID = try XCTUnwrap(detail?["id"] as? String)
+        XCTAssertNotEqual(newID, id, "replay must create a NEW transaction, not mutate the original")
+
+        // An unknown id is a clean 404, not a 501/500.
+        let (errJSON, errStatus) = try await getJSON("\(apiBase!)/net/requests/does-not-exist/replay",
+                                                     token: token, method: "POST")
+        XCTAssertEqual(errStatus, 404)
+        XCTAssertEqual((errJSON["error"] as? [String: Any])?["code"] as? String, "not_found")
+    }
+
     func testOversizeRequestBodyReturns413() throws {
         // A hostile/buggy Content-Length must be rejected up front (no multi-MiB read) with a 413
         // carrying the correct RFC reason phrase. A raw socket lets us lie about Content-Length
