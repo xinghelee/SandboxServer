@@ -44,3 +44,12 @@ export function clearToken(): void {
     /* ignore */
   }
 }
+
+/** Pull a token out of pasted text — either a raw token or a URL/query containing ?token=. */
+export function extractToken(input: string): string | null {
+  const s = input.trim();
+  if (!s) return null;
+  const m = s.match(/[?&]token=([^&\s]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  return s;
+}

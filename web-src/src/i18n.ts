@@ -168,11 +168,14 @@ const EN: Dict = {
   'hier.d.label': 'label',
 
   'err.unauth.title': 'unauthorized — 401',
-  'err.unauth.sub': 'no valid session token. open the console using the link the SDK printed, which carries a one-time ?token= bootstrap.',
+  'err.unauth.sub': 'no valid session token. open the console using the link the SDK printed, which carries a one-time ?token= bootstrap — or paste the token (or that link) below.',
   'err.fatal.title': 'cannot reach the device',
   'err.connecting': 'connecting to device…',
   'err.noplugins': 'the device reported no plugins.',
   'err.unknownpanel': 'no built-in renderer for this plugin.',
+  'err.retry': 'Retry',
+  'err.token.placeholder': 'paste token or console URL',
+  'err.token.apply': 'Connect',
   'warn.nondebug': 'this app is a {build} build — SandboxServer is intended for debug builds only.',
 };
 
@@ -335,11 +338,14 @@ const ZH: Dict = {
   'hier.d.label': '文本',
 
   'err.unauth.title': '未授权 — 401',
-  'err.unauth.sub': '没有有效的会话令牌。请用 SDK 打印的链接打开控制台,它带有一次性的 ?token= 引导参数。',
+  'err.unauth.sub': '没有有效的会话令牌。请用 SDK 打印的链接打开控制台(它带有一次性的 ?token= 引导参数),或在下方粘贴 token(或该链接)。',
   'err.fatal.title': '无法连接到设备',
   'err.connecting': '正在连接设备…',
   'err.noplugins': '设备未报告任何插件。',
   'err.unknownpanel': '该插件没有内置渲染器。',
+  'err.retry': '重试',
+  'err.token.placeholder': '粘贴 token 或控制台链接',
+  'err.token.apply': '连接',
   'warn.nondebug': '该应用是 {build} 构建 —— SandboxServer 仅用于 debug 构建。',
 };
 

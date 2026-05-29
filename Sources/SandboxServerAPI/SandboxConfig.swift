@@ -15,10 +15,12 @@ public enum BindingPolicy: Sendable, Equatable {
 /// Authentication enforced by the transport middleware *before* any plugin runs.
 public enum AuthMode: Sendable, Equatable {
     /// A fresh per-session bearer token is required on every request and WS upgrade.
-    /// This is the default and the recommended mode.
+    /// Recommended whenever the server is reachable by anything other than this device;
+    /// automatically forced under `.localNetwork`.
     case token
-    /// No token. Only honoured under `.loopback`; intended for Simulator-only
-    /// convenience. Discouraged — the core logs a warning and refuses it on `.localNetwork`.
+    /// No token — the default. Under `.loopback` (the default binding) the server is only
+    /// reachable from this device, so requiring a per-launch token just forces you to
+    /// re-open the console on every restart. Auto-upgraded to `.token` under `.localNetwork`.
     case none
 }
 
@@ -65,7 +67,7 @@ public struct SandboxConfig: Sendable {
 
     public init(
         bindingPolicy: BindingPolicy = .loopback,
-        auth: AuthMode = .token,
+        auth: AuthMode = .none,
         builtInPlugins: BuiltInPlugins = .all,
         preferredPort: Int = 8080,
         fallbackPorts: [Int] = [8081, 8082, 8090, 9090],

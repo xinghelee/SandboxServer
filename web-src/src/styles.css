@@ -413,6 +413,11 @@ pre.body {
 .center-pad { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 72px 24px; color: var(--ink-2); font-size: 14px; }
 .spinner { color: var(--accent); font-size: 16px; }
 
+/* In-place recovery (missing/stale token, unreachable device) — no page reload needed. */
+.recover { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 56px 24px; }
+.connect-form { display: flex; gap: 8px; width: 100%; max-width: 480px; }
+.connect-form .input { flex: 1; }
+
 .error-banner, .warn-banner { border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13.5px; line-height: 1.55; }
 .error-banner { color: var(--s5); border: 1px solid color-mix(in srgb, var(--s5) 40%, var(--line)); background: color-mix(in srgb, var(--s5) 10%, transparent); }
 .warn-banner { color: var(--s4); border: 1px solid color-mix(in srgb, var(--s4) 45%, var(--line)); background: color-mix(in srgb, var(--s4) 12%, transparent); }

@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { bootstrapToken } from './api/auth';
+import { bootstrapToken, setToken, extractToken } from './api/auth';
 import { api, ApiRequestError } from './api/client';
 import { socket } from './api/ws';
 import type { WsStatus } from './api/ws';
@@ -158,6 +158,35 @@ function Shell({ health, children }: { health: Health | null; children: Componen
   );
 }
 
+/** Recover from a missing/stale token without a full page reload: paste a token (or the
+ *  whole console URL) and reconnect in place. */
+function ConnectForm({ onConnect }: { onConnect: () => void }) {
+  const { t } = useI18n();
+  const [val, setVal] = useState('');
+  const submit = (e: Event) => {
+    e.preventDefault();
+    const tok = extractToken(val);
+    if (tok) setToken(tok);
+    onConnect();
+  };
+  return (
+    <form class="connect-form" onSubmit={submit}>
+      <input
+        class="input"
+        type="text"
+        autocomplete="off"
+        spellcheck={false}
+        placeholder={t('err.token.placeholder')}
+        value={val}
+        onInput={(e) => setVal((e.currentTarget as HTMLInputElement).value)}
+      />
+      <button class="btn primary" type="submit">
+        {t('err.token.apply')}
+      </button>
+    </form>
+  );
+}
+
 function App() {
   const route = useRoute();
   const { t } = useI18n();
@@ -165,13 +194,28 @@ function App() {
   const [plugins, setPlugins] = useState<Plugin[] | null>(null);
   const [fatal, setFatal] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [nonce, setNonce] = useState(0);
+  const reconnect = () => setNonce((n) => n + 1);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    Promise.all([api.health(ctrl.signal), api.plugins(ctrl.signal)])
-      .then(([h, pl]) => {
+    setFatal(null);
+    setUnauthorized(false);
+    // Fetch health and plugins independently (not Promise.all): one failing shouldn't blank
+    // the other, and `plugins` is the call whose 401 gates the console. Both sit under
+    // /__sandbox/api (token-gated when auth==.token; with the default .none they just succeed).
+    api
+      .health(ctrl.signal)
+      .then((h) => {
+        if (!ctrl.signal.aborted) setHealth(h);
+      })
+      .catch(() => {
+        /* connectivity is reported by the plugins() call below */
+      });
+    api
+      .plugins(ctrl.signal)
+      .then((pl) => {
         if (ctrl.signal.aborted) return;
-        setHealth(h);
         setPlugins(pl.items);
         if (currentRoute() === '/' && pl.items.length > 0) {
           navigate(`/${pl.items[0].panelKey || pl.items[0].id}`);
@@ -185,7 +229,7 @@ function App() {
         else setFatal(String(e));
       });
     return () => ctrl.abort();
-  }, []);
+  }, [nonce]);
 
   const activePlugin = useMemo(() => {
     if (!plugins) return null;
@@ -195,19 +239,26 @@ function App() {
 
   if (unauthorized) {
     return (
-      <Shell health={null}>
-        <EmptyState icon="⌬" titleKey="err.unauth.title" subKey="err.unauth.sub" />
+      <Shell health={health}>
+        <div class="recover">
+          <EmptyState icon="⌬" titleKey="err.unauth.title" subKey="err.unauth.sub" />
+          <ConnectForm onConnect={reconnect} />
+        </div>
       </Shell>
     );
   }
 
   if (fatal) {
     return (
-      <Shell health={null}>
-        <div class="error-banner">{fatal}</div>
-        <EmptyState icon="⚠" titleKey="err.fatal.title">
-          {fatal}
-        </EmptyState>
+      <Shell health={health}>
+        <div class="recover">
+          <EmptyState icon="⚠" titleKey="err.fatal.title">
+            {fatal}
+          </EmptyState>
+          <button class="btn" onClick={reconnect}>
+            {t('err.retry')}
+          </button>
+        </div>
       </Shell>
     );
   }

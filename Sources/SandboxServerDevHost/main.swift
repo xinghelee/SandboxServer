@@ -4,7 +4,7 @@
 //   swift run --traits SandboxServerEnabled SandboxServerDevHost
 //   # then open the http://127.0.0.1:8080/?token=… URL it prints
 //
-// Env: PORT (default 8080), NO_TOKEN=1 to disable the session token (loopback dev only).
+// Env: PORT (default 8080), TOKEN=1 to require a session token (off by default, matching the SDK).
 #if SandboxServerEnabled
 import Foundation
 import SandboxServerCore
@@ -14,7 +14,7 @@ let core = SandboxServerCore()
 // Expose the temp dir as an extra browsable/writable root for local fs testing.
 core.addRoot(URL(fileURLWithPath: NSTemporaryDirectory()))
 let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8080") ?? 8080
-let useToken = ProcessInfo.processInfo.environment["NO_TOKEN"] == nil
+let useToken = ProcessInfo.processInfo.environment["TOKEN"] != nil
 
 Task {
     let result = await core.start(SandboxConfig(

@@ -116,10 +116,14 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
 2. **Runtime opt-in:** the server never autostarts; the host must call `start()`.
 3. **`ReleaseGuard`:** refuses to start in an App Store / TestFlight environment, independent of
    `#if DEBUG` (allows Simulator + macOS for dev).
-4. **Per-session token:** a fresh 128-bit token minted each `start()`, enforced in the middleware
-   before any plugin, constant-time compared. Static console assets are served *without* the token
-   so the browser can bootstrap from `?token=`; everything under `/__sandbox/api` and `/__sandbox/ws`
-   requires it.
+4. **Per-session token (opt-in):** `AuthMode` defaults to `.none` — on the default `.loopback`
+   binding the server is only reachable from this device, and a fresh-per-`start()` token would just
+   force re-opening the console every relaunch. Set `auth: .token` to require a fresh 128-bit token
+   (minted each `start()`, enforced in the middleware before any plugin, constant-time compared);
+   `.none` on `.localNetwork` is **auto-upgraded to `.token`** with a loud warning (LAN exposure must
+   never be unauthenticated). When `.token` is active: static console assets are served *without* the
+   token so the browser can bootstrap from `?token=`, and everything under `/__sandbox/api` and
+   `/__sandbox/ws` requires it.
 
 `SandboxServerNoOp` must stay a source/binary-compatible mirror of the public API — both it and the
 real core conform to `SandboxServerEngine`, and `PublicAPICompatTests` enforces this by compiling
@@ -148,8 +152,11 @@ Package Dependencies pane). The built-in plugins are `internal`; the host opts i
 
 ## Open questions (carried from the architecture design; resolve before the relevant work)
 
-- **Token on loopback/Simulator:** currently uniform (always required). Revisit only if dev friction
-  warrants a Simulator-only waiver — apply identically to console + MCP if changed.
+- **Token default:** `auth` now defaults to `.none` (resolved — a per-launch token on loopback only
+  forced re-opening the console each restart). `.localNetwork` still auto-forces `.token`. Hosts that
+  want auth on loopback opt in with `auth: .token`; the console's in-app "paste token / reconnect"
+  recovery covers that path without a page reload. (A persistent per-install token was considered and
+  dropped in favour of default-off.)
 - **CocoaPods** support is preliminary; validate with `pod lib lint` (single-module fold) before publishing.
 - **DB write/Core Data editing:** v1 is discovery + read-only by design; structured Core Data edits
   need a host-provided `NSManagedObjectContext` (the only corruption-safe path) — a v2 product call.
