@@ -1,4 +1,5 @@
 import SwiftUI
+import SQLite3
 import SandboxServerCore
 import SandboxServerAPI
 
@@ -39,6 +40,7 @@ final class ServerModel: ObservableObject {
             token = info.token ?? "(none)"
             state = .running
             Self.seedSandbox()  // create a few files so the Files panel has content to browse
+            Self.seedDatabase() // create a SQLite db so the Databases panel has content
             fireSampleRequest() // seed the network capture
         case .disabled:
             state = .disabled
@@ -63,6 +65,25 @@ final class ServerModel: ObservableObject {
         for (name, body) in files {
             try? body.write(to: docs.appendingPathComponent(name), atomically: true, encoding: .utf8)
         }
+    }
+
+    /// Creates a small SQLite database in Documents so the Databases panel has real content.
+    private static func seedDatabase() {
+        let fm = FileManager.default
+        guard let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let path = docs.appendingPathComponent("app.sqlite").path
+        var db: OpaquePointer?
+        guard sqlite3_open(path, &db) == SQLITE_OK, let db else { return }
+        defer { sqlite3_close(db) }
+        let sql = """
+        CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT, vip INTEGER);
+        DELETE FROM users;
+        INSERT INTO users(name,email,vip) VALUES('Ada Lovelace','ada@example.com',1),('林想','lin@example.com',0),('Bob',NULL,1);
+        CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id), kind TEXT, weight REAL);
+        DELETE FROM events;
+        INSERT INTO events(user_id,kind,weight) VALUES(1,'login',1.0),(1,'tap',2.5),(2,'login',3.25);
+        """
+        sqlite3_exec(db, sql, nil, nil, nil)
     }
 
     /// Hits a couple of public endpoints; SandboxURLProtocol captures them automatically.

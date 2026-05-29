@@ -115,6 +115,37 @@ export interface DbDescriptor {
   readOnly: boolean;
 }
 
+export interface DbTable {
+  name: string;
+  rowCount: number;
+}
+
+export interface DbColumn {
+  name: string;
+  type: string;
+  pk: boolean;
+  notnull: boolean;
+}
+
+export interface DbForeignKey {
+  from: string;
+  table: string;
+  to: string;
+}
+
+export interface DbSchema {
+  columns: DbColumn[];
+  foreignKeys: DbForeignKey[];
+}
+
+export type DbCell = string | number | boolean | null;
+
+export interface DbQueryResult {
+  columns: string[];
+  rows: DbCell[][];
+  nextCursor: string | null;
+}
+
 // --- WebSocket ---
 
 export type WsChannel = 'net' | 'log' | 'fs' | 'db';

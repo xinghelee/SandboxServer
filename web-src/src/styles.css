@@ -467,6 +467,34 @@ pre.body {
 .fs-image { display: flex; justify-content: center; padding: 12px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; }
 .fs-image img { max-width: 100%; max-height: 60vh; image-rendering: auto; }
 
+/* ----- DB explorer -------------------------------------------------------- */
+.db-card.as-button { font: inherit; cursor: pointer; width: 100%; text-align: left; }
+.db-card.as-button:hover { border-color: var(--accent); }
+.db-go { color: var(--ink-dim); font-size: 18px; }
+
+.db-tablechips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.db-tablechip {
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--ink-2); background: var(--bg-1);
+  border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
+}
+.db-tablechip:hover { border-color: var(--line-2); color: var(--ink); }
+.db-tablechip.on { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--ink); }
+.db-tablechip .ct { font-size: 11px; font-family: var(--mono); color: var(--ink-dim); background: var(--bg-3); padding: 1px 6px; border-radius: 999px; }
+
+.db-sqlbox { display: flex; gap: 10px; align-items: stretch; margin-bottom: 14px; }
+.fs-editor.sql { min-height: 0; height: 64px; flex: 1; }
+
+.db-schema { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 12px; }
+.col-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); color: var(--ink); background: var(--bg-2); border: 1px solid var(--line); border-radius: 7px; padding: 3px 9px; }
+.col-pill .ty { color: var(--ink-dim); }
+.col-pill .flag { font-family: var(--sans); font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; }
+.col-pill .flag.pk { color: var(--accent-ink); background: var(--accent); }
+.col-pill .flag.nn { color: var(--s4); border: 1px solid color-mix(in srgb, var(--s4) 45%, var(--line)); }
+.cell-null { color: var(--ink-dim); font-style: italic; }
+table.grid td { font-family: var(--mono); font-size: 12.5px; }
+
 /* ----- Scrollbars --------------------------------------------------------- */
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }

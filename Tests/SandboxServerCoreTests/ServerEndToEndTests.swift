@@ -53,10 +53,18 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(status, 401)
     }
 
-    func testStubReturnsNotImplemented() async throws {
-        let (json, status) = try await getJSON("\(apiBase!)/fs/list?path=/", token: token)
-        XCTAssertEqual(status, 501)
-        XCTAssertEqual((json["error"] as? [String: Any])?["code"] as? String, "not_implemented")
+    func testFilesListingIsLive() async throws {
+        let (json, status) = try await getJSON("\(apiBase!)/fs/list", token: token)
+        XCTAssertEqual(status, 200)
+        let data = json["data"] as? [String: Any]
+        XCTAssertNotNil(data?["items"] as? [Any], "fs/list should return an items array")
+        XCTAssertNotNil(data?["path"] as? String, "fs/list should report the resolved path")
+    }
+
+    func testDbExecIsReadOnly() async throws {
+        let (json, status) = try await getJSON("\(apiBase!)/db/x/exec", token: token, method: "POST")
+        XCTAssertEqual(status, 403)
+        XCTAssertEqual((json["error"] as? [String: Any])?["code"] as? String, "db_readonly")
     }
 
     func testLiveNetworkCapture() async throws {
@@ -83,8 +91,9 @@ final class ServerEndToEndTests: XCTestCase {
 
     // MARK: helpers
 
-    private func getJSON(_ urlString: String, token: String?) async throws -> ([String: Any], Int) {
+    private func getJSON(_ urlString: String, token: String?, method: String = "GET") async throws -> ([String: Any], Int) {
         var request = URLRequest(url: try XCTUnwrap(URL(string: urlString)))
+        request.httpMethod = method
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 5

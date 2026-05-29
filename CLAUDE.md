@@ -79,8 +79,11 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
 - Network plugin is **live** (`/net/requests`, `/net/requests/{id}`, `DELETE /net/requests`,
   `net` WS channel). File plugin is **live** (`/fs/roots`, `/fs/list`, `/fs/stat`, `/fs/file`
   GET/PUT with Range, `/fs/move`, `DELETE /fs/file`) — every path is confined to an allowed root
-  (app container + host-registered extra roots; traversal → 403). DB plugin is discovery-only:
-  `GET /db` performs a real bounded sandbox scan for SQLite files; tables/schema/query/exec → 501.
+  (app container + host-registered extra roots; traversal → 403). DB plugin is **live** (read-only):
+  `GET /db` scans for SQLite files; `/db/{dbId}/tables`, `/db/{dbId}/tables/{table}/schema`, and
+  `POST /db/{dbId}/query` (browse a table or run a SELECT) read via a `SQLITE_OPEN_READONLY`
+  connection (`SQLiteReader`), so writes fail; `dbId` is the file path, confined via `FilePlugin.resolve`.
+  `POST /db/{dbId}/exec` (mutations) → 403 in this version.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

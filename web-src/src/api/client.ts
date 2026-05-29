@@ -15,6 +15,9 @@ import type {
   NetRequestSummary,
   NetRequestDetail,
   DbDescriptor,
+  DbTable,
+  DbSchema,
+  DbQueryResult,
   DirListing,
   FsRoot,
 } from './types';
@@ -173,6 +176,29 @@ export const api = {
 
   databases(signal?: AbortSignal): Promise<ListPayload<DbDescriptor>> {
     return request<ListPayload<DbDescriptor>>('/db', { signal });
+  },
+
+  dbTables(dbId: string, signal?: AbortSignal): Promise<ListPayload<DbTable>> {
+    return request<ListPayload<DbTable>>(`/db/${encodeURIComponent(dbId)}/tables`, { signal });
+  },
+
+  dbSchema(dbId: string, table: string, signal?: AbortSignal): Promise<DbSchema> {
+    return request<DbSchema>(
+      `/db/${encodeURIComponent(dbId)}/tables/${encodeURIComponent(table)}/schema`,
+      { signal },
+    );
+  },
+
+  dbQuery(
+    dbId: string,
+    body: { sql?: string; table?: string; limit?: number; cursor?: string },
+    signal?: AbortSignal,
+  ): Promise<DbQueryResult> {
+    return request<DbQueryResult>(`/db/${encodeURIComponent(dbId)}/query`, {
+      method: 'POST',
+      body,
+      signal,
+    });
   },
 
   // --- Files ---

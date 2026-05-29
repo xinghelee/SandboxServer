@@ -61,17 +61,25 @@ struct FilePlugin: SandboxPlugin {
     }
 
     /// Resolves `path` to a URL confined to an allowed root, or `nil` if it escapes.
+    ///
+    /// Symlinks are resolved on BOTH the target and the roots before comparison, so a symlink
+    /// inside a root cannot redirect reads/writes outside it. For a not-yet-existing leaf (e.g. a
+    /// new file via PUT), only the parent directory's symlinks are resolved, then the leaf re-appended.
     static func resolve(_ path: String?, _ ctx: any PluginContext) -> URL? {
-        let roots = roots(ctx)
-        let target: URL
-        if let path, !path.isEmpty, path != "/" {
-            target = URL(fileURLWithPath: path).standardizedFileURL
+        let roots = roots(ctx).map { $0.resolvingSymlinksInPath().standardizedFileURL }
+        guard let path, !path.isEmpty, path != "/" else { return roots.first }
+
+        let raw = URL(fileURLWithPath: path)
+        let resolved: URL
+        if FileManager.default.fileExists(atPath: raw.path) {
+            resolved = raw.resolvingSymlinksInPath().standardizedFileURL
         } else {
-            return roots.first
+            let parent = raw.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL
+            resolved = parent.appendingPathComponent(raw.lastPathComponent).standardizedFileURL
         }
-        let p = target.path
+        let p = resolved.path
         for root in roots where p == root.path || p.hasPrefix(root.path + "/") {
-            return target
+            return resolved
         }
         return nil
     }
