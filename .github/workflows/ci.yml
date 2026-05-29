@@ -1,0 +1,38 @@
+name: CI
+
+# Mirrors scripts/ci.sh — the single source of truth for the checks, so what you
+# run locally (`./scripts/ci.sh`) is exactly what runs here. macOS runner because
+# the package's host build + end-to-end tests boot a real server on loopback.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            web-src/package-lock.json
+            mcp-bridge/package-lock.json
+
+      - name: Toolchain versions
+        run: |
+          swift --version
+          node --version
+
+      - name: Run CI checks (build both trait paths, test, web drift, mcp bridge)
+        run: bash scripts/ci.sh
+        env:
+          CI: "true"
