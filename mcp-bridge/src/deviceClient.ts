@@ -15,6 +15,19 @@ export const API_PREFIX = "/__sandbox/api/v1";
 /** Max bytes we are willing to inline as text in a tool/resource result. */
 export const MAX_INLINE_BYTES = 256 * 1024;
 
+/** Default per-request timeout (ms); override with the SANDBOX_TIMEOUT_MS env var. */
+export const DEFAULT_TIMEOUT_MS = 10_000;
+
+/** Shorter timeout for the startup/probe healthz so a missing device fails fast. */
+export const HEALTHZ_TIMEOUT_MS = 5_000;
+
+function envTimeout(fallback: number): number {
+  const raw = process.env.SANDBOX_TIMEOUT_MS;
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export interface Endpoint {
   host: string;
   port: number;
@@ -98,16 +111,58 @@ export interface RequestOptions {
   /** Override Accept header / signal etc. */
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Per-call timeout override (ms). Falls back to the client default. */
+  timeoutMs?: number;
 }
 
 export class DeviceClient {
   readonly endpoint: Endpoint;
   private readonly base: string;
+  private readonly timeoutMs: number;
 
-  constructor(endpoint: Endpoint) {
+  constructor(endpoint: Endpoint, options: { timeoutMs?: number } = {}) {
     this.endpoint = endpoint;
     const scheme = endpoint.scheme ?? "http";
     this.base = `${scheme}://${endpoint.host}:${endpoint.port}`;
+    this.timeoutMs = options.timeoutMs ?? envTimeout(DEFAULT_TIMEOUT_MS);
+  }
+
+  /**
+   * Compose an abort signal that fires on either the caller's signal or a
+   * timeout, whichever comes first. Hand-rolled rather than using
+   * `AbortSignal.any` (Node 20.3+) because package.json declares `node >=18`.
+   * `done()` MUST be called (in a finally) to clear the timer and detach the
+   * listener, so a completed request never leaks a pending timeout.
+   */
+  private deadline(
+    callerSignal: AbortSignal | undefined,
+    timeoutMs: number,
+  ): { signal: AbortSignal; done: () => void } {
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort(callerSignal?.reason);
+
+    if (callerSignal) {
+      if (callerSignal.aborted) ctrl.abort(callerSignal.reason);
+      else callerSignal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    const timer = setTimeout(() => {
+      ctrl.abort(
+        new DOMException(
+          `Request to ${this.endpoint.host}:${this.endpoint.port} timed out after ${timeoutMs}ms`,
+          "TimeoutError",
+        ),
+      );
+    }, timeoutMs);
+    // Never let a pending timeout keep the process alive on its own.
+    timer.unref();
+
+    const done = () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", onAbort);
+    };
+
+    return { signal: ctrl.signal, done };
   }
 
   /** Build a fully-qualified URL for a path suffix relative to the API prefix. */
@@ -148,41 +203,46 @@ export class DeviceClient {
 
     log.debug(`${method} ${url}`);
 
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      signal: opts.signal,
-    });
+    const { signal, done } = this.deadline(opts.signal, opts.timeoutMs ?? this.timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+        signal,
+      });
 
-    const ct = res.headers.get("content-type") ?? "";
-    let parsed: unknown = undefined;
-    if (ct.includes("application/json")) {
-      const raw = await res.text();
-      parsed = raw.length ? JSON.parse(raw) : undefined;
-    } else {
-      // Non-JSON: read text so we can include it in an error if needed.
-      parsed = await res.text();
+      const ct = res.headers.get("content-type") ?? "";
+      let parsed: unknown = undefined;
+      if (ct.includes("application/json")) {
+        const raw = await res.text();
+        parsed = raw.length ? JSON.parse(raw) : undefined;
+      } else {
+        // Non-JSON: read text so we can include it in an error if needed.
+        parsed = await res.text();
+      }
+
+      if (!res.ok) {
+        const envErr =
+          parsed && typeof parsed === "object" && "error" in parsed
+            ? (parsed as { error: DeviceError }).error
+            : { code: `http_${res.status}`, message: typeof parsed === "string" ? parsed : res.statusText };
+        throw new DeviceApiError(res.status, envErr);
+      }
+
+      if (parsed && typeof parsed === "object" && "error" in parsed) {
+        throw new DeviceApiError(res.status, (parsed as { error: DeviceError }).error);
+      }
+
+      if (parsed && typeof parsed === "object" && "data" in parsed) {
+        return (parsed as { data: T }).data;
+      }
+
+      // Body had no envelope (shouldn't happen for v1 endpoints) — return as-is.
+      return parsed as T;
+    } finally {
+      done();
     }
-
-    if (!res.ok) {
-      const envErr =
-        parsed && typeof parsed === "object" && "error" in parsed
-          ? (parsed as { error: DeviceError }).error
-          : { code: `http_${res.status}`, message: typeof parsed === "string" ? parsed : res.statusText };
-      throw new DeviceApiError(res.status, envErr);
-    }
-
-    if (parsed && typeof parsed === "object" && "error" in parsed) {
-      throw new DeviceApiError(res.status, (parsed as { error: DeviceError }).error);
-    }
-
-    if (parsed && typeof parsed === "object" && "data" in parsed) {
-      return (parsed as { data: T }).data;
-    }
-
-    // Body had no envelope (shouldn't happen for v1 endpoints) — return as-is.
-    return parsed as T;
   }
 
   get<T = unknown>(pathSuffix: string, query?: Query, opts: RequestOptions = {}): Promise<T> {
@@ -209,61 +269,67 @@ export class DeviceClient {
     const url = this.buildUrl(pathSuffix, query);
     const headers = this.authHeaders(opts.headers);
     log.debug(`GET (raw) ${url}`);
-    const res = await fetch(url, { method: "GET", headers, signal: opts.signal });
 
-    const contentType = res.headers.get("content-type");
+    const { signal, done } = this.deadline(opts.signal, opts.timeoutMs ?? this.timeoutMs);
+    try {
+      const res = await fetch(url, { method: "GET", headers, signal });
 
-    if (!res.ok) {
-      const raw = await res.text();
-      let envErr: DeviceError;
-      try {
-        const j = JSON.parse(raw) as { error?: DeviceError };
-        envErr = j.error ?? { code: `http_${res.status}`, message: res.statusText };
-      } catch {
-        envErr = { code: `http_${res.status}`, message: raw || res.statusText };
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const raw = await res.text();
+        let envErr: DeviceError;
+        try {
+          const j = JSON.parse(raw) as { error?: DeviceError };
+          envErr = j.error ?? { code: `http_${res.status}`, message: res.statusText };
+        } catch {
+          envErr = { code: `http_${res.status}`, message: raw || res.statusText };
+        }
+        throw new DeviceApiError(res.status, envErr);
       }
-      throw new DeviceApiError(res.status, envErr);
-    }
 
-    const buf = Buffer.from(await res.arrayBuffer());
-    const byteLength = buf.byteLength;
+      const buf = Buffer.from(await res.arrayBuffer());
+      const byteLength = buf.byteLength;
 
-    if (byteLength > MAX_INLINE_BYTES) {
+      if (byteLength > MAX_INLINE_BYTES) {
+        return {
+          byteLength,
+          contentType,
+          truncated: true,
+          note:
+            `Body is ${byteLength} bytes (> ${MAX_INLINE_BYTES} inline cap) and was not inlined. ` +
+            `Read it via the corresponding sandbox:// resource or re-request a byte range.`,
+        };
+      }
+
+      const looksBinary =
+        contentType !== null &&
+        !/^(text\/|application\/(json|xml|javascript|x-www-form-urlencoded))/i.test(contentType);
+
+      if (looksBinary) {
+        return {
+          byteLength,
+          contentType,
+          truncated: true,
+          note: `Binary body (${contentType ?? "unknown"}, ${byteLength} bytes) not inlined as text.`,
+        };
+      }
+
       return {
+        text: buf.toString("utf8"),
         byteLength,
         contentType,
-        truncated: true,
-        note:
-          `Body is ${byteLength} bytes (> ${MAX_INLINE_BYTES} inline cap) and was not inlined. ` +
-          `Read it via the corresponding sandbox:// resource or re-request a byte range.`,
+        truncated: false,
       };
+    } finally {
+      done();
     }
-
-    const looksBinary =
-      contentType !== null &&
-      !/^(text\/|application\/(json|xml|javascript|x-www-form-urlencoded))/i.test(contentType);
-
-    if (looksBinary) {
-      return {
-        byteLength,
-        contentType,
-        truncated: true,
-        note: `Binary body (${contentType ?? "unknown"}, ${byteLength} bytes) not inlined as text.`,
-      };
-    }
-
-    return {
-      text: buf.toString("utf8"),
-      byteLength,
-      contentType,
-      truncated: false,
-    };
   }
 
   // ---- typed helpers --------------------------------------------------------
 
-  healthz(): Promise<HealthzData> {
-    return this.get<HealthzData>("/healthz");
+  healthz(opts: RequestOptions = {}): Promise<HealthzData> {
+    return this.get<HealthzData>("/healthz", undefined, opts);
   }
 
   plugins(): Promise<PluginsData> {

@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test": "node --import tsx --test test/*.test.ts",
     "dev": "tsx watch src/index.ts",
     "discover": "tsx src/index.ts discover",
     "doctor": "tsx src/index.ts doctor",

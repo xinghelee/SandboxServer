@@ -13,7 +13,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { DeviceClient } from "./deviceClient.js";
+import { DeviceClient, HEALTHZ_TIMEOUT_MS } from "./deviceClient.js";
 import { browse, formatPeers, parseFlags, resolveEndpoint, type CliFlags } from "./discovery.js";
 import { registerAll } from "./registerTools.js";
 import { log } from "./log.js";
@@ -50,7 +50,7 @@ async function cmdDoctor(flags: CliFlags): Promise<number> {
       (peer?.txt.deviceName ? ` ("${peer.txt.deviceName}")` : ""),
   );
   const device = new DeviceClient(endpoint);
-  const health = await device.healthz();
+  const health = await device.healthz({ timeoutMs: HEALTHZ_TIMEOUT_MS });
   log.banner("healthz:");
   log.banner(JSON.stringify(health, null, 2));
   if (health.buildConfig !== "debug") {
@@ -69,7 +69,7 @@ async function cmdConnect(flags: CliFlags): Promise<number> {
   const device = new DeviceClient(endpoint);
 
   // Health check before registering — fail fast with a clear stderr message.
-  const health = await device.healthz();
+  const health = await device.healthz({ timeoutMs: HEALTHZ_TIMEOUT_MS });
   if (health.buildConfig !== "debug") {
     log.warn(`buildConfig is "${health.buildConfig}", not "debug" — proceeding anyway.`);
   }
