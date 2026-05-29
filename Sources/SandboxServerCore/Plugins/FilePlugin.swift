@@ -147,7 +147,12 @@ struct FilePlugin: SandboxPlugin {
         var end = size - 1
         var status = 200
         var headers: [String: String] = ["Accept-Ranges": "bytes"]
-        if let range = req.range, size > 0 {
+        if let range = req.range {
+            // A Range on a 0-byte resource is never satisfiable (RFC 7233 §4.4) — don't fall
+            // through to a 200 full-body response.
+            guard size > 0 else {
+                return .error("range_not_satisfiable", "Range not satisfiable for an empty resource.", status: 416)
+            }
             switch range {
             case .explicit(let lower, let upper):
                 start = max(0, lower)

@@ -69,6 +69,23 @@ final class RangeAndCountsTests: XCTestCase {
         XCTAssertEqual(total, 1000)
     }
 
+    func testFilePluginRangeOnEmptyFileIs416() throws {
+        let file = try writeTempFile(bytes: 0)
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        let ctx = StubContext(roots: [file.deletingLastPathComponent()])
+
+        // A Range on a 0-byte resource is never satisfiable — must be 416, not a 200 full body.
+        for range in [ByteRange.suffix(100), .explicit(start: 0, end: 10)] {
+            let req = SBRequest(method: "GET", path: "file", query: ["path": file.path], range: range)
+            let resp = FilePlugin.read(req, ctx)
+            XCTAssertEqual(resp.status, 416, "range \(range) on an empty file should be 416")
+        }
+
+        // No Range on an empty file is still a normal 200.
+        let plain = FilePlugin.read(SBRequest(method: "GET", path: "file", query: ["path": file.path]), ctx)
+        XCTAssertEqual(plain.status, 200)
+    }
+
     func testFilePluginExplicitRangeStillWorks() throws {
         let file = try writeTempFile(bytes: 1000)
         defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }

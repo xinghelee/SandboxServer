@@ -84,6 +84,10 @@ final class SandboxURLProtocol: URLProtocol, @unchecked Sendable {
     /// Issues a request through the internal session whose config is excluded from interception,
     /// so the sent request is **not** re-captured. Used by `net_replay_request`. iOS 14-safe: wraps
     /// the completion-handler `dataTask` (the async `URLSession.data(for:)` API is iOS 15+).
+    ///
+    /// The continuation is resumed exactly once — by the completion handler, on every path. Task
+    /// cancellation does not resume a checked continuation, so there's no double-resume risk; a
+    /// cancelled caller simply lets the in-flight replay finish (acceptable for a one-shot replay).
     static func sendUncaptured(_ request: URLRequest) async throws -> (Data, HTTPURLResponse?) {
         try await withCheckedThrowingContinuation { continuation in
             let task = internalSession.dataTask(with: request) { data, response, error in
