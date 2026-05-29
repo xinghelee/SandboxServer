@@ -22,11 +22,24 @@ Task {
         auth: useToken ? .token : .none,
         builtInPlugins: .all,
         preferredPort: port,
-        fallbackPorts: []
+        fallbackPorts: [],
+        captureConsole: ProcessInfo.processInfo.environment["CAPTURE"] != nil
     ))
     if case .failed(let reason) = result {
         FileHandle.standardError.write(Data("start failed: \(reason)\n".utf8))
         exit(1)
+    }
+
+    // Optional: emit log lines so the Logs panel streams live (LOGSEED=1).
+    if ProcessInfo.processInfo.environment["LOGSEED"] != nil {
+        core.log("devhost started — structured app log", level: "info", category: "devhost")
+        core.log("warning sample so you can see level colors", level: "warn", category: "devhost")
+        var tick = 0
+        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+            tick += 1
+            if tick % 2 == 0 { print("[DevHost] heartbeat #\(tick)") }
+            else { core.log("structured heartbeat #\(tick)", level: tick % 5 == 0 ? "error" : "debug", category: "beat") }
+        }
     }
 
     // Optional: fire a few in-process requests so the Network panel has live data to show.

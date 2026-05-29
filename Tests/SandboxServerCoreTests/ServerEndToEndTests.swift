@@ -36,16 +36,21 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(data?["requiresAuth"] as? Bool, true)
     }
 
-    func testPluginsManifestListsAllThree() async throws {
+    func testPluginsManifestListsAllBuiltins() async throws {
         let (json, status) = try await getJSON("\(apiBase!)/plugins", token: token)
         XCTAssertEqual(status, 200)
         let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
         let ids = Set(items.compactMap { $0["id"] as? String })
-        XCTAssertEqual(ids, ["net", "fs", "db"])
+        XCTAssertEqual(ids, ["net", "fs", "db", "logs"])
         // The network plugin must advertise its MCP tools so the bridge can register them.
         let net = items.first { $0["id"] as? String == "net" }
-        let tools = (net?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
-        XCTAssertTrue(tools.contains("net_list_requests"))
+        let netTools = (net?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+        XCTAssertTrue(netTools.contains("net_list_requests"))
+        // The logs plugin advertises the logs channel + its tail/search/clear tools.
+        let logs = items.first { $0["id"] as? String == "logs" }
+        XCTAssertEqual(logs?["channels"] as? [String], ["logs"])
+        let logTools = (logs?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+        XCTAssertTrue(logTools.contains("logs_tail"))
     }
 
     func testUnauthorizedWithoutToken() async throws {
@@ -65,6 +70,20 @@ final class ServerEndToEndTests: XCTestCase {
         let (json, status) = try await getJSON("\(apiBase!)/db/x/exec", token: token, method: "POST")
         XCTAssertEqual(status, 403)
         XCTAssertEqual((json["error"] as? [String: Any])?["code"] as? String, "db_readonly")
+    }
+
+    func testLogsCaptureIsLive() async throws {
+        // A host log emitted through the SDK must surface on the logs plugin's REST endpoint.
+        let marker = "E2E-LOG-\(UUID().uuidString)"
+        server.log(marker, level: "warn", category: "test")
+
+        let (json, status) = try await getJSON("\(apiBase!)/logs?q=\(marker)", token: token)
+        XCTAssertEqual(status, 200)
+        let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
+        let hit = items.first { ($0["message"] as? String) == marker }
+        XCTAssertNotNil(hit, "the emitted log line should be captured and listable")
+        XCTAssertEqual(hit?["level"] as? String, "warn")
+        XCTAssertEqual(hit?["source"] as? String, "app")
     }
 
     func testLiveNetworkCapture() async throws {

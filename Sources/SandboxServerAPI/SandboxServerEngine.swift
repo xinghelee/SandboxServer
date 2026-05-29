@@ -21,5 +21,10 @@ public protocol SandboxServerEngine: AnyObject, Sendable {
     /// Stop the server and deactivate plugins.
     func stop() async
 
+    /// Emit a structured log line into the `logs` plugin's live stream (tagged source `"app"`),
+    /// surfaced in the web console and via the `logs_*` MCP tools. Inert in a no-op build.
+    /// `level` is one of `"debug" | "info" | "warn" | "error"`.
+    func log(_ message: String, level: String, category: String?)
+
     var isRunning: Bool { get }
 }

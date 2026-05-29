@@ -8,6 +8,7 @@ A **DEBUG-only iOS SDK** that turns any app into a browsable debug target. Integ
 - 🗂 **Sandbox file browser** — list / preview / edit / download / delete, Range streaming, root-confined (**live**)
 - 🌐 **Live network capture** — every `URLSession` request, inspectable in real time (**live**)
 - 🗄 **Database viewer** — discover SQLite DBs, browse tables/schema, run read-only SQL (**live**; Core Data/Realm + writes later)
+- 📜 **Live logs** — stream the app's console output (`SandboxServer.log`, plus `print`/`NSLog` when console capture is on) to the browser, level-filtered (**live**)
 - 🖥 **A web console** served by the SDK itself — no app to install, just open a URL
 - 🤖 **MCP tools** — the same on-device API re-exposed to AI clients (Claude Code / Desktop)
 
@@ -33,7 +34,7 @@ Network.framework, with **zero third-party runtime dependencies**.
 │   ├ HTTP/1.1 + RFC 6455 WebSocket  (hand-rolled)     │
 │   ├ AuthGate + DNS-rebinding guard  (middleware)     │
 │   ├ Router → PluginRegistry → WSHub                  │
-│   └ Plugins:  net (live) · fs (stub) · db (stub)     │
+│   └ Plugins:  net · fs · db · logs   (all live)      │
 │  serves:                                             │
 │   • web console  (/, /assets/*)                      │
 │   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │

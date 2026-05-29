@@ -33,7 +33,8 @@ final class ServerModel: ObservableObject {
     func start() async {
         #if DEBUG
         // Loopback is reachable from the Mac's browser because the Simulator shares localhost.
-        let result = await server.start(SandboxConfig(bindingPolicy: .loopback))
+        // captureConsole mirrors print/NSLog into the Logs panel; SandboxServer.log adds structured lines.
+        let result = await server.start(SandboxConfig(bindingPolicy: .loopback, captureConsole: true))
         switch result {
         case .started(let info):
             consoleURL = info.consoleURL.absoluteString
@@ -42,6 +43,7 @@ final class ServerModel: ObservableObject {
             Self.seedSandbox()  // create a few files so the Files panel has content to browse
             Self.seedDatabase() // create a SQLite db so the Databases panel has content
             fireSampleRequest() // seed the network capture
+            seedLogs()          // seed the logs panel + start a heartbeat so it streams live
         case .disabled:
             state = .disabled
         case .failed(let reason):
@@ -84,6 +86,26 @@ final class ServerModel: ObservableObject {
         INSERT INTO events(user_id,kind,weight) VALUES(1,'login',1.0),(1,'tap',2.5),(2,'login',3.25);
         """
         sqlite3_exec(db, sql, nil, nil, nil)
+    }
+
+    private var logTimer: Timer?
+
+    /// Seeds the Logs panel with a few lines (both raw `print` captured from stdout and structured
+    /// `SandboxServer.log` lines) and starts a heartbeat so the live WS stream visibly updates.
+    private func seedLogs() {
+        print("[Demo] app launched — console capture is mirroring stdout into the Logs panel")
+        server.log("demo started; browse Files / Databases / Network / Logs in the console", level: "info", category: "demo")
+        server.log("this is a warning line so you can see level color-coding", level: "warn", category: "demo")
+        var tick = 0
+        logTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            tick += 1
+            // Alternate a captured print() with a structured app log to exercise both sources.
+            if tick % 2 == 0 {
+                print("[Demo] heartbeat #\(tick) at \(Date())")
+            } else {
+                self?.server.log("structured heartbeat #\(tick)", level: tick % 5 == 0 ? "error" : "debug", category: "heartbeat")
+            }
+        }
     }
 
     /// Hits a couple of public endpoints; SandboxURLProtocol captures them automatically.

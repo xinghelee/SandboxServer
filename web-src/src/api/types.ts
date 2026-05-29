@@ -146,9 +146,22 @@ export interface DbQueryResult {
   nextCursor: string | null;
 }
 
+// --- Logs plugin ---
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface LogEntry {
+  seq: number;
+  ts: number; // unix milliseconds
+  level: LogLevel | string;
+  message: string;
+  source: string; // sdk | stdout | stderr | app
+  category: string | null;
+}
+
 // --- WebSocket ---
 
-export type WsChannel = 'net' | 'log' | 'fs' | 'db';
+export type WsChannel = 'net' | 'logs' | 'fs' | 'db';
 
 export interface WsServerMessage<P = Record<string, unknown>> {
   channel: WsChannel;

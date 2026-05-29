@@ -31,8 +31,9 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     public static let network  = BuiltInPlugins(rawValue: 1 << 0)
     public static let files    = BuiltInPlugins(rawValue: 1 << 1)
     public static let database = BuiltInPlugins(rawValue: 1 << 2)
+    public static let logs     = BuiltInPlugins(rawValue: 1 << 3)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs]
     public static let none: BuiltInPlugins = []
 }
 
@@ -51,6 +52,12 @@ public struct SandboxConfig: Sendable {
     /// Request/response header names redacted at write-time by capturing plugins,
     /// in addition to the always-on defaults (Authorization, Cookie, Set-Cookie, …).
     public var extraRedactedHeaders: [String]
+    /// When `true`, the `logs` plugin tees the process's `stdout`/`stderr` (capturing
+    /// `print`, `NSLog`, and anything written to fd 1/2) into the live log stream while
+    /// still forwarding the bytes to the original console. Off by default — opt in to
+    /// mirror raw console output; the SDK's own logs and `SandboxServer.log(_:)` are
+    /// always captured regardless.
+    public var captureConsole: Bool
 
     public init(
         bindingPolicy: BindingPolicy = .loopback,
@@ -59,7 +66,8 @@ public struct SandboxConfig: Sendable {
         preferredPort: Int = 8080,
         fallbackPorts: [Int] = [8081, 8082, 8090, 9090],
         serviceName: String? = nil,
-        extraRedactedHeaders: [String] = []
+        extraRedactedHeaders: [String] = [],
+        captureConsole: Bool = false
     ) {
         self.bindingPolicy = bindingPolicy
         self.auth = auth
@@ -68,6 +76,7 @@ public struct SandboxConfig: Sendable {
         self.fallbackPorts = fallbackPorts
         self.serviceName = serviceName
         self.extraRedactedHeaders = extraRedactedHeaders
+        self.captureConsole = captureConsole
     }
 
     public static var `default`: SandboxConfig { SandboxConfig() }

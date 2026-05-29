@@ -6,7 +6,8 @@ public struct WSChannel: Sendable, Hashable {
     public init(_ name: String) { self.name = name }
 
     public static let net = WSChannel("net")
-    public static let log = WSChannel("log")
+    /// Live console/log stream (the `logs` plugin publishes here).
+    public static let logs = WSChannel("logs")
     public static let fs = WSChannel("fs")
     public static let db = WSChannel("db")
 }

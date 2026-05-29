@@ -83,7 +83,14 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
   `GET /db` scans for SQLite files; `/db/{dbId}/tables`, `/db/{dbId}/tables/{table}/schema`, and
   `POST /db/{dbId}/query` (browse a table or run a SELECT) read via a `SQLITE_OPEN_READONLY`
   connection (`SQLiteReader`), so writes fail; `dbId` is the file path, confined via `FilePlugin.resolve`.
-  `POST /db/{dbId}/exec` (mutations) → 403 in this version.
+  `POST /db/{dbId}/exec` (mutations) → 403 in this version. Logs plugin is **live**: `GET /logs`
+  (newest-first tail; `?level=` / `?q=` / `?sinceSeq=` / `?limit=`), `DELETE /logs` (clear), and the
+  `logs` WS channel (`log.appended`). It is the second plugin (after `net`) to exercise WS fan-out.
+  Three ingestion sources feed a process-global `LogStore`: the SDK's own logger (always), the public
+  `SandboxServer.log(_:level:category:)` (host app, tagged `app`), and — opt-in via
+  `SandboxConfig.captureConsole` — raw `stdout`/`stderr` redirected through pipes (`ConsoleCapture`,
+  capturing `print`/`NSLog`, teed back to the real console). Off by default so it never interferes
+  with tests/host I/O; the SDK logger de-dupes its own line when capture is active.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

@@ -20,7 +20,15 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
     private let bonjour = BonjourAdvertiser()
     private var lifecycleObserver: NSObjectProtocol?
 
-    private let logger: @Sendable (String) -> Void = { print("[SandboxServer] \($0)") }
+    private let logger: @Sendable (String) -> Void = { msg in
+        let line = "[SandboxServer] \(msg)"
+        print(line)
+        // When console capture is mirroring stdout it will pick this line up; emitting here too
+        // would duplicate it. Otherwise, surface the SDK's own logs directly in the logs stream.
+        if !ConsoleCapture.shared.isActive {
+            LogStore.shared.emit(level: guessLogLevel(line), message: line, source: "sdk")
+        }
+    }
 
     public init() {}
 
@@ -49,6 +57,10 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
     }
 
     public func addRoot(_ url: URL) { lock.withLock { roots.append(url) } }
+
+    public func log(_ message: String, level: String = "info", category: String? = nil) {
+        LogStore.shared.emit(level: level, message: message, source: "app", category: category)
+    }
 
     public func start(_ config: SandboxConfig) async -> StartResult {
         if let existing = lock.withLock({ self.runtime }) { return .started(existing.info) }
@@ -84,6 +96,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.network) { allPlugins.append(NetworkPlugin()) }
         if cfg.builtInPlugins.contains(.files) { allPlugins.append(FilePlugin()) }
         if cfg.builtInPlugins.contains(.database) { allPlugins.append(DBPlugin()) }
+        if cfg.builtInPlugins.contains(.logs) { allPlugins.append(LogPlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {

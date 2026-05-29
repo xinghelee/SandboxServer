@@ -10,6 +10,7 @@ public struct PluginID: RawRepresentable, Hashable, Sendable, CustomStringConver
     public static let fs = PluginID("fs")
     public static let db = PluginID("db")
     public static let net = PluginID("net")
+    public static let logs = PluginID("logs")
 }
 
 /// THE extension point. A type conforming to `SandboxPlugin` *is* a feature module.

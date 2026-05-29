@@ -150,6 +150,27 @@ const BINDINGS: Record<string, ToolBinding> = {
     invoke: (device, _d, args) =>
       device.post(`/db/${encodeURIComponent(String(args.dbId))}/exec`, { sql: args.sql, params: args.params ?? [] }),
   },
+
+  // ---- logs ---------------------------------------------------------------
+  logs_tail: {
+    shape: {
+      limit: optInt.describe("max lines (newest first)"),
+      sinceSeq: optInt.describe("only lines with seq greater than this"),
+    },
+    invoke: (device, _d, args) => device.get("/logs", pickQuery(args, ["limit", "sinceSeq"])),
+  },
+  logs_search: {
+    shape: {
+      q: optStr.describe("substring to match in the message"),
+      level: optStr.describe("debug | info | warn | error"),
+      limit: optInt,
+    },
+    invoke: (device, _d, args) => device.get("/logs", pickQuery(args, ["q", "level", "limit"])),
+  },
+  logs_clear: {
+    shape: {},
+    invoke: (device) => device.del("/logs"),
+  },
 };
 
 /**

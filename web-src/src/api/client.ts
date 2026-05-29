@@ -20,6 +20,7 @@ import type {
   DbQueryResult,
   DirListing,
   FsRoot,
+  LogEntry,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -228,5 +229,18 @@ export const api = {
       method: 'DELETE',
       query: { path, recursive: recursive ? 'true' : undefined },
     });
+  },
+
+  // --- Logs ---
+
+  logs(
+    query: { level?: string; q?: string; sinceSeq?: number; limit?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<ListPayload<LogEntry>> {
+    return request<ListPayload<LogEntry>>('/logs', { query, signal });
+  },
+
+  clearLogs(signal?: AbortSignal): Promise<{ cleared: number }> {
+    return request<{ cleared: number }>('/logs', { method: 'DELETE', signal });
   },
 };

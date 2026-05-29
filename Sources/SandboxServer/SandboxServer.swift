@@ -59,5 +59,12 @@ public final class SandboxServer: @unchecked Sendable {
 
     public func stop() async { await engine.stop() }
 
+    /// Emit a structured log line into the live `logs` stream (web console + `logs_*` MCP tools),
+    /// tagged as coming from the app. A no-op in a no-op build, so call sites compile unchanged.
+    /// `level` is one of `"debug" | "info" | "warn" | "error"`.
+    public func log(_ message: String, level: String = "info", category: String? = nil) {
+        engine.log(message, level: level, category: category)
+    }
+
     public var isRunning: Bool { engine.isRunning }
 }

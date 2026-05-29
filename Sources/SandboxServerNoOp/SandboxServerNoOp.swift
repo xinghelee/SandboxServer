@@ -22,6 +22,8 @@ public final class SandboxServerNoOp: SandboxServerEngine, @unchecked Sendable {
 
     public func stop() async {}
 
+    public func log(_ message: String, level: String = "info", category: String? = nil) {}
+
     public var isRunning: Bool { false }
 
     private static let noticeOnce: Void = {
