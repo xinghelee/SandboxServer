@@ -2,10 +2,11 @@
 
 An [MCP](https://modelcontextprotocol.io) bridge for **SandboxServer**, an iOS
 debug SDK. It connects to a running device, reads the device's live plugin
-manifest, and exposes the network / files / database plugins as MCP tools and
-resources over **stdio** — so Claude Code, Claude Desktop, or any MCP client can
-inspect captured network traffic, the app sandbox file system, and embedded
-databases.
+manifest, and exposes every plugin — network, files, databases, logs, on-screen
+mirror/control, and the view hierarchy — as MCP tools and resources over
+**stdio**, so Claude Code, Claude Desktop, or any MCP client can inspect captured
+network traffic, the app sandbox file system, embedded databases and logs, and
+even screenshot and drive the running UI.
 
 Tools are registered **dynamically from the live `/plugins` manifest**: as the
 device reports new plugins, new tools appear automatically. The static
@@ -69,18 +70,23 @@ device is on the network).
 
 ## Tools
 
-`sandbox_status` is always registered. The rest are driven by the device
-manifest; the documented initial set is:
+`sandbox_status` is always registered (device reachability + identity). Every
+other tool is driven by the live `/plugins` manifest — as the device reports
+plugins, their tools appear automatically. The full v1 tool set:
 
-| Plugin | Tools |
-| --- | --- |
-| net | `net_list_requests`, `net_get_request`, `net_replay_request`, `net_clear` |
-| fs  | `fs_list_dir`, `fs_read_file`, `fs_stat`, `fs_write_file`, `fs_delete`, `fs_move` |
-| db  | `db_list_databases`, `db_list_tables`, `db_get_schema`, `db_query`, `db_exec` |
+| Plugin | Tools | Status |
+| --- | --- | --- |
+| **net** | `net_list_requests`, `net_get_request`, `net_replay_request`, `net_clear`† | Live. Captures `URLSession` traffic into a ring buffer; `net_replay_request` re-issues a captured request (optionally with header/body overrides). |
+| **fs** | `fs_roots`, `fs_list_dir`, `fs_stat`, `fs_read_file`, `fs_write_file`†, `fs_move`, `fs_delete`† | Live. Confined to the app container + host-registered roots (traversal → 403). Reads support HTTP Range. |
+| **db** | `db_list_databases`, `db_list_tables`, `db_get_schema`, `db_query`, `db_exec`† | Read-only. SQLite over a `SQLITE_OPEN_READONLY` connection; `db_query` runs a `SELECT`. `db_exec` (mutations) returns **403** in v1. |
+| **logs** | `logs_tail`, `logs_search`, `logs_clear`† | Live. Tails the SDK logger, host `SandboxServer.log`, and (opt-in) redirected `stdout`/`stderr`. |
+| **screen** | `ui_info`, `ui_screenshot`, `ui_tap`, `ui_swipe`, `ui_type`, `ui_paste` | Live on iOS (UIKit). `ui_screenshot` returns an **image content block**. Non-UIKit hosts report `supported:false` and 503 the capture/control routes. |
+| **hierarchy** | `ui_hierarchy` | Live on iOS (UIKit). Snapshots the live view tree (frames, classes, labels, optional thumbnails). |
 
-> In SandboxServer v1 the **net** plugin is live; most **fs**/**db** endpoints
-> return `501 not_implemented`. The tools still register (driven by the
-> manifest) and forward calls, surfacing the `not_implemented` error.
+`†` = **destructive** (`destructiveHint:true` — mutates or discards data). The
+`ui_*` tap/swipe/type/paste tools drive the UI but are not flagged destructive.
+Every tool carries the `readOnly`/`destructive` hints straight from the device
+manifest, so MCP clients can gate them.
 
 ## Resources
 
