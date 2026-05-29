@@ -47,6 +47,8 @@ struct HTTPRequestHead: Sendable {
 
 enum HTTPError: Error {
     case headerTooLarge
+    case payloadTooLarge
+    case truncatedBody
     case malformed
 }
 
@@ -55,6 +57,10 @@ final class HTTPConnectionReader {
     private let connection: any ServerConnection
     private var buffer: [UInt8] = []
     private let maxHeaderBytes = 64 * 1024
+
+    /// Hard cap on a single request body. A hostile/buggy `Content-Length` could otherwise
+    /// drive `readBody` to buffer an unbounded amount and OOM the host process.
+    static let maxBodyBytes = 64 * 1024 * 1024 // 64 MiB
 
     init(_ connection: any ServerConnection) { self.connection = connection }
 
@@ -77,10 +83,13 @@ final class HTTPConnectionReader {
     }
 
     /// Reads exactly `length` body bytes (buffered leftover first, then the socket).
+    /// Throws `payloadTooLarge` if the declared length exceeds the cap, and `truncatedBody`
+    /// if the peer closes before the full body arrives (rather than silently truncating).
     func readBody(length: Int) async throws -> Data {
         guard length > 0 else { return Data() }
+        guard length <= Self.maxBodyBytes else { throw HTTPError.payloadTooLarge }
         while buffer.count < length {
-            guard let chunk = try await connection.receive() else { break }
+            guard let chunk = try await connection.receive() else { throw HTTPError.truncatedBody }
             buffer.append(contentsOf: chunk)
         }
         let take = min(length, buffer.count)
@@ -183,6 +192,7 @@ enum HTTPResponseWriter {
         case 401: return "Unauthorized"
         case 403: return "Forbidden"
         case 404: return "Not Found"
+        case 413: return "Payload Too Large"
         case 416: return "Range Not Satisfiable"
         case 500: return "Internal Server Error"
         case 501: return "Not Implemented"

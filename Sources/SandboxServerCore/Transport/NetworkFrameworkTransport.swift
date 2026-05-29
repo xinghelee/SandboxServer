@@ -107,20 +107,57 @@ final class NetworkFrameworkTransport: SocketTransport, @unchecked Sendable {
 
 /// Wraps a single `NWConnection` as an async byte stream. `receive()` re-issues until it has
 /// bytes or hits EOF, so callers never see spurious empty reads.
+private enum ConnectionReadError: Error { case timedOut }
+
 final class NWServerConnection: ServerConnection, @unchecked Sendable {
     let id: UInt64
     private let connection: NWConnection
+    private let queue: DispatchQueue
+
+    /// Idle read timeout for the HTTP request phase: a peer that opens a connection (or promises a
+    /// body) then sends nothing must not pin this read task forever. The WS hub clears it for the
+    /// long-lived frame loop (which is legitimately idle between events) via `setReadTimeout(nil)`.
+    static let defaultReadTimeout: TimeInterval = 30
+    private let timeoutLock = NSLock()
+    private var readTimeout: TimeInterval?
 
     init(connection: NWConnection, id: UInt64, queue: DispatchQueue) {
         self.connection = connection
         self.id = id
+        self.queue = queue
+        self.readTimeout = Self.defaultReadTimeout
+    }
+
+    func setReadTimeout(_ seconds: TimeInterval?) {
+        timeoutLock.withLock { readTimeout = seconds }
     }
 
     func receive() async throws -> [UInt8]? {
         // `[]` is the "nothing yet, not closed" sentinel; loop until real bytes or EOF.
         while true {
+            let timeout = timeoutLock.withLock { readTimeout }
             let result: [UInt8]? = try await withCheckedThrowingContinuation { cont in
+                // `ResumeOnce` makes the timeout work item and the receive callback mutually
+                // exclusive, so the continuation resumes exactly once even under their race.
+                let once = ResumeOnce()
+                // Reference-typed and only cancel()'d (thread-safe); the capture is benign.
+                nonisolated(unsafe) let timeoutItem: DispatchWorkItem?
+                if let timeout {
+                    let item = DispatchWorkItem { [weak self] in
+                        guard once.fire() else { return }
+                        self?.connection.cancel() // also fires the receive callback below (a no-op via `once`)
+                        cont.resume(throwing: ConnectionReadError.timedOut)
+                    }
+                    timeoutItem = item
+                    queue.asyncAfter(deadline: .now() + timeout, execute: item)
+                } else {
+                    timeoutItem = nil
+                }
                 connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { data, _, isComplete, error in
+                    guard once.fire() else { return }
+                    // A completed read cancels its own timer here, so no timer ever outlives the
+                    // receive() that armed it — nothing is left pending once readHead/readBody return.
+                    timeoutItem?.cancel()
                     if let error {
                         cont.resume(throwing: error)
                     } else if let data, !data.isEmpty {

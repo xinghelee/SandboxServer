@@ -146,9 +146,25 @@ const BINDINGS: Record<string, ToolBinding> = {
       device.get(`/db/${encodeURIComponent(String(args.dbId))}/tables/${encodeURIComponent(String(args.table))}/schema`),
   },
   db_query: {
-    shape: { dbId: str, sql: str.describe("read-only SQL query"), params: z.array(z.unknown()).optional() },
-    invoke: (device, _d, args) =>
-      device.post(`/db/${encodeURIComponent(String(args.dbId))}/query`, { sql: args.sql, params: args.params ?? [] }),
+    // The device route (POST /db/{dbId}/query) accepts EITHER a read-only `sql`
+    // SELECT or a `table` to browse, paginated with `limit` + `cursor`. (It does
+    // not bind `?` params, so we don't forward any.)
+    shape: {
+      dbId: str,
+      sql: optStr.describe("read-only SELECT to run; omit to browse a table instead"),
+      table: optStr.describe("browse this table instead of running SQL"),
+      limit: optInt.describe("max rows to return (default 100, max 1000)"),
+      cursor: optStr.describe("pagination cursor from a previous page's nextCursor"),
+    },
+    invoke: (device, _d, args) => {
+      if (!args.sql && !args.table) {
+        throw new Error("db_query requires either 'sql' (a read-only SELECT) or 'table' (to browse).");
+      }
+      return device.post(
+        `/db/${encodeURIComponent(String(args.dbId))}/query`,
+        pickQuery(args, ["sql", "table", "limit", "cursor"]),
+      );
+    },
   },
   db_exec: {
     shape: { dbId: str, sql: str.describe("mutating SQL statement"), params: z.array(z.unknown()).optional() },
@@ -226,15 +242,19 @@ const BINDINGS: Record<string, ToolBinding> = {
  * shape for. We forward generically using the descriptor's backing method +
  * path suffix, substituting {placeholders} from args and sending the rest as
  * query (GET/DELETE) or JSON body (POST/PUT).
+ *
+ * `backingPathSuffix` is relative to the plugin's mount point (e.g. "roots",
+ * "{dbId}/query"), so we prefix the plugin id — otherwise an unbound tool like
+ * `fs_roots` would resolve to /roots instead of /fs/roots and 404 on the device.
  */
-function fallbackBinding(): ToolBinding {
+function fallbackBinding(pluginId: string): ToolBinding {
   return {
     // Permissive: accept any string params; the device validates.
     shape: { args: z.record(z.string(), z.unknown()).optional().describe("raw parameters forwarded to the device") },
     invoke: (device, descriptor, raw) => {
       const args = (raw.args as Record<string, unknown> | undefined) ?? raw;
       const consumed = new Set<string>();
-      const path = fillPath(descriptor.backingPathSuffix, args, consumed);
+      const path = `${pluginId}/${fillPath(descriptor.backingPathSuffix, args, consumed)}`;
       const method = descriptor.backingMethod.toUpperCase();
       const rest: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(args)) if (!consumed.has(k)) rest[k] = v;
@@ -326,7 +346,7 @@ function registerPluginTools(server: McpServer, device: DeviceClient, plugins: P
   let count = 0;
   for (const plugin of plugins) {
     for (const descriptor of plugin.mcpTools ?? []) {
-      const binding = BINDINGS[descriptor.name] ?? fallbackBinding();
+      const binding = BINDINGS[descriptor.name] ?? fallbackBinding(plugin.id);
       try {
         server.registerTool(
           descriptor.name,

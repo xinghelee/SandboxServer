@@ -26,6 +26,14 @@ protocol ServerConnection: AnyObject, Sendable {
     func receive() async throws -> [UInt8]?
     func send(_ bytes: [UInt8]) async throws
     func close()
+    /// Idle read timeout in seconds, or `nil` to disable. The HTTP request phase keeps a default
+    /// so a half-open peer can't pin the read task; the long-lived WebSocket loop disables it.
+    func setReadTimeout(_ seconds: TimeInterval?)
+}
+
+extension ServerConnection {
+    /// Default no-op for transports (and test doubles) without an idle timeout.
+    func setReadTimeout(_ seconds: TimeInterval?) {}
 }
 
 enum TransportError: Error, CustomStringConvertible {

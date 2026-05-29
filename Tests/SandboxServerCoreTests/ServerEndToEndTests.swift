@@ -2,6 +2,9 @@ import XCTest
 @testable import SandboxServerAPI
 #if SandboxServerEnabled
 @testable import SandboxServerCore
+#if canImport(Darwin)
+import Darwin
+#endif
 
 /// Boots a real `SandboxServerCore` on loopback and exercises the full stack over HTTP:
 /// transport → middleware/auth → router → plugins, plus live network capture.
@@ -136,7 +139,55 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertTrue(captured.contains { ($0["url"] as? String)?.contains("/healthz") ?? false })
     }
 
+    func testOversizeRequestBodyReturns413() throws {
+        // A hostile/buggy Content-Length must be rejected up front (no multi-MiB read) with a 413
+        // carrying the correct RFC reason phrase. A raw socket lets us lie about Content-Length
+        // without ever sending the body — proving the cap fires on the declared length alone.
+        let comps = try XCTUnwrap(URLComponents(string: apiBase))
+        let port = UInt16(try XCTUnwrap(comps.port))
+        let oversized = HTTPConnectionReader.maxBodyBytes + 1
+        let raw = "POST /__sandbox/api/v1/db/x/query HTTP/1.1\r\n"
+            + "Host: 127.0.0.1:\(port)\r\n"
+            + "Authorization: Bearer \(token!)\r\n"
+            + "Content-Type: application/json\r\n"
+            + "Content-Length: \(oversized)\r\n"
+            + "\r\n" // headers only — we never send the body we claimed
+        let response = try XCTUnwrap(rawHTTP(raw, host: "127.0.0.1", port: port), "no response from server")
+        let statusLine = response.split(separator: "\r\n", maxSplits: 1).first.map(String.init) ?? ""
+        XCTAssertTrue(statusLine.contains("413"), "expected 413, got status line: \(statusLine)")
+        XCTAssertTrue(statusLine.contains("Payload Too Large"), "expected RFC reason phrase, got: \(statusLine)")
+    }
+
     // MARK: helpers
+
+    /// Sends a raw HTTP request over a fresh loopback TCP socket and returns the response text
+    /// (read until the header terminator or the peer closes). macOS test host only.
+    private func rawHTTP(_ request: String, host: String, port: UInt16) -> String? {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { return nil }
+        defer { close(fd) }
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = port.bigEndian
+        guard inet_pton(AF_INET, host, &addr.sin_addr) == 1 else { return nil }
+        let connected = withUnsafePointer(to: &addr) { ptr in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                connect(fd, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        guard connected == 0 else { return nil }
+        let bytes = Array(request.utf8)
+        _ = bytes.withUnsafeBytes { send(fd, $0.baseAddress, $0.count, 0) }
+        var out = [UInt8]()
+        var chunk = [UInt8](repeating: 0, count: 4096)
+        for _ in 0..<8 {
+            let n = recv(fd, &chunk, chunk.count, 0)
+            if n <= 0 { break }
+            out.append(contentsOf: chunk[0..<n])
+            if let s = String(bytes: out, encoding: .utf8), s.contains("\r\n\r\n") { break }
+        }
+        return String(bytes: out, encoding: .utf8)
+    }
 
     private func getJSON(_ urlString: String, token: String?, method: String = "GET") async throws -> ([String: Any], Int) {
         var request = URLRequest(url: try XCTUnwrap(URL(string: urlString)))

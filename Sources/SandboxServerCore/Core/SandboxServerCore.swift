@@ -194,6 +194,9 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         }
         let handshake = WebSocketCodec.handshakeResponse(acceptKey: WebSocketCodec.acceptKey(for: key))
         do { try await connection.send(handshake) } catch { connection.close(); return }
+        // The WS frame loop is legitimately idle between events — drop the HTTP-phase read timeout
+        // so the hub doesn't tear down a quiet but healthy subscriber.
+        connection.setReadTimeout(nil)
         let leftover = reader.leftover
         Task { await runtime.hub.serve(connection, leftover: leftover) }
     }
@@ -231,7 +234,16 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
             return .error("not_found", "No route for \(head.method) \(suffix).", status: 404)
         }
 
-        let bodyData = (try? await reader.readBody(length: head.contentLength)) ?? Data()
+        let bodyData: Data
+        do {
+            bodyData = try await reader.readBody(length: head.contentLength)
+        } catch HTTPError.payloadTooLarge {
+            return .error("payload_too_large",
+                          "Request body exceeds the \(HTTPConnectionReader.maxBodyBytes / (1024 * 1024)) MiB limit.",
+                          status: 413)
+        } catch {
+            return .error("bad_request", "Could not read the request body.", status: 400)
+        }
         let request = SBRequest(
             method: head.method, path: suffix, pathParams: match.params,
             query: head.query, headers: head.headers, range: head.byteRange,
