@@ -23,6 +23,8 @@ export interface CliFlags {
   token?: string;
   /** discovery window in ms */
   timeout?: number;
+  /** explicit override of the auto-reconnect supervisor (default on) */
+  reconnect?: boolean;
 }
 
 export interface DiscoveredPeer {
@@ -65,7 +67,8 @@ export function parseFlags(argv: string[]): CliFlags {
     else if (a === "--timeout" || a.startsWith("--timeout=")) {
       const v = takeVal();
       if (v !== undefined) flags.timeout = Number(v);
-    }
+    } else if (a === "--no-reconnect") flags.reconnect = false;
+    else if (a === "--reconnect") flags.reconnect = true;
   }
   return flags;
 }

@@ -28,6 +28,10 @@ function envTimeout(fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function baseUrl(ep: Endpoint): string {
+  return `${ep.scheme ?? "http"}://${ep.host}:${ep.port}`;
+}
+
 export interface Endpoint {
   host: string;
   port: number;
@@ -220,15 +224,25 @@ export interface RequestOptions {
 }
 
 export class DeviceClient {
-  readonly endpoint: Endpoint;
-  private readonly base: string;
+  endpoint: Endpoint;
+  private base: string;
   private readonly timeoutMs: number;
 
   constructor(endpoint: Endpoint, options: { timeoutMs?: number } = {}) {
     this.endpoint = endpoint;
-    const scheme = endpoint.scheme ?? "http";
-    this.base = `${scheme}://${endpoint.host}:${endpoint.port}`;
+    this.base = baseUrl(endpoint);
     this.timeoutMs = options.timeoutMs ?? envTimeout(DEFAULT_TIMEOUT_MS);
+  }
+
+  /**
+   * Point this client at a new endpoint in place. The reconnect supervisor uses
+   * this so already-registered tools keep working after the device restarts or
+   * rebinds — the MCP SDK can't cleanly re-register tools mid-session, and every
+   * tool callback reads this.endpoint/this.base live on each request.
+   */
+  updateEndpoint(endpoint: Endpoint): void {
+    this.endpoint = endpoint;
+    this.base = baseUrl(endpoint);
   }
 
   /**

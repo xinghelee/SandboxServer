@@ -16,6 +16,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { DeviceClient, HEALTHZ_TIMEOUT_MS } from "./deviceClient.js";
 import { browse, formatPeers, parseFlags, resolveEndpoint, type CliFlags } from "./discovery.js";
 import { registerAll } from "./registerTools.js";
+import { createSupervisor, isReconnectEnabled, type Supervisor } from "./reconnect.js";
 import { log } from "./log.js";
 
 const PKG_NAME = "sandbox-mcp";
@@ -80,16 +81,28 @@ async function cmdConnect(flags: CliFlags): Promise<number> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
+  // Keep the long-lived session alive across device restarts/rebinds (default on;
+  // disable with --no-reconnect or SANDBOX_RECONNECT=0). Tools registered above keep
+  // working because the supervisor swaps the endpoint into `device` in place.
+  let supervisor: Supervisor | undefined;
+  if (isReconnectEnabled(flags)) {
+    supervisor = createSupervisor({ device, flags });
+    supervisor.start();
+    log.debug("reconnect supervisor started");
+  }
+
   // One-time startup banner (stderr).
   const deviceLabel = health.deviceName || peer?.txt.deviceName || `${endpoint.host}:${endpoint.port}`;
   log.banner(
     `${PKG_NAME} v${PKG_VERSION} connected (${source}) -> ${deviceLabel} ` +
       `[${endpoint.host}:${endpoint.port}] app=${health.appBundleId} build=${health.buildConfig} ` +
-      `| ${pluginCount} plugin(s), ${toolCount} tool(s) registered`,
+      `| ${pluginCount} plugin(s), ${toolCount} tool(s) registered` +
+      `${supervisor ? " | auto-reconnect on" : ""}`,
   );
 
   const shutdown = async (signal: string) => {
     log.info(`received ${signal}, shutting down...`);
+    supervisor?.stop();
     try {
       await server.close();
     } catch (err) {
