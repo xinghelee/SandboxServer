@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>SBX // Sandbox Inspector</title>
+    <script>
+      // Apply saved theme/language before first paint to avoid a flash.
+      (function () {
+        try {
+          var d = document.documentElement;
+          var theme = localStorage.getItem('sbx_theme');
+          d.dataset.theme = theme === 'light' ? 'light' : 'dark';
+          var lang = localStorage.getItem('sbx_lang');
+          if (!lang) lang = (navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
+          d.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      /* paint the terminal background immediately, before CSS loads */
+      html[data-theme='dark'] { background: #050806; }
+      html[data-theme='light'] { background: #ece7da; }
+    </style>
+    <script type="module" crossorigin src="./assets/index-BR5VGERh.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-yFGyDpjV.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>

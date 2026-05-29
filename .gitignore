@@ -1,0 +1,22 @@
+# Swift / SPM
+.build/
+.swiftpm/
+*.xcodeproj
+DerivedData/
+Package.resolved
+
+# Node (web-src + mcp-bridge)
+node_modules/
+mcp-bridge/dist/
+web-src/dist/
+
+# macOS
+.DS_Store
+
+# Misc
+*.log
+
+# Demo (xcodegen-generated)
+Demo/.build/
+Demo/SandboxServerDemo.xcodeproj/
+Demo/Generated/

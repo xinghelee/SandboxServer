@@ -1,0 +1,19 @@
+{
+  "name": "sandboxserver-console",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Web console for SandboxServer iOS debug SDK",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.4",
+    "@types/node": "^25.9.1",
+    "preact": "^10.25.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7"
+  }
+}

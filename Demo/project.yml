@@ -1,0 +1,47 @@
+name: SandboxServerDemo
+options:
+  bundleIdPrefix: com.sandboxserver
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  SandboxServer:
+    path: ../
+
+targets:
+  SandboxServerDemo:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    info:
+      path: Generated/Info.plist
+      properties:
+        CFBundleDisplayName: Sandbox Demo
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        # Debug server browses the sandbox over the LAN:
+        NSLocalNetworkUsageDescription: "Browse this app's sandbox, databases, and network traffic during development."
+        NSBonjourServices:
+          - _sandboxserver._tcp
+        # Demo fires sample HTTP(S) requests to show live capture:
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    dependencies:
+      # The demo links the real server directly (no SPM-trait tooling needed). A production
+      # app would instead depend on the `SandboxServer` facade and enable the
+      # `SandboxServerEnabled` trait in Xcode's Package Dependencies pane.
+      - package: SandboxServer
+        product: SandboxServerCore
+      - package: SandboxServer
+        product: SandboxServerAPI
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        PRODUCT_BUNDLE_IDENTIFIER: com.sandboxserver.demo

@@ -1,0 +1,158 @@
+# SandboxServer
+
+[English](README.md) · **简体中文**
+
+一个 **仅 DEBUG 生效的 iOS SDK**,集成后即可把任意 App 变成可在浏览器里调试的目标。调用 `start()`
+后,用同一局域网内的浏览器即可:
+
+- 🗂 **沙盒文件浏览** —— 列目录 / 预览 / 下载 / 编辑(v2)
+- 🗄 **数据库查看** —— SQLite / Core Data / Realm 表(v2;发现列表 v1 已可用)
+- 🌐 **网络请求实时抓取** —— 每条 `URLSession` 请求都可实时查看(**v1 即上线**)
+- 🖥 **内置 Web 控制台** —— 由 SDK 自己提供,无需安装任何 App,打开一个 URL 即可
+- 🤖 **MCP 工具** —— 把同一套设备端 API 暴露给 AI 客户端(Claude Code / Desktop)
+
+它在宿主进程内、基于 Apple 的 Network.framework 跑一个内嵌 HTTP + WebSocket 服务,**零第三方运行时依赖**。
+
+> ⚠️ 本 SDK 会把宿主 App 沙盒的完整读写权限,通过局域网开放给持有会话 token 的人。它 **默认关闭**,
+> 必须显式 `start()` 并校验每会话 token,默认只绑定 loopback,且在 Release/App Store 构建里 **物理上
+> 不存在**。请用非生产账号、在可信网络下使用。
+
+---
+
+## 架构
+
+```
+┌─ 宿主 iOS App(DEBUG)──────────────────────────────┐
+│  SandboxServer.shared.start()                        │
+│     │                                                │
+│     ▼                                                │
+│  SandboxServerCore                                   │
+│   ├ NetworkFrameworkTransport (NWListener/NWConn)    │
+│   ├ HTTP/1.1 + RFC 6455 WebSocket(手写)             │
+│   ├ AuthGate + DNS-rebinding 防护(中间件)          │
+│   ├ Router → PluginRegistry → WSHub                  │
+│   └ 插件:net(已上线)· fs(桩)· db(桩)          │
+│  对外提供:                                          │
+│   • Web 控制台 (/, /assets/*)                        │
+│   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │
+└──────────────────────────────────────────────────────┘
+        ▲ 局域网 / localhost              ▲ 局域网 / localhost
+        │                                │
+   浏览器(Preact 控制台)         sandbox-mcp(stdio)──► Claude Code / Desktop
+```
+
+内核极小、与具体功能无关 —— **一切皆 `SandboxPlugin`**。插件自描述的能力
+(`GET /__sandbox/api/v1/plugins`)同时驱动:控制台渲染哪些面板、以及 MCP 桥注册哪些工具。
+
+| 模块 | 职责 |
+| --- | --- |
+| `SandboxServerAPI` | 零依赖的公开契约(`SandboxPlugin`、请求/响应、配置)。 |
+| `SandboxServer` | 始终被链接的门面。DEBUG + trait 时转发到 Core,否则转发到 no-op 桩。 |
+| `SandboxServerNoOp` | Release / 关闭态构建中链接的惰性镜像。 |
+| `SandboxServerCore` | 真实服务:传输、路由、Hub、注册表、内置插件、Web 资源。 |
+| `web-src/` | Preact + TypeScript 控制台(Vite)。构建产物提交在 `Sources/SandboxServerCore/Resources/web/`。 |
+| `mcp-bridge/` | 独立的 `sandbox-mcp` npm 包(与 Swift SDK 分离)。 |
+
+---
+
+## 安装
+
+### Swift Package Manager(推荐)
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/your-org/SandboxServer.git", from: "0.1.0"),
+],
+targets: [
+    .target(name: "MyApp", dependencies: [
+        // 仅在 debug 构建配置里启用真实服务:
+        .product(name: "SandboxServer", package: "SandboxServer",
+                 condition: .when(traits: ["SandboxServerEnabled"])),
+    ]),
+]
+```
+
+为 debug 构建启用 `SandboxServerEnabled` trait。不启用(Release)时,包会链接惰性的 no-op 产品,服务在物理上不存在。
+
+### CocoaPods
+
+```ruby
+pod 'SandboxServer', :configurations => ['Debug']
+```
+
+`:configurations => ['Debug']` 能把二进制 **以及 Web 资源** 都挡在 Release 之外。
+(CocoaPods 支持目前为初步状态 —— 发布前请用 `pod lib lint` 校验。)
+
+---
+
+## 使用
+
+```swift
+import SandboxServer
+
+#if DEBUG
+Task {
+    // 内置插件(网络/文件/数据库)由配置自动注册。
+    let result = await SandboxServer.shared.start()        // 默认 .loopback、全部内置插件
+    if case .started(let info) = result {
+        print("打开 \(info.consoleURL)")                    // 已带 bootstrap ?token=
+    }
+}
+
+// 只启用部分内置插件,或注册你自己的插件(实现公开的 `SandboxPlugin` 协议):
+// SandboxServer.shared.register(MyCustomPlugin())
+// await SandboxServer.shared.start(SandboxConfig(builtInPlugins: [.network]))
+#endif
+```
+
+控制台 URL 会连同会话 token 一起打印到 Xcode 控制台。在 **模拟器** 上直接打开
+(`http://127.0.0.1:<port>/?token=…`)。在 **真机** 上,用 `.localNetwork` 启动,再用同一 Wi-Fi
+下的浏览器打开打印出的局域网 URL:
+
+```swift
+await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
+```
+
+`.localNetwork` 需要在 **debug** 的 Info.plist 里配置 `NSLocalNetworkUsageDescription`(以及
+`NSBonjourServices` 列出 `_sandboxserver._tcp`)。
+
+---
+
+## MCP(AI 工具)
+
+`mcp-bridge/` 是一个独立的 MCP 服务,代理设备 API。把 AI 客户端指向它:
+
+```json
+{
+  "mcpServers": {
+    "sandbox": {
+      "command": "npx",
+      "args": ["-y", "sandbox-mcp"],
+      "env": { "SANDBOX_HOST": "127.0.0.1", "SANDBOX_PORT": "8080", "SANDBOX_TOKEN": "<token>" }
+    }
+  }
+}
+```
+
+它会先发现设备(env/flags → 单个 Bonjour 匹配),再按插件声明的能力动态注册 MCP 工具
+(`net_list_requests`、`fs_read_file`、`db_query` 等)。详见 `mcp-bridge/README.md`。
+
+---
+
+## 开发
+
+```bash
+# Swift 包(SDK 本体)
+swift build --traits SandboxServerEnabled          # 构建真实内核
+swift test  --traits SandboxServerEnabled          # 单元 + 端到端测试
+swift build                                        # 构建 Release 安全的 no-op 路径
+
+# Web 控制台(Preact)
+cd web-src && npm install && npm run build          # 产物 → Sources/SandboxServerCore/Resources/web
+VITE_API_BASE=http://<device-ip>:<port> npm run dev # 对着运行中的设备做 HMR
+
+# MCP 桥
+cd mcp-bridge && npm install && npm run build
+```
+
+完整架构说明与待决问题见 `CLAUDE.md`。

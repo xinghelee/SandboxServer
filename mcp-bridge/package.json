@@ -1,0 +1,34 @@
+{
+  "name": "sandbox-mcp",
+  "version": "0.1.0",
+  "description": "MCP bridge for SandboxServer — exposes an iOS debug SDK device (network/files/db plugins) as Model Context Protocol tools and resources over stdio.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "sandbox-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "discover": "tsx src/index.ts discover",
+    "doctor": "tsx src/index.ts doctor",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "bonjour-service": "^1.4.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
