@@ -45,12 +45,18 @@ final class SandboxURLProtocol: URLProtocol, @unchecked Sendable {
         }
         URLProtocol.setProperty(true, forKey: Self.handledKey, in: mutable)
 
+        // URLSession converts `httpBody` into an `httpBodyStream` before the protocol sees it, so
+        // a POST/PUT body would otherwise be invisible. Drain it back to Data and re-attach it to
+        // the forwarded request so the body is both captured AND still sent.
+        let body = Self.drainBody(from: mutable as URLRequest)
+        if let body { mutable.httpBody = body }
+
         let store = Self.store
         let id = txnID
         let snapshot = request
         Task {
             await store?.begin(id: id, method: snapshot.httpMethod ?? "GET", url: snapshot.url,
-                               headers: snapshot.allHTTPHeaderFields ?? [:], reqBody: snapshot.httpBody)
+                               headers: snapshot.allHTTPHeaderFields ?? [:], reqBody: body)
         }
 
         proxyTask = Self.internalSession.dataTask(with: mutable as URLRequest) { [weak self] data, response, error in
@@ -80,6 +86,27 @@ final class SandboxURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() { proxyTask?.cancel() }
+
+    /// Reads a request's body into Data: returns `httpBody` directly if set, otherwise drains
+    /// `httpBodyStream` fully (it's one-shot, so the caller re-attaches the result as `httpBody`).
+    /// Reads the whole body so the re-attached request is complete; `TransactionStore.begin` caps
+    /// what is actually retained. Returns nil when there's no body.
+    private static func drainBody(from request: URLRequest) -> Data? {
+        if let body = request.httpBody { return body }
+        guard let stream = request.httpBodyStream else { return nil }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        let bufSize = 64 * 1024
+        var buffer = [UInt8](repeating: 0, count: bufSize)
+        while stream.hasBytesAvailable {
+            let read = stream.read(&buffer, maxLength: bufSize)
+            if read < 0 { break }   // read error — keep whatever we already drained
+            if read == 0 { break }  // EOF
+            data.append(buffer, count: read)
+        }
+        return data.isEmpty ? nil : data
+    }
 
     /// Issues a request through the internal session whose config is excluded from interception,
     /// so the sent request is **not** re-captured. Used by `net_replay_request`. iOS 14-safe: wraps

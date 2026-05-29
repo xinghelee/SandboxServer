@@ -147,6 +147,37 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertTrue(captured.contains { ($0["url"] as? String)?.contains("/healthz") ?? false })
     }
 
+    func testCapturesRequestBody() async throws {
+        // URLSession turns httpBody into an httpBodyStream before the protocol sees it; drainBody
+        // must recover it so the captured transaction has a non-empty request body (#4).
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [SandboxURLProtocol.self] + (config.protocolClasses ?? [])
+        let session = URLSession(configuration: config)
+
+        let marker = "BODY-\(UUID().uuidString)"
+        var req = URLRequest(url: try XCTUnwrap(URL(string: "\(apiBase!)/healthz")))
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(token!)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = Data("{\"probe\":\"\(marker)\"}".utf8)
+        _ = try await session.data(for: req)
+
+        var body: String?
+        for _ in 0..<20 {
+            let (list, _) = try await getJSON("\(apiBase!)/net/requests", token: token)
+            let items = ((list["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
+            if let hit = items.first(where: { ($0["method"] as? String) == "POST" }) {
+                let id = hit["id"] as? String ?? ""
+                let (d, _) = try await getJSON("\(apiBase!)/net/requests/\(id)?include=reqBody", token: token)
+                body = (d["data"] as? [String: Any])?["reqBody"] as? String
+                if body?.contains(marker) == true { break }
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertNotNil(body, "request body should be captured (drained from the body stream)")
+        XCTAssertTrue(body?.contains(marker) ?? false, "captured body should contain the sent payload")
+    }
+
     func testNetReplayRequest() async throws {
         // Capture a probe through our protocol, then replay it (C1).
         let config = URLSessionConfiguration.ephemeral
