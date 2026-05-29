@@ -419,6 +419,54 @@ pre.body {
 
 .muted { color: var(--ink-dim); }
 
+/* ----- File browser ------------------------------------------------------- */
+.root-chips { display: flex; gap: 6px; }
+.root-chip {
+  font: inherit; font-size: 12px; font-family: var(--mono);
+  cursor: pointer; color: var(--ink-2);
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 7px;
+  padding: 5px 10px;
+}
+.root-chip:hover { border-color: var(--line-2); color: var(--ink); }
+.root-chip.on { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--ink); }
+
+.crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; font-family: var(--mono); font-size: 12.5px; }
+.crumb {
+  font: inherit; font-family: var(--mono); font-size: 12.5px;
+  cursor: pointer; color: var(--link);
+  background: transparent; border: 0; border-radius: 6px; padding: 3px 7px;
+}
+.crumb:hover { background: var(--bg-3); }
+.crumb.cur { color: var(--ink); font-weight: 600; cursor: default; }
+.crumb.up { color: var(--ink-2); border: 1px solid var(--line); }
+.crumb.up:disabled { opacity: 0.4; cursor: not-allowed; }
+.crumb-sep { color: var(--ink-dim); }
+.crumb-div { width: 1px; height: 16px; background: var(--line); margin: 0 6px; }
+
+.name-cell { display: flex; align-items: center; gap: 10px; }
+.fs-ico { width: 12px; text-align: center; }
+.fs-ico.dir { color: var(--accent); font-weight: 700; }
+.fs-ico.file { color: var(--ink-dim); }
+.fs-dir { color: var(--ink); font-weight: 600; }
+.fs-file { color: var(--ink-2); font-family: var(--mono); font-size: 13px; }
+
+.fs-toolbar { display: flex; align-items: center; gap: 8px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--bg-2); font-size: 12px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.saved-flag { color: var(--accent); font-size: 12px; font-weight: 600; }
+
+.fs-editor {
+  width: 100%; min-height: 420px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.6;
+  color: var(--ink); background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+  outline: none; resize: vertical;
+}
+.fs-editor:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+.fs-image { display: flex; justify-content: center; padding: 12px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; }
+.fs-image img { max-width: 100%; max-height: 60vh; image-rendering: auto; }
+
 /* ----- Scrollbars --------------------------------------------------------- */
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }

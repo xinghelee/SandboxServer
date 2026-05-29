@@ -76,9 +76,11 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
 - REST under `/__sandbox/api/v1`; success `{ "data": …, "meta": { apiVersion, ts } }`,
   error `{ "error": { code, message, details } }`, lists `{ data: { items, nextCursor } }`.
 - `GET /healthz`, `GET /plugins` (manifest), then per-plugin routes under `/<id>/`.
-- Network plugin is **live in v1** (`/net/requests`, `/net/requests/{id}`, `DELETE /net/requests`,
-  `net` WS channel). File (`/fs`) and DB (`/db`) plugins are registered but return
-  `501 not_implemented` — except `GET /db` which performs a real (bounded) sandbox scan for SQLite files.
+- Network plugin is **live** (`/net/requests`, `/net/requests/{id}`, `DELETE /net/requests`,
+  `net` WS channel). File plugin is **live** (`/fs/roots`, `/fs/list`, `/fs/stat`, `/fs/file`
+  GET/PUT with Range, `/fs/move`, `DELETE /fs/file`) — every path is confined to an allowed root
+  (app container + host-registered extra roots; traversal → 403). DB plugin is discovery-only:
+  `GET /db` performs a real bounded sandbox scan for SQLite files; tables/schema/query/exec → 501.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

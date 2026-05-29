@@ -38,7 +38,8 @@ final class ServerModel: ObservableObject {
             consoleURL = info.consoleURL.absoluteString
             token = info.token ?? "(none)"
             state = .running
-            fireSampleRequest() // seed the capture
+            Self.seedSandbox()  // create a few files so the Files panel has content to browse
+            fireSampleRequest() // seed the network capture
         case .disabled:
             state = .disabled
         case .failed(let reason):
@@ -47,6 +48,21 @@ final class ServerModel: ObservableObject {
         #else
         state = .disabled
         #endif
+    }
+
+    /// Writes a few sample files into the app's Documents so the Files panel has content.
+    private static func seedSandbox() {
+        let fm = FileManager.default
+        guard let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        try? fm.createDirectory(at: docs.appendingPathComponent("logs"), withIntermediateDirectories: true)
+        let files: [(String, String)] = [
+            ("welcome.json", "{\n  \"app\": \"SandboxServer Demo\",\n  \"sandbox\": true,\n  \"editable\": true\n}\n"),
+            ("notes.txt", "These files live in the iOS app's Documents directory.\nBrowse, edit, download, or delete them from the browser.\n"),
+            ("logs/app.log", "[info] app launched\n[info] sandbox server started\n[info] seeded sample files\n"),
+        ]
+        for (name, body) in files {
+            try? body.write(to: docs.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        }
     }
 
     /// Hits a couple of public endpoints; SandboxURLProtocol captures them automatically.

@@ -81,6 +81,28 @@ export interface NetRequestDetail extends NetRequestSummary {
   respBody?: string | null;
 }
 
+// --- Files plugin ---
+
+export interface FileEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  size: number;
+  mtime: number; // unix milliseconds
+  mime: string;
+}
+
+export interface DirListing {
+  path: string;
+  items: FileEntry[];
+  nextCursor: string | null;
+}
+
+export interface FsRoot {
+  name: string;
+  path: string;
+}
+
 // --- DB plugin ---
 
 export type DbEngine = 'sqlite' | 'coredata' | 'realm';

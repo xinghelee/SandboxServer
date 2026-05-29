@@ -11,6 +11,8 @@ import SandboxServerCore
 import SandboxServerAPI
 
 let core = SandboxServerCore()
+// Expose the temp dir as an extra browsable/writable root for local fs testing.
+core.addRoot(URL(fileURLWithPath: NSTemporaryDirectory()))
 let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8080") ?? 8080
 let useToken = ProcessInfo.processInfo.environment["NO_TOKEN"] == nil
 

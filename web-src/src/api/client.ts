@@ -15,6 +15,8 @@ import type {
   NetRequestSummary,
   NetRequestDetail,
   DbDescriptor,
+  DirListing,
+  FsRoot,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -107,6 +109,32 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   return json as T;
 }
 
+/** Raw fetch (no envelope unwrap) for binary/streamed endpoints like file reads. */
+export async function rawRequest(
+  path: string,
+  query?: RequestOptions['query'],
+  signal?: AbortSignal,
+): Promise<Response> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(buildUrl(path, query), { headers, signal });
+  if (!res.ok) {
+    let apiError: ApiError = {
+      code: `http_${res.status}`,
+      message: res.statusText || `Request failed (${res.status})`,
+    };
+    try {
+      const j = JSON.parse(await res.text()) as ErrorEnvelope;
+      if (j?.error) apiError = j.error;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiRequestError(res.status, apiError);
+  }
+  return res;
+}
+
 // --- Typed endpoint helpers ---
 
 export const api = {
@@ -145,5 +173,34 @@ export const api = {
 
   databases(signal?: AbortSignal): Promise<ListPayload<DbDescriptor>> {
     return request<ListPayload<DbDescriptor>>('/db', { signal });
+  },
+
+  // --- Files ---
+
+  fsRoots(signal?: AbortSignal): Promise<ListPayload<FsRoot>> {
+    return request<ListPayload<FsRoot>>('/fs/roots', { signal });
+  },
+
+  fsList(path: string, signal?: AbortSignal): Promise<DirListing> {
+    return request<DirListing>('/fs/list', { query: { path }, signal });
+  },
+
+  fsRead(path: string, signal?: AbortSignal): Promise<Response> {
+    return rawRequest('/fs/file', { path }, signal);
+  },
+
+  fsWrite(path: string, content: string, encoding: 'utf8' | 'base64' = 'utf8'): Promise<{ path: string; size: number }> {
+    return request<{ path: string; size: number }>('/fs/file', {
+      method: 'PUT',
+      query: { path },
+      body: { content, encoding },
+    });
+  },
+
+  fsDelete(path: string, recursive = false): Promise<{ deleted: boolean }> {
+    return request<{ deleted: boolean }>('/fs/file', {
+      method: 'DELETE',
+      query: { path, recursive: recursive ? 'true' : undefined },
+    });
   },
 };

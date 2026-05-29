@@ -5,9 +5,9 @@
 A **DEBUG-only iOS SDK** that turns any app into a browsable debug target. Integrate it, call
 `start()`, and from a browser on the same network you get:
 
-- 🗂 **Sandbox file browser** — list / preview / download / edit files (v2)
-- 🗄 **Database viewer** — SQLite / Core Data / Realm tables (v2; discovery live in v1)
-- 🌐 **Live network capture** — every `URLSession` request, inspectable in real time (**live in v1**)
+- 🗂 **Sandbox file browser** — list / preview / edit / download / delete, Range streaming, root-confined (**live**)
+- 🌐 **Live network capture** — every `URLSession` request, inspectable in real time (**live**)
+- 🗄 **Database viewer** — SQLite / Core Data / Realm (discovery live; tables/query in v2)
 - 🖥 **A web console** served by the SDK itself — no app to install, just open a URL
 - 🤖 **MCP tools** — the same on-device API re-exposed to AI clients (Claude Code / Desktop)
 
