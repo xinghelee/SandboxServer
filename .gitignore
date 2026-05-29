@@ -1,5 +1,6 @@
 # Swift / SPM
 .build/
+.xcode_build/
 .swiftpm/
 *.xcodeproj
 DerivedData/
@@ -10,8 +11,9 @@ node_modules/
 mcp-bridge/dist/
 web-src/dist/
 
-# macOS
+# macOS / editors
 .DS_Store
+.vscode/
 
 # Misc
 *.log
