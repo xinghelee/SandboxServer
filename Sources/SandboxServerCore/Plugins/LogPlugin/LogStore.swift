@@ -56,17 +56,26 @@ final class LogStore: @unchecked Sendable {
         return entry
     }
 
-    /// Newest-first page, optionally filtered by level, substring, and a `seq` lower bound.
+    /// Page of entries, optionally filtered by level, substring, and a `seq` lower bound.
+    ///
+    /// Two shapes by intent:
+    ///  - no `sinceSeq` (tail / search): the *newest* `limit` matches, newest-first, no cursor.
+    ///  - with `sinceSeq` (incremental resume): the CONTIGUOUS *oldest-first* matches right after
+    ///    the cursor, plus a real `nextCursor` so a caller can page forward without gaps.
     func list(level: String?, contains: String?, sinceSeq: Int?, limit: Int) -> Page<LogEntry> {
         lock.lock(); let snapshot = items; lock.unlock()
         let needle = contains?.lowercased()
-        var filtered = snapshot.reversed().filter { e in
+        let matches = snapshot.filter { e in   // natural (oldest-first) order
             (level.map { e.level == $0 } ?? true) &&
             (sinceSeq.map { e.seq > $0 } ?? true) &&
             (needle.map { e.message.lowercased().contains($0) } ?? true)
         }
-        if filtered.count > limit { filtered = Array(filtered.prefix(limit)) }
-        return Page(items: filtered, nextCursor: nil)
+        if sinceSeq != nil {
+            let page = Array(matches.prefix(limit))
+            let next = matches.count > limit ? page.last.map { String($0.seq) } : nil
+            return Page(items: page, nextCursor: next)
+        }
+        return Page(items: Array(matches.reversed().prefix(limit)), nextCursor: nil)
     }
 
     func clear() -> Int {
@@ -76,12 +85,15 @@ final class LogStore: @unchecked Sendable {
     var count: Int { lock.lock(); defer { lock.unlock() }; return items.count }
 }
 
-/// Cheap heuristic level from a raw line. Refined attribution (os_log subsystems, real
-/// levels) is a later pass; this keeps console capture color-coded without a parser.
+/// Cheap heuristic level from a raw line. Anchored to bracketed/prefixed tokens that real log
+/// formatters emit, so bare substrings inside URLs/paths/identifiers (e.g. `…/errors?x=1`) don't
+/// get miscoloured. Refined attribution (os_log subsystems, real levels) is a later pass.
 func guessLogLevel(_ line: String) -> String {
     let l = line.lowercased()
-    if line.contains("❌") || l.contains("error") || l.contains("[fault]") || l.contains("exception") { return "error" }
-    if line.contains("⚠️") || l.contains("warn") { return "warn" }
-    if l.contains("[debug]") || l.contains("verbose") { return "debug" }
+    if line.contains("❌") || line.contains("🛑")
+        || l.contains("[error]") || l.contains("error:") || l.contains("fatal error")
+        || l.contains("[fault]") || l.contains("exception:") { return "error" }
+    if line.contains("⚠️") || l.contains("[warn") || l.contains("warning:") || l.contains("warn:") { return "warn" }
+    if l.contains("[debug]") || l.contains("debug:") || l.contains("[verbose]") || l.contains("verbose:") { return "debug" }
     return "info"
 }

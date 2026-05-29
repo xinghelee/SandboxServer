@@ -11,9 +11,16 @@ import SandboxServerAPI
 ///  - the SDK's own logger (always),
 ///  - `SandboxServer.log(_:)` host calls (always, tagged `app`),
 ///  - raw `stdout`/`stderr` via `ConsoleCapture` (opt-in, `SandboxConfig.captureConsole`).
+///
+/// Lines are published through a single long-lived consumer draining an `AsyncStream` (not a
+/// per-line `Task`), so the strict `seq` order assigned under the store's lock is preserved all
+/// the way to the WebSocket — otherwise concurrent tasks could reorder a burst and the client,
+/// which dedupes on `seq`, would silently drop the late arrivals.
 final class LogPlugin: SandboxPlugin, @unchecked Sendable {
     let id = PluginID.logs
     private let store = LogStore.shared
+    private var continuation: AsyncStream<LogEntry>.Continuation?
+    private var publishTask: Task<Void, Never>?
 
     init() {}
 
@@ -24,7 +31,7 @@ final class LogPlugin: SandboxPlugin, @unchecked Sendable {
             channels: [WSChannel.logs.name],
             mcpTools: [
                 .init(name: "logs_tail", title: "Tail logs",
-                      description: "Return the most recent captured log lines (newest first). Optional `limit`, `sinceSeq`.",
+                      description: "Return the most recent captured log lines (newest first). Optional `limit`, `sinceSeq` (contiguous lines after a cursor).",
                       backingMethod: "GET", backingPathSuffix: "", readOnlyHint: true, destructiveHint: false),
                 .init(name: "logs_search", title: "Search logs",
                       description: "Filter captured logs by `level` (debug|info|warn|error) and/or substring `q`.",
@@ -39,10 +46,22 @@ final class LogPlugin: SandboxPlugin, @unchecked Sendable {
     func channels() -> [WSChannel] { [.logs] }
 
     func activate(context: any PluginContext) async throws {
-        // Fan every newly-appended line out to subscribers of the `logs` channel.
-        store.setSubscriber { entry in
-            Task { await context.publish(channel: .logs, type: "log.appended", payload: entry) }
+        // One ordered consumer serialises WS publishes (iOS 13+ AsyncStream init — not makeStream,
+        // which is iOS 17+). bufferingNewest bounds memory under a burst.
+        var captured: AsyncStream<LogEntry>.Continuation?
+        let stream = AsyncStream<LogEntry>(LogEntry.self, bufferingPolicy: .bufferingNewest(4096)) {
+            captured = $0
         }
+        guard let cont = captured else { return }
+        continuation = cont
+        publishTask = Task {
+            for await entry in stream {
+                await context.publish(channel: .logs, type: "log.appended", payload: entry)
+            }
+        }
+        // Enqueue each newly-appended line in seq order; yield is thread-safe and a no-op after finish().
+        store.setSubscriber { entry in cont.yield(entry) }
+
         if context.config.captureConsole {
             ConsoleCapture.shared.start { source, line in
                 LogStore.shared.emit(level: guessLogLevel(line), message: line, source: source)
@@ -56,12 +75,17 @@ final class LogPlugin: SandboxPlugin, @unchecked Sendable {
     func deactivate() async {
         ConsoleCapture.shared.stop()
         store.setSubscriber(nil)
+        continuation?.finish()
+        continuation = nil
+        publishTask?.cancel()
+        publishTask = nil
     }
 
     func routes() -> [HTTPRoute] {
         let store = self.store
         return [
             // GET /logs — newest-first tail, with optional ?level= & ?q= & ?sinceSeq= & ?limit=.
+            // With ?sinceSeq=, returns the contiguous oldest-first lines after the cursor + nextCursor.
             HTTPRoute("GET", "", annotations: .read) { req, _ in
                 let page = store.list(
                     level: req.query["level"].flatMap { $0.isEmpty ? nil : $0 },

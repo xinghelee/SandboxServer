@@ -40,7 +40,19 @@ export function LogsPanel() {
     setError(null);
     api
       .logs({ level: levelRef.current || undefined, limit: 1000 }, signal)
-      .then((res) => setRows([...res.items].reverse()))
+      .then((res) => {
+        const loaded = [...res.items].reverse(); // server newest-first → oldest-first
+        const lvl = levelRef.current;
+        setRows((prev) => {
+          if (!loaded.length) return prev.filter((r) => !lvl || r.level === lvl);
+          const maxLoaded = loaded[loaded.length - 1].seq;
+          // Keep live lines that arrived during the in-flight GET (seq beyond the snapshot) and
+          // match the current level, so neither the initial race nor a level-change loses them.
+          const tail = prev.filter((r) => r.seq > maxLoaded && (!lvl || r.level === lvl));
+          const merged = [...loaded, ...tail];
+          return merged.length > MAX_ROWS ? merged.slice(merged.length - MAX_ROWS) : merged;
+        });
+      })
       .catch((e: unknown) => {
         if (signal?.aborted) return;
         setError(e instanceof ApiRequestError ? e.message : String(e));
@@ -70,12 +82,13 @@ export function LogsPanel() {
     return unsub;
   }, []);
 
-  // Autoscroll to the newest line while following.
+  // Autoscroll to the newest line while following. Depends on `filter`/`follow` too, so clearing
+  // the text filter (which grows the rendered list) or re-enabling follow re-pins to the bottom.
   useEffect(() => {
     if (followRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [rows]);
+  }, [rows, filter, follow]);
 
   const onClear = useCallback(() => {
     api
