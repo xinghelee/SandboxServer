@@ -125,9 +125,22 @@ function Header({ health }: { health: Health | null }) {
 function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
   const { t } = useI18n();
   const overviewActive = route === '/' || route === '/overview';
+  const go = (target: string) => (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      navigate(target);
+    }
+  };
   return (
     <nav class="nav">
-      <a class={`nav-item ${overviewActive ? 'active' : ''}`} onClick={() => navigate('/overview')}>
+      <a
+        class={`nav-item ${overviewActive ? 'active' : ''}`}
+        role="link"
+        tabIndex={0}
+        aria-current={overviewActive ? 'page' : undefined}
+        onClick={() => navigate('/overview')}
+        onKeyDown={go('/overview')}
+      >
         <span class="gutter">{overviewActive ? '▸' : '·'}</span>
         <span class="title">{t('home.title')}</span>
         <span class="id">home</span>
@@ -138,7 +151,15 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
         const target = `/${key}`;
         const active = route === target;
         return (
-          <a key={key} class={`nav-item ${active ? 'active' : ''}`} onClick={() => navigate(target)}>
+          <a
+            key={key}
+            class={`nav-item ${active ? 'active' : ''}`}
+            role="link"
+            tabIndex={0}
+            aria-current={active ? 'page' : undefined}
+            onClick={() => navigate(target)}
+            onKeyDown={go(target)}
+          >
             <span class="gutter">{active ? '▸' : '·'}</span>
             <span class="title">{moduleName(p.id, p.title)}</span>
             <span class="id">{p.id}</span>

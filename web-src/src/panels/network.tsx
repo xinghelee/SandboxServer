@@ -9,6 +9,7 @@ import type {
   NetCompletedPayload,
 } from '../api/types';
 import { useI18n } from '../i18n';
+import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { NetDetailDrawer } from './NetDetailDrawer';
@@ -30,6 +31,9 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
 
   const rowsRef = useRef<NetRequestSummary[]>([]);
   rowsRef.current = rows;
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [rowH, setRowH] = useState(39); // measured from the first rendered row (see below)
 
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true);
@@ -129,6 +133,16 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
     return true;
   });
 
+  const win = useVirtualWindow(scrollRef, { count: visible.length, rowHeight: rowH, enabled: visible.length > 0 });
+  const windowed = visible.slice(win.start, win.end);
+
+  // Pin the windowing row height to the real rendered height so the spacer math can't drift.
+  useEffect(() => {
+    const tr = scrollRef.current?.querySelector('tbody tr.v-row') as HTMLElement | null;
+    const h = tr?.getBoundingClientRect().height;
+    if (h && Math.abs(h - rowH) > 0.5) setRowH(h);
+  }, [visible.length > 0, rowH]);
+
   return (
     <div class="panel">
       <div class="panel-toolbar">
@@ -179,8 +193,8 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
       ) : visible.length === 0 ? (
         <EmptyState icon="↯" titleKey="net.empty.title" subKey="net.empty.sub" />
       ) : (
-        <div class="table-wrap">
-          <table class="grid">
+        <div class="table-wrap" ref={scrollRef}>
+          <table class="grid v-grid">
             <thead>
               <tr>
                 <th style="width:74px">{t('net.col.method')}</th>
@@ -196,12 +210,26 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => (
+              {win.padTop > 0 ? (
+                <tr class="v-pad" aria-hidden="true">
+                  <td colSpan={6} style={`height:${win.padTop}px`} />
+                </tr>
+              ) : null}
+              {windowed.map((r) => (
                 <tr
                   key={r.id}
+                  class={`v-row ${selected === r.id ? 'selected' : ''} ${r.status === null ? 'pending' : ''}`}
                   data-method={r.method?.toUpperCase()}
-                  class={`${selected === r.id ? 'selected' : ''} ${r.status === null ? 'pending' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${r.method} ${r.url}`}
                   onClick={() => setSelected(r.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelected(r.id);
+                    }
+                  }}
                 >
                   <td class="col-method">{r.method}</td>
                   <td class="col-url" title={r.url}>
@@ -215,6 +243,11 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
                   <td class="col-time">{formatClock(r.startedAt)}</td>
                 </tr>
               ))}
+              {win.padBottom > 0 ? (
+                <tr class="v-pad" aria-hidden="true">
+                  <td colSpan={6} style={`height:${win.padBottom}px`} />
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

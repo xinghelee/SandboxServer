@@ -151,6 +151,7 @@ const EN: Dict = {
   'db.run': 'run',
   'db.sql.ph': 'SELECT * FROM …   (read-only)',
   'db.loadmore': 'load more',
+  'db.rowcap': 'showing the first {n} rows — refine with SQL to see more',
   'db.readonlyNote': 'read-only · writes are blocked',
 
   'logs.title': 'logs',
@@ -374,6 +375,7 @@ const ZH: Dict = {
   'db.run': '执行',
   'db.sql.ph': 'SELECT * FROM …   (只读)',
   'db.loadmore': '加载更多',
+  'db.rowcap': '仅显示前 {n} 行 —— 用 SQL 进一步筛选可查看更多',
   'db.readonlyNote': '只读 · 写入被拦截',
 
   'logs.title': '日志',

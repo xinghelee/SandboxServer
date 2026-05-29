@@ -223,6 +223,7 @@ body {
 .nav-item .title { flex: 1; font-weight: 500; }
 .nav-item .id { font-size: 11px; color: var(--ink-dim); font-family: var(--mono); }
 .nav-item:hover { background: var(--bg-3); color: var(--ink); }
+.nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .nav-item.active {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   border-left-color: var(--accent);
@@ -290,9 +291,22 @@ body {
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: auto;
+  /* Bounded so the table owns its own scroll viewport (toolbar/filters stay pinned) and the
+     virtualized window has a viewport to measure against. */
+  max-height: calc(100vh - 184px);
   background: var(--bg-1);
 }
 table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* Virtualized grids: fixed layout keeps column widths stable while only a window of rows is in the
+   DOM (auto layout would re-measure and jitter columns as you scroll). Cells clip with an ellipsis. */
+table.v-grid { table-layout: fixed; }
+table.v-grid tbody td { overflow: hidden; text-overflow: ellipsis; }
+table.v-grid tr.v-pad { cursor: default; }
+table.v-grid tr.v-pad td { padding: 0; border: 0; }
+table.grid tbody tr.v-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 table.grid thead th {
   position: sticky; top: 0;
   text-align: left;
@@ -592,6 +606,11 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
   font-size: 12.5px;
   line-height: 1.55;
   border-left: 2px solid transparent;
+  /* Native windowing for the (variable-height, wrapping) log stream: the browser skips layout +
+     paint for off-screen lines, so 2000+ lines stay smooth without JS scroll math. The intrinsic
+     size is the placeholder height used while a line is skipped. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 22px;
 }
 .log-line:hover { background: var(--bg-2); }
 .log-line.lvl-warn  { border-left-color: color-mix(in srgb, var(--s4) 60%, transparent); }

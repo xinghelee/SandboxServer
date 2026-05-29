@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import type { NetRequestDetail } from '../api/types';
 import { useI18n } from '../i18n';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { Loading } from '../components/Spinner';
 import { CopyButton } from '../components/CopyButton';
 import { formatBytes, formatDuration, formatClock, prettyBody, statusClassNum } from '../util/format';
@@ -55,6 +56,10 @@ export function NetDetailDrawer({ id, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showHarHelp, setShowHarHelp] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+
+  // Trap focus inside the drawer while open and restore it to the opening row on close; Escape closes.
+  useFocusTrap(dialogRef, { onEscape: onClose });
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -74,18 +79,17 @@ export function NetDetailDrawer({ id, onClose }: Props) {
     return () => ctrl.abort();
   }, [id]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
     <>
-      <div class="drawer-scrim" onClick={onClose} />
-      <aside class="drawer">
+      <div class="drawer-scrim" onClick={onClose} aria-hidden="true" />
+      <aside
+        class="drawer"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${detail?.method ?? ''} ${detail?.url ?? id}`.trim()}
+        tabIndex={-1}
+      >
         <div class="drawer-head">
           <span class="d-method">{detail?.method ?? '…'}</span>
           <span class="d-url" title={detail?.url}>

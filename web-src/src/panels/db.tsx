@@ -1,9 +1,12 @@
-import { useEffect, useState, useCallback } from 'preact/hooks';
+import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import type { DbDescriptor, DbTable, DbSchema, DbQueryResult, DbCell } from '../api/types';
 import { useI18n } from '../i18n';
+import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+
+const DB_MAX_ROWS = 5000; // cap on accumulated loadMore rows so the grid can't grow unbounded
 
 export function DbPanel() {
   const { t } = useI18n();
@@ -74,6 +77,8 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
   const [sql, setSql] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [rowH, setRowH] = useState(38);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -130,8 +135,9 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
       .finally(() => setBusy(false));
   }, [db.id, sql]);
 
+  const atRowCap = (result?.rows.length ?? 0) >= DB_MAX_ROWS;
   const loadMore = useCallback(() => {
-    if (!result?.nextCursor || !table) return;
+    if (!result?.nextCursor || !table || (result?.rows.length ?? 0) >= DB_MAX_ROWS) return;
     setBusy(true);
     api
       .dbQuery(db.id, { table, limit: 100, cursor: result.nextCursor })
@@ -139,6 +145,14 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
       .catch((e: unknown) => setError(e instanceof ApiRequestError ? e.message : String(e)))
       .finally(() => setBusy(false));
   }, [db.id, table, result]);
+
+  const rowCount = result?.rows.length ?? 0;
+  const win = useVirtualWindow(scrollRef, { count: rowCount, rowHeight: rowH, enabled: rowCount > 0 });
+  useEffect(() => {
+    const tr = scrollRef.current?.querySelector('tbody tr.v-row') as HTMLElement | null;
+    const h = tr?.getBoundingClientRect().height;
+    if (h && Math.abs(h - rowH) > 0.5) setRowH(h);
+  }, [rowCount > 0, rowH]);
 
   return (
     <div class="panel">
@@ -201,8 +215,8 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
         <Loading labelKey="db.loading" />
       ) : result ? (
         <>
-          <div class="table-wrap">
-            <table class="grid">
+          <div class="table-wrap" ref={scrollRef}>
+            <table class="grid v-grid">
               <thead>
                 <tr>
                   {result.columns.map((c) => (
@@ -211,21 +225,35 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
                 </tr>
               </thead>
               <tbody>
-                {result.rows.map((row, i) => (
-                  <tr key={i}>
+                {win.padTop > 0 ? (
+                  <tr class="v-pad" aria-hidden="true">
+                    <td colSpan={result.columns.length} style={`height:${win.padTop}px`} />
+                  </tr>
+                ) : null}
+                {result.rows.slice(win.start, win.end).map((row, i) => (
+                  <tr key={win.start + i} class="v-row">
                     {row.map((cell, j) => (
                       <td key={j}>{renderCell(cell)}</td>
                     ))}
                   </tr>
                 ))}
+                {win.padBottom > 0 ? (
+                  <tr class="v-pad" aria-hidden="true">
+                    <td colSpan={result.columns.length} style={`height:${win.padBottom}px`} />
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
-          {result.nextCursor && table ? (
+          {result.nextCursor && table && !atRowCap ? (
             <div style="margin-top:12px">
               <button class="btn" onClick={loadMore} disabled={busy}>
                 {t('db.loadmore')}
               </button>
+            </div>
+          ) : atRowCap ? (
+            <div class="muted" style="margin-top:12px">
+              {t('db.rowcap', { n: DB_MAX_ROWS })}
             </div>
           ) : null}
         </>
