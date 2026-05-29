@@ -6,7 +6,7 @@ import { navigate } from '../router';
 
 const THUMB_POLL_MS = 700; // gentle live thumbnail (~1.4 fps)
 
-/** Per-module stat: how to fetch a quick count for a plugin id, and the descriptor under it. */
+/** Per-module stat: how to fetch a quick count for a plugin id. */
 const STAT_LOADERS: Record<string, (signal: AbortSignal) => Promise<string>> = {
   net: async (s) => {
     const r = await api.netRequests({ limit: 200 }, s);
@@ -21,10 +21,10 @@ const STAT_LOADERS: Record<string, (signal: AbortSignal) => Promise<string>> = {
 };
 
 /**
- * Landing dashboard — a debug "command deck". A terminal status line (who the device/app is, from
- * /healthz), the current app screen framed as a live read-only viewport (click to open the full
- * Screen panel), and one channel readout per active plugin with a quick count. Pure aggregation over
- * existing endpoints — no new wire contract.
+ * Landing dashboard — information-first. Left: a large live HD mirror of the app screen (click to
+ * open the full Screen panel). Top-right: app info. Bottom-right: quick entry points into each
+ * plugin. Build/binding live in the top header, so they're intentionally not repeated here. Pure
+ * aggregation over existing endpoints — no new wire contract.
  */
 export function OverviewPanel({ health, plugins }: { health: Health | null; plugins: Plugin[] }) {
   const { t } = useI18n();
@@ -49,13 +49,13 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
       load(ctrl.signal)
         .then((v) => setStats((s) => ({ ...s, [p.id]: v })))
         .catch(() => {
-          /* leave the channel showing its placeholder */
+          /* leave the shortcut without a count */
         });
     }
     return () => ctrl.abort();
   }, [plugins]);
 
-  // Live screen thumbnail — only polls when the device reports a capturable screen.
+  // Live HD screen thumbnail — only polls when the device reports a capturable screen.
   useEffect(() => {
     if (!pluginFor('screen')) {
       setScreenChecked(true);
@@ -65,7 +65,7 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
     let timer: ReturnType<typeof setTimeout> | undefined;
     const tick = async () => {
       try {
-        const res = await api.screenFrame(420, 0.62);
+        const res = await api.screenFrame(720, 0.8); // high quality — this is the page's centerpiece
         const blob = await res.blob();
         if (cancelled) return;
         const url = URL.createObjectURL(blob);
@@ -99,56 +99,44 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
     };
   }, [plugins]);
 
-  const debug = health?.buildConfig === 'debug';
-  const identity: Array<[string, string]> = health
-    ? [
-        [t('home.id.app'), health.appBundleId],
-        [t('home.id.device'), health.deviceName],
-        [t('home.id.binding'), health.bindingPolicy],
-        [t('home.id.api'), health.apiVersion],
-      ]
-    : [];
-
-  const channels = plugins.filter((p) => p.id !== 'screen' && p.panelKey !== 'screen');
+  const appName = health?.appName || health?.appBundleId || 'app';
+  const info: Array<[string, string]> = [];
+  if (health) {
+    const ver = health.appVersion
+      ? `${health.appVersion}${health.appBuild ? ` (${health.appBuild})` : ''}`
+      : null;
+    if (ver) info.push([t('home.id.version'), ver]);
+    const os = (health.osName || health.osVersion) ? `${health.osName ?? ''} ${health.osVersion ?? ''}`.trim() : null;
+    if (os) info.push([t('home.id.os'), os]);
+    if (health.deviceModel) info.push([t('home.id.model'), health.deviceModel]);
+    info.push([t('home.id.device'), health.deviceName]);
+    if (health.sdkVersion) info.push([t('home.id.sdk'), health.sdkVersion]);
+    info.push([t('home.id.api'), health.apiVersion]);
+    info.push([t('home.id.auth'), health.requiresAuth ? t('home.auth.yes') : t('home.auth.no')]);
+  }
+  const shortcuts = plugins.filter((p) => p.id !== 'screen' && p.panelKey !== 'screen');
   const dim = screen ? `${Math.round(screen.width)}×${Math.round(screen.height)} @${screen.scale}x` : '';
 
   return (
     <div class="panel ov">
-      {/* Terminal status line */}
-      <header class="ov-head">
-        <div class="ov-prompt">
-          <span class="ov-sigil">▍</span>
-          <span class="ov-host">{health?.deviceName ?? 'device'}</span>
-          <span class="ov-path">{t('prompt.path')}</span>
-          <span class="ov-cmd">status</span>
-          <span class="ov-caret" aria-hidden="true" />
-        </div>
-        <div class="ov-tags">
-          <span class={`ov-tag ${health ? (debug ? 'ok' : 'warn') : ''}`}>
-            {t('hdr.build')} <b>{health?.buildConfig ?? '—'}</b>
+      <div class="ov-bar">
+        <h2>{t('home.title')}</h2>
+        <span class="ov-host mono">{health?.deviceName ?? 'device'}</span>
+        <div class="spacer" />
+        {screenSupported ? (
+          <span class="ov-live">
+            <i class="led" />
+            {t('home.live')}
           </span>
-          <span class="ov-tag">
-            {t('hdr.binding')} <b>{health?.bindingPolicy ?? '—'}</b>
-          </span>
-          <span class="ov-tag">
-            {t('home.id.api')} <b>{health?.apiVersion ?? '—'}</b>
-          </span>
-        </div>
-      </header>
+        ) : null}
+      </div>
 
       <div class="ov-deck">
-        {/* Live viewport */}
-        <section class="ov-panel ov-view" data-label={t('home.screen.title')}>
-          <div class="ov-view-bar">
-            {screenSupported ? (
-              <span class="ov-live">
-                <i class="led" />
-                {t('home.live')}
-              </span>
-            ) : (
-              <span class="ov-live off">○ {t('ws.offline')}</span>
-            )}
-            {dim ? <span class="ov-view-dim">{dim}</span> : null}
+        {/* Left: large live HD screen */}
+        <section class="ov-screen">
+          <div class="ov-screen-head">
+            <span class="ov-sec-title">{t('home.screen.title')}</span>
+            {dim ? <span class="ov-dim">{dim}</span> : null}
             <div class="spacer" />
             {screenSupported ? (
               <button class="ov-open" onClick={() => open('screen')}>
@@ -156,25 +144,33 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
               </button>
             ) : null}
           </div>
-          <div class="ov-view-frame">
-            {screenChecked && !screenSupported ? (
-              <div class="ov-view-off muted">{t('home.screen.off')}</div>
-            ) : frameUrl ? (
-              <button class="ov-view-thumb" onClick={() => open('screen')} title={t('home.screen.open')}>
-                <img src={frameUrl} alt={t('home.screen.title')} draggable={false} />
-                <span class="ov-scan" aria-hidden="true" />
-              </button>
-            ) : (
-              <div class="ov-view-off muted">{t('home.screen.waiting')}</div>
-            )}
-          </div>
+          {screenChecked && !screenSupported ? (
+            <div class="ov-screen-off muted">{t('home.screen.off')}</div>
+          ) : frameUrl ? (
+            <button class="ov-screen-thumb" onClick={() => open('screen')} title={t('home.screen.open')}>
+              <img src={frameUrl} alt={t('home.screen.title')} draggable={false} />
+            </button>
+          ) : (
+            <div class="ov-screen-off muted">{t('home.screen.waiting')}</div>
+          )}
         </section>
 
-        {/* Device identity readout */}
-        <section class="ov-panel ov-readout" data-label={t('home.identity')}>
+        {/* Top-right: app info */}
+        <section class="ov-info">
+          <div class="ov-sec-title">{t('home.identity')}</div>
+          <div class="ov-app">
+            {health?.appIcon ? (
+              <img class="ov-app-icon" src={`data:image/png;base64,${health.appIcon}`} alt="" />
+            ) : (
+              <div class="ov-app-icon ph">{appName.slice(0, 1).toUpperCase()}</div>
+            )}
+            <div class="ov-app-meta">
+              <div class="ov-app-name">{appName}</div>
+              <div class="ov-app-bid mono">{health?.appBundleId ?? '—'}</div>
+            </div>
+          </div>
           <dl class="ov-kv">
-            {identity.length === 0 ? <div class="ov-kv-row"><dd class="mono muted">…</dd></div> : null}
-            {identity.map(([k, v]) => (
+            {info.map(([k, v]) => (
               <div key={k} class="ov-kv-row">
                 <dt>{k}</dt>
                 <dd class="mono">{v}</dd>
@@ -182,29 +178,23 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
             ))}
           </dl>
         </section>
-      </div>
 
-      {/* Module channels */}
-      <section class="ov-panel ov-channels" data-label={t('home.modules')}>
-        <div class="ov-chan-grid">
-          {channels.map((p, i) => (
-            <button
-              key={p.id}
-              class="ov-chan"
-              style={`animation-delay:${80 + i * 55}ms`}
-              onClick={() => navigate(`/${p.panelKey || p.id}`)}
-            >
-              <span class="ov-chan-num">{stats[p.id] ?? '·'}</span>
-              <span class="ov-chan-name">{moduleName(p.id, p.title)}</span>
-              <span class="ov-chan-meta">
-                <span class="ov-chan-id">{p.id}</span>
-                {hasKey(`home.stat.${p.id}`) ? <span class="ov-chan-sub">{t(`home.stat.${p.id}`)}</span> : null}
-              </span>
-              <span class="ov-chan-go" aria-hidden="true">→</span>
-            </button>
-          ))}
-        </div>
-      </section>
+        {/* Bottom-right: quick entries */}
+        <section class="ov-quick">
+          <div class="ov-sec-title">{t('home.shortcuts')}</div>
+          <div class="ov-quick-grid">
+            {shortcuts.map((p) => (
+              <button key={p.id} class="ov-shortcut" onClick={() => navigate(`/${p.panelKey || p.id}`)}>
+                <span class="ov-shortcut-top">
+                  <span class="ov-shortcut-name">{moduleName(p.id, p.title)}</span>
+                  <span class="ov-shortcut-count">{stats[p.id] ?? ''}</span>
+                </span>
+                <span class="ov-shortcut-sub">{hasKey(`home.stat.${p.id}`) ? t(`home.stat.${p.id}`) : p.id}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

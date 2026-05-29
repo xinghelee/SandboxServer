@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin // sysctlbyname for the hardware model identifier
+#endif
 #if SWIFT_PACKAGE
 import SandboxServerAPI
 #endif
@@ -262,6 +265,15 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         let appBundleId: String
         let bindingPolicy: String
         let requiresAuth: Bool
+        // Richer host/app identity — additive; nil fields are omitted, consumers ignore unknowns.
+        let appName: String?
+        let appVersion: String?
+        let appBuild: String?
+        let sdkVersion: String
+        let osName: String
+        let osVersion: String
+        let deviceModel: String?
+        let appIcon: String? // base64 PNG (iOS only)
     }
 
     private func healthResponse(runtime: Runtime) -> SBResponse {
@@ -270,12 +282,21 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         #else
         let build = "release"
         #endif
+        let info = Bundle.main.infoDictionary
         return .json(HealthDTO(
             buildConfig: build,
             deviceName: deviceName(),
             appBundleId: appBundleID(),
             bindingPolicy: runtime.info.bindingPolicy == .loopback ? "loopback" : "localNetwork",
-            requiresAuth: runtime.middleware.auth.mode == .token
+            requiresAuth: runtime.middleware.auth.mode == .token,
+            appName: (info?["CFBundleDisplayName"] as? String) ?? (info?["CFBundleName"] as? String),
+            appVersion: info?["CFBundleShortVersionString"] as? String,
+            appBuild: info?["CFBundleVersion"] as? String,
+            sdkVersion: Self.sdkVersion,
+            osName: osName(),
+            osVersion: osVersionString(),
+            deviceModel: deviceModelIdentifier(),
+            appIcon: appIconBase64()
         ))
     }
 
@@ -340,6 +361,61 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
     }
 
     private func appBundleID() -> String { Bundle.main.bundleIdentifier ?? "unknown" }
+
+    static let sdkVersion = "0.1.0"
+
+    private func osName() -> String {
+        #if os(iOS)
+        return "iOS"
+        #elseif os(tvOS)
+        return "tvOS"
+        #elseif os(macOS)
+        return "macOS"
+        #elseif os(watchOS)
+        return "watchOS"
+        #else
+        return "OS"
+        #endif
+    }
+
+    private func osVersionString() -> String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        return v.patchVersion > 0
+            ? "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+            : "\(v.majorVersion).\(v.minorVersion)"
+    }
+
+    /// Hardware model identifier, e.g. "iPhone16,1". Prefers the Simulator's env override; falls back
+    /// to the `hw.machine` sysctl. Non-isolated (avoids the main-actor `UIDevice.current`).
+    private func deviceModelIdentifier() -> String? {
+        if let sim = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !sim.isEmpty {
+            return sim
+        }
+        #if canImport(Darwin)
+        var size = 0
+        guard sysctlbyname("hw.machine", nil, &size, nil, 0) == 0, size > 0 else { return nil }
+        var buf = [UInt8](repeating: 0, count: size)
+        guard sysctlbyname("hw.machine", &buf, &size, nil, 0) == 0 else { return nil }
+        return String(decoding: buf.prefix(while: { $0 != 0 }), as: UTF8.self)
+        #else
+        return nil
+        #endif
+    }
+
+    /// The app's primary icon as a base64 PNG (iOS only; the icon lives in the app bundle).
+    private func appIconBase64() -> String? {
+        #if canImport(UIKit)
+        guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+              let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+              let files = primary["CFBundleIconFiles"] as? [String],
+              let name = files.last,
+              let image = UIImage(named: name),
+              let png = image.pngData() else { return nil }
+        return png.base64EncodedString()
+        #else
+        return nil
+        #endif
+    }
 
     private func defaultServiceName() -> String { "SandboxServer @ \(deviceName())" }
 

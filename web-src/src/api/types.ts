@@ -37,6 +37,15 @@ export interface Health {
   appBundleId: string;
   bindingPolicy: BindingPolicy;
   requiresAuth: boolean;
+  // Richer host/app identity (additive; present on recent device builds).
+  appName?: string;
+  appVersion?: string; // CFBundleShortVersionString
+  appBuild?: string; // CFBundleVersion
+  sdkVersion?: string;
+  osName?: string;
+  osVersion?: string;
+  deviceModel?: string;
+  appIcon?: string; // base64 PNG (iOS only)
 }
 
 export interface McpTool {
