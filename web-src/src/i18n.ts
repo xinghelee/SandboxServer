@@ -47,6 +47,12 @@ const EN: Dict = {
   'net.col.dur': 'time',
   'net.col.size': 'size',
   'net.col.clock': 'at',
+  'net.status.all': 'all',
+
+  'copy.label': 'copy',
+  'copy.done': 'copied',
+  'copy.fail': 'failed',
+  'copy.title': 'copy to clipboard',
 
   'd.status': 'status',
   'd.duration': 'duration',
@@ -61,6 +67,12 @@ const EN: Dict = {
   'd.emptybody': 'empty body',
   'd.loading': 'fetching transaction…',
   'd.close': 'close',
+  'd.copyUrl': 'copy url',
+  'd.curl': 'copy as curl',
+  'd.har': 'export HAR',
+  'd.har.helpTitle': 'what is HAR?',
+  'd.har.help':
+    'HAR (HTTP Archive) is a JSON file recording this request — method, URL, headers, query, request/response bodies, status and timing. Import the .har into Chrome / Firefox DevTools, Charles, Proxyman or Postman to inspect or replay it. (curl reproduces just this one call; HAR archives the full transaction.)',
 
   'fs.title': 'files',
   'fs.loading': 'reading directory…',
@@ -120,6 +132,12 @@ const EN: Dict = {
   'logs.level.info': 'info',
   'logs.level.warn': 'warn',
   'logs.level.error': 'error',
+  'logs.source': 'source',
+  'logs.src.all': 'all sources',
+  'logs.src.sdk': 'sdk',
+  'logs.src.app': 'app',
+  'logs.src.stdout': 'stdout',
+  'logs.src.stderr': 'stderr',
 
   'screen.title': 'screen',
   'screen.loading': 'querying screen…',
@@ -217,6 +235,12 @@ const ZH: Dict = {
   'net.col.dur': '耗时',
   'net.col.size': '大小',
   'net.col.clock': '时刻',
+  'net.status.all': '全部',
+
+  'copy.label': '复制',
+  'copy.done': '已复制',
+  'copy.fail': '失败',
+  'copy.title': '复制到剪贴板',
 
   'd.status': '状态',
   'd.duration': '耗时',
@@ -231,6 +255,12 @@ const ZH: Dict = {
   'd.emptybody': '空请求体',
   'd.loading': '正在获取请求详情…',
   'd.close': '关闭',
+  'd.copyUrl': '复制网址',
+  'd.curl': '复制为 curl',
+  'd.har': '导出 HAR',
+  'd.har.helpTitle': 'HAR 是什么?',
+  'd.har.help':
+    'HAR(HTTP Archive)是记录本次请求的 JSON 文件 —— 方法、网址、请求头、查询参数、请求/响应体、状态码与耗时。把 .har 导入 Chrome / Firefox DevTools、Charles、Proxyman 或 Postman 即可查看或重放。(curl 只复跑这一个请求;HAR 归档完整的请求-响应记录。)',
 
   'fs.title': '文件',
   'fs.loading': '正在读取目录…',
@@ -290,6 +320,12 @@ const ZH: Dict = {
   'logs.level.info': '信息',
   'logs.level.warn': '警告',
   'logs.level.error': '错误',
+  'logs.source': '来源',
+  'logs.src.all': '全部来源',
+  'logs.src.sdk': 'sdk',
+  'logs.src.app': 'app',
+  'logs.src.stdout': 'stdout',
+  'logs.src.stderr': 'stderr',
 
   'screen.title': '屏幕',
   'screen.loading': '正在查询屏幕…',

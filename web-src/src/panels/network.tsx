@@ -14,6 +14,8 @@ import { NetDetailDrawer } from './NetDetailDrawer';
 import { formatBytes, formatDuration, formatClock, shortUrl, statusClassNum } from '../util/format';
 
 const MAX_ROWS = 1000;
+const STATUS_CLASSES = ['', 's2', 's3', 's4', 's5'] as const;
+const CLASS_LABEL: Record<string, string> = { s2: '2xx', s3: '3xx', s4: '4xx', s5: '5xx' };
 
 export function NetworkPanel() {
   const { t } = useI18n();
@@ -22,6 +24,7 @@ export function NetworkPanel() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
+  const [statusClass, setStatusClass] = useState('');
 
   const rowsRef = useRef<NetRequestSummary[]>([]);
   rowsRef.current = rows;
@@ -111,20 +114,37 @@ export function NetworkPanel() {
   }, []);
 
   const f = filter.trim().toLowerCase();
-  const visible = f
-    ? rows.filter(
-        (r) =>
-          r.url.toLowerCase().includes(f) ||
-          r.method.toLowerCase().includes(f) ||
-          String(r.status ?? '').includes(f),
-      )
-    : rows;
+  const visible = rows.filter((r) => {
+    // Status-class filter excludes still-pending rows (statusClassNum(null) === 'pending').
+    if (statusClass && statusClassNum(r.status) !== statusClass) return false;
+    if (
+      f &&
+      !r.url.toLowerCase().includes(f) &&
+      !r.method.toLowerCase().includes(f) &&
+      !String(r.status ?? '').includes(f)
+    )
+      return false;
+    return true;
+  });
 
   return (
     <div class="panel">
       <div class="panel-toolbar">
         <h2>{t('net.title')}</h2>
         <span class="count-chip">{t('net.count', { n: visible.length })}</span>
+        <div class="seg-toggle status-seg">
+          {STATUS_CLASSES.map((c) => (
+            <button
+              key={c || 'all'}
+              type="button"
+              aria-pressed={statusClass === c}
+              class={statusClass === c ? `on ${c || 'all'}` : ''}
+              onClick={() => setStatusClass(c)}
+            >
+              {c ? CLASS_LABEL[c] : t('net.status.all')}
+            </button>
+          ))}
+        </div>
         <div class="spacer" />
         <input
           class="input"

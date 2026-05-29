@@ -9,6 +9,7 @@ import { formatClock } from '../util/format';
 
 const MAX_ROWS = 2000;
 const LEVELS = ['', 'debug', 'info', 'warn', 'error'] as const;
+const SOURCES = ['', 'sdk', 'app', 'stdout', 'stderr'] as const;
 
 function levelClass(level: string): string {
   return level === 'debug' || level === 'info' || level === 'warn' || level === 'error' ? level : 'info';
@@ -26,6 +27,7 @@ export function LogsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [level, setLevel] = useState<string>('');
+  const [source, setSource] = useState<string>('');
   const [filter, setFilter] = useState('');
   const [follow, setFollow] = useState(true);
 
@@ -82,13 +84,14 @@ export function LogsPanel() {
     return unsub;
   }, []);
 
-  // Autoscroll to the newest line while following. Depends on `filter`/`follow` too, so clearing
-  // the text filter (which grows the rendered list) or re-enabling follow re-pins to the bottom.
+  // Autoscroll to the newest line while following. Depends on `filter`/`source`/`follow` too, so
+  // clearing the text filter or widening the source filter (either grows the rendered list) — or
+  // re-enabling follow — re-pins to the bottom.
   useEffect(() => {
     if (followRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [rows, filter, follow]);
+  }, [rows, filter, source, follow]);
 
   const onClear = useCallback(() => {
     api
@@ -97,10 +100,14 @@ export function LogsPanel() {
       .catch((e: unknown) => setError(e instanceof ApiRequestError ? e.message : String(e)));
   }, []);
 
+  // Source filtering is client-side (the /logs route has no source param), applied to both the
+  // loaded buffer and live lines without a refetch, so switching source never drops buffered rows.
   const f = filter.trim().toLowerCase();
-  const visible = f
-    ? rows.filter((r) => r.message.toLowerCase().includes(f) || r.source.toLowerCase().includes(f))
-    : rows;
+  const visible = rows.filter((r) => {
+    if (source && r.source !== source) return false;
+    if (f && !r.message.toLowerCase().includes(f) && !r.source.toLowerCase().includes(f)) return false;
+    return true;
+  });
 
   return (
     <div class="panel">
@@ -109,11 +116,29 @@ export function LogsPanel() {
         <span class="count-chip">{t('logs.count', { n: visible.length })}</span>
         <div class="seg-toggle level-seg">
           {LEVELS.map((l) => (
-            <button key={l || 'all'} class={level === l ? `on lvl-${l || 'all'}` : ''} onClick={() => setLevel(l)}>
+            <button
+              key={l || 'all'}
+              type="button"
+              aria-pressed={level === l}
+              class={level === l ? `on lvl-${l || 'all'}` : ''}
+              onClick={() => setLevel(l)}
+            >
               {t(`logs.level.${l || 'all'}`)}
             </button>
           ))}
         </div>
+        <select
+          class="input src-select"
+          value={source}
+          title={t('logs.source')}
+          onChange={(e) => setSource((e.target as HTMLSelectElement).value)}
+        >
+          {SOURCES.map((s) => (
+            <option key={s || 'all'} value={s}>
+              {s ? t(`logs.src.${s}`) : t('logs.src.all')}
+            </option>
+          ))}
+        </select>
         <div class="spacer" />
         <input
           class="input"

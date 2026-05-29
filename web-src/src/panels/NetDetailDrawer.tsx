@@ -3,11 +3,27 @@ import { api, ApiRequestError } from '../api/client';
 import type { NetRequestDetail } from '../api/types';
 import { useI18n } from '../i18n';
 import { Loading } from '../components/Spinner';
+import { CopyButton } from '../components/CopyButton';
 import { formatBytes, formatDuration, formatClock, prettyBody, statusClassNum } from '../util/format';
+import { toCurl, toHar, harFilename } from '../util/net-export';
+import { downloadText } from '../util/clipboard';
 
 interface Props {
   id: string;
   onClose: () => void;
+}
+
+function headersToText(headers?: Record<string, string>): string {
+  return headers ? Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\n') : '';
+}
+
+function SectionTitle({ label, copy }: { label: string; copy?: string | null }) {
+  return (
+    <div class="section-row">
+      <span class="section-title">{label}</span>
+      {copy ? <CopyButton text={copy} /> : null}
+    </div>
+  );
 }
 
 function Headers({ headers, empty }: { headers?: Record<string, string>; empty: string }) {
@@ -38,6 +54,7 @@ export function NetDetailDrawer({ id, onClose }: Props) {
   const [detail, setDetail] = useState<NetRequestDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showHarHelp, setShowHarHelp] = useState(false);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -106,16 +123,39 @@ export function NetDetailDrawer({ id, onClose }: Props) {
                 </div>
               </div>
 
-              <div class="section-title">{t('d.reqheaders')}</div>
+              <div class="drawer-actions">
+                <CopyButton text={detail.url} label={t('d.copyUrl')} />
+                <CopyButton text={() => toCurl(detail)} label={t('d.curl')} />
+                <button
+                  type="button"
+                  class="copy-btn"
+                  onClick={() => downloadText(harFilename(detail), toHar(detail), 'application/json')}
+                >
+                  {t('d.har')}
+                </button>
+                <button
+                  type="button"
+                  class={`help-dot ${showHarHelp ? 'on' : ''}`}
+                  aria-expanded={showHarHelp}
+                  title={t('d.har.helpTitle')}
+                  aria-label={t('d.har.helpTitle')}
+                  onClick={() => setShowHarHelp((v) => !v)}
+                >
+                  ?
+                </button>
+              </div>
+              {showHarHelp ? <div class="help-note">{t('d.har.help')}</div> : null}
+
+              <SectionTitle label={t('d.reqheaders')} copy={headersToText(detail.reqHeaders) || null} />
               <Headers headers={detail.reqHeaders} empty={t('d.noheaders')} />
 
-              <div class="section-title">{t('d.reqbody')}</div>
+              <SectionTitle label={t('d.reqbody')} copy={prettyBody(detail.reqBody) || null} />
               <Body body={detail.reqBody} empty={t('d.emptybody')} />
 
-              <div class="section-title">{t('d.respheaders')}</div>
+              <SectionTitle label={t('d.respheaders')} copy={headersToText(detail.respHeaders) || null} />
               <Headers headers={detail.respHeaders} empty={t('d.noheaders')} />
 
-              <div class="section-title">{t('d.respbody')}</div>
+              <SectionTitle label={t('d.respbody')} copy={prettyBody(detail.respBody) || null} />
               <Body body={detail.respBody} empty={t('d.emptybody')} />
             </>
           ) : null}

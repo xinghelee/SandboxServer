@@ -381,6 +381,46 @@ pre.body {
   max-height: 380px; overflow: auto;
 }
 
+/* Detail-drawer export row + per-section / inline copy buttons. */
+.drawer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.section-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 22px 0 10px; }
+.section-row .section-title { margin: 0; }
+.copy-btn {
+  font: inherit; font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  color: var(--ink-dim);
+  background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 3px 9px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.copy-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--line-2); background: var(--bg-3); }
+.copy-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.copy-btn.ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.copy-btn.fail { color: var(--s5); border-color: color-mix(in srgb, var(--s5) 45%, var(--line)); }
+
+/* Inline "what is HAR?" help: a round ? toggling an explanatory note. */
+.help-dot {
+  font: inherit; font-size: 11px; font-weight: 700; line-height: 1;
+  cursor: pointer;
+  color: var(--ink-dim);
+  background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: 999px;
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.help-dot:hover, .help-dot.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.help-note {
+  margin: 2px 0 4px;
+  padding: 10px 13px;
+  font-size: 12.5px; line-height: 1.6;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-radius: 9px;
+}
+
 /* ----- DB list ------------------------------------------------------------ */
 .db-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .db-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--bg-1); border: 1px solid var(--line); border-radius: 10px; transition: border-color 0.15s; }
@@ -505,6 +545,17 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 .level-seg button.on.lvl-debug { color: var(--s3); }
 .level-seg button.on.lvl-warn  { color: var(--s4); }
 .level-seg button.on.lvl-error { color: var(--s5); }
+
+/* Logs source picker — compact select reusing .input chrome. */
+.src-select { min-width: 110px; padding: 5px 9px; font-size: 12px; cursor: pointer; }
+
+/* Network status-class filter — neutral active fill, class-coloured label. */
+.status-seg button.on { background: var(--bg-3); color: var(--ink); }
+.status-seg button.on.all { color: var(--accent); }
+.status-seg button.on.s2 { color: var(--s2); }
+.status-seg button.on.s3 { color: var(--s3); }
+.status-seg button.on.s4 { color: var(--s4); }
+.status-seg button.on.s5 { color: var(--s5); }
 
 .log-stream {
   overflow-y: auto;
