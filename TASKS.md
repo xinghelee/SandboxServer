@@ -13,35 +13,35 @@
 
 ## A. 工具"就是好用、不挡路"(可靠性 + 核心可用性)— 先做
 
-### [ ] A1 · MCP bridge:所有设备调用加默认超时(不再无限挂死)
+### [x] A1 · MCP bridge:所有设备调用加默认超时(不再无限挂死) ✅ 已完成 (ebbb881)
 **工作量** S · **影响** 高 · 〔原 P1-4〕
 **问题** `request()`/`fetchBody()` 透传 `opts.signal` 但无默认值(`deviceClient.ts:151-156,212`),卡死/休眠的设备会让任一工具调用永久挂起;连启动期 `healthz()`(`index.ts:72`)都能在 stdio 接好前把整个 bridge 挂死,对使用者表现为"卡住、毫无反馈"——最糟的体验。
 **做法** 给 DeviceClient 加可配默认超时(`SANDBOX_TIMEOUT_MS`,默认 ~10s);`request()`/`fetchBody()` 用 `AbortSignal.any([opts.signal, AbortSignal.timeout(ms)])`;启动 healthz 用更短超时,缺设备时快速失败并打清晰 stderr。
 **涉及** `mcp-bridge/src/deviceClient.ts` · `index.ts`
 **验收** `node --test` 用永不 resolve 的 mock fetch 断言 `request()` 在超时内 reject。
 
-### [ ] A2 · WS 扇出:隔离慢/死订阅者并剪除(控制台/实时流不卡死)
+### [x] A2 · WS 扇出:隔离慢/死订阅者并剪除(控制台/实时流不卡死) ✅ 已完成(每连接有界出队 + 失败剪除 + 单写者;半开心跳探测留作后续)
 **工作量** M · **影响** 高 · 〔原 P1-3〕
 **问题** `WSHub.publish` 用顺序 await 循环 `for target in targets { try? await target.send(frame) }`(line 59);hub 是 actor,一个被 TCP 背压卡住的订阅者会拖死其余订阅者和所有控制处理(net、logs 都走这里)——表现为控制台某个面板一卡、全部实时流跟着停。另外 `try?` 吞掉发送失败不剔除连接;`setReadTimeout(nil)` 使消失的半开 peer 永不回收。
 **做法** 每个 Conn 配有界出站队列、per-connection task 排空(或每个 send 包成 Task),actor 不被最慢 peer 占住;保持顺序、溢出丢最旧(seq 让客户端察觉断档)。publish 收集 send 抛错的连接并移除。加粗粒度空闲截止或周期 ping 剪除死 peer。
 **涉及** `WSHub.swift` · `SandboxServerCore.swift` · `Tests/.../WebSocketCodecTests.swift`
 **验收** 用阻塞连接 double 断言快订阅者仍收事件、死连接被回收。
 
-### [ ] A3 · screen + hierarchy 面板的触摸/指针支持(真机/平板能点能滑)
+### [x] A3 · screen + hierarchy 面板的触摸/指针支持(真机/平板能点能滑) ✅ 已完成 (d69039d)
 **工作量** M · **影响** 高 · 〔原 P1-12〕
 **问题** 控制台会被 LAN 上的触摸设备打开,但 `screen.tsx:232-241`、`hierarchy.tsx:128-185` 仅用 mouse handler、无 Touch/Pointer 事件——平板/手机上点按/滑动/旋转**全失效**。而测试人员恰恰最常在触摸设备上开控制台。
 **做法** 两面板换成 Pointer Events + `setPointerCapture`;`.screen-img`、`.h3d-wrap` 加 `touch-action:none` 防浏览器劫持手势;重建 web-src(产物提交进 Resources/web)。
 **涉及** `web-src/src/panels/screen.tsx` · `hierarchy.tsx`
 **验收** `npm run build` 通过;触摸设备上点按/滑动/旋转手动可用。
 
-### [ ] A4 · MCP bridge:把失败分类为 输入 / 设备 / 不可达(看得懂为什么失败)
+### [x] A4 · MCP bridge:把失败分类为 输入 / 设备 / 不可达(看得懂为什么失败) ✅ 已完成 (ddef5e1)
 **工作量** M · **影响** 高 · **依赖** A1 · 〔原 P1-5 / 候选 #4〕
 **问题** `buildCallback` 把一切失败塌缩成 `{text:'Error: <msg>'}`(`registerTools.ts:298-305`),丢掉 `status/code`;fetch 层失败(设备休眠、ECONNREFUSED)抛裸 `TypeError`。使用者(或 AI 客户端)分不清"改参数 / 设备返回 403·501 / 设备不可达",无法选择 重试·修正·唤醒设备。
 **做法** `deviceClient.ts` 把 fetch 拒绝包成带类型 `TransportError`(unreachable=ECONNREFUSED/ENOTFOUND/timeout;protocol=非 2xx;input=调用前抛出);`buildCallback` 按类型输出带稳定 `kind`('input'|'device'|'unreachable')、HTTP status/code、一行修复提示的结构化结果。
 **涉及** `mcp-bridge/src/deviceClient.ts` · `registerTools.ts`
 **验收** `node --test`:ECONNREFUSED→unreachable、403→device 带 status、调用前抛出→input。
 
-### [ ] A5 · MCP bridge:设备断连检测 + 自动重解析/重注册(设备重启不用重启客户端)
+### [x] A5 · MCP bridge:设备断连检测 + 自动重解析/重注册(设备重启不用重启客户端) ✅ 已完成 (690516d)
 **工作量** L · **影响** 中 · **依赖** A4 · 〔原 P2-11 / 候选 #6〕
 **问题** `registerAll` 在 connect 时跑一次(`index.ts:78`)后永久驻留。设备重启后 per-`start()` token 轮换、绑定可能变,之后每个工具调用永久失败,使用者只能**重启整个 MCP 客户端**——长会话里很烦。
 **做法** 加可选 reconnect supervisor:低频后台 healthz ping(用 A1 超时);持续失败时重跑 `resolveEndpoint()`(重读 env/flags、重浏览 Bonjour)就地换 endpoint;重连打 stderr banner;flag/env 门控使默认行为不变;与 A4 的 unreachable 分类配合。
