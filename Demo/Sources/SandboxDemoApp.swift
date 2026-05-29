@@ -27,6 +27,8 @@ final class ServerModel: ObservableObject {
     @Published var token: String = ""
     @Published var requestCount: Int = 0
     @Published var lastRequest: String = "—"
+    @Published var tapCount: Int = 0
+    @Published var demoText: String = ""
 
     private let server = SandboxServerCore()
 
@@ -106,6 +108,12 @@ final class ServerModel: ObservableObject {
                 self?.server.log("structured heartbeat #\(tick)", level: tick % 5 == 0 ? "error" : "debug", category: "heartbeat")
             }
         }
+    }
+
+    /// Bumped from the Screen panel's remote tap — proves browser → app control end-to-end.
+    func bump() {
+        tapCount += 1
+        server.log("UI button tapped — count=\(tapCount)", level: "info", category: "ui")
     }
 
     /// Hits a couple of public endpoints; SandboxURLProtocol captures them automatically.

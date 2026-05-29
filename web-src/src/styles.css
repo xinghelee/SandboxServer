@@ -538,6 +538,35 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 .log-msg { color: var(--ink); white-space: pre-wrap; word-break: break-word; flex: 1; }
 .log-line.lvl-error .log-msg { color: var(--s5); }
 
+/* ----- Screen mirror ------------------------------------------------------ */
+.screen-layout { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+.screen-stage {
+  display: flex; justify-content: center; padding: 18px;
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 14px;
+}
+.screen-frame { position: relative; line-height: 0; }
+.screen-img {
+  display: block; max-height: calc(100vh - 220px); width: auto; border-radius: 10px;
+  border: 1px solid var(--line-2); box-shadow: var(--shadow); background: #000;
+}
+.screen-stage.interactive .screen-img { cursor: crosshair; }
+.screen-ripple {
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  pointer-events: none; animation: ripple 0.5s ease-out forwards;
+}
+@keyframes ripple { from { transform: scale(0.3); opacity: 0.9; } to { transform: scale(2.2); opacity: 0; } }
+
+.screen-side { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 12px; }
+.screen-hint { color: var(--ink-dim); font-size: 12.5px; line-height: 1.5; }
+.screen-input { display: flex; flex-direction: column; gap: 8px; }
+.screen-input .input { width: 100%; }
+.screen-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.screen-action {
+  font-size: 12px; color: var(--ink-2); background: var(--bg-2);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; word-break: break-word;
+}
+
 /* ----- Scrollbars --------------------------------------------------------- */
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: transparent; }

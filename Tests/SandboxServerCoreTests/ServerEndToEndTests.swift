@@ -41,7 +41,7 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(status, 200)
         let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
         let ids = Set(items.compactMap { $0["id"] as? String })
-        XCTAssertEqual(ids, ["net", "fs", "db", "logs"])
+        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen"])
         // The network plugin must advertise its MCP tools so the bridge can register them.
         let net = items.first { $0["id"] as? String == "net" }
         let netTools = (net?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
@@ -51,6 +51,22 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(logs?["channels"] as? [String], ["logs"])
         let logTools = (logs?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
         XCTAssertTrue(logTools.contains("logs_tail"))
+        // The screen plugin advertises its UI-control tools so AI/the console can drive the app.
+        let screen = items.first { $0["id"] as? String == "screen" }
+        let uiTools = (screen?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+        XCTAssertTrue(uiTools.contains("ui_tap"))
+        XCTAssertTrue(uiTools.contains("ui_screenshot"))
+    }
+
+    func testScreenControlUnsupportedOnHost() async throws {
+        // The macOS test host has no UIKit, so the screen plugin reports unsupported and 503s capture.
+        let (info, infoStatus) = try await getJSON("\(apiBase!)/screen", token: token)
+        XCTAssertEqual(infoStatus, 200)
+        XCTAssertEqual((info["data"] as? [String: Any])?["supported"] as? Bool, false)
+
+        let (frame, frameStatus) = try await getJSON("\(apiBase!)/screen/frame", token: token)
+        XCTAssertEqual(frameStatus, 503)
+        XCTAssertEqual((frame["error"] as? [String: Any])?["code"] as? String, "screen_unavailable")
     }
 
     func testUnauthorizedWithoutToken() async throws {

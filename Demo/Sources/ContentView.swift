@@ -23,6 +23,19 @@ struct ContentView: View {
                     }
                 }
 
+                Section("Remote control demo") {
+                    Button {
+                        model.bump()
+                    } label: {
+                        Label("Tap me — count: \(model.tapCount)", systemImage: "hand.tap")
+                    }
+                    .disabled(!model.isRunning)
+                    TextField("Type into me from the browser", text: $model.demoText)
+                        .textFieldStyle(.roundedBorder)
+                    Text("From the Screen panel: tap this button, or focus this field and type/paste.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+
                 Section("Live network capture") {
                     labeled("Requests fired", "\(model.requestCount)")
                     labeled("Last", model.lastRequest, mono: true)

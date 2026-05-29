@@ -15,6 +15,7 @@ import { NetworkPanel } from './panels/network';
 import { FilesPanel } from './panels/files';
 import { DbPanel } from './panels/db';
 import { LogsPanel } from './panels/logs';
+import { ScreenPanel } from './panels/screen';
 import './styles.css';
 
 // Consume any bootstrap ?token= before anything reads sessionStorage.
@@ -35,6 +36,9 @@ function panelFor(plugin: Plugin) {
     case 'logs':
     case 'log':
       return <LogsPanel />;
+    case 'screen':
+    case 'ui':
+      return <ScreenPanel />;
     default:
       return <EmptyState icon="?" title={plugin.panelKey} subKey="err.unknownpanel" />;
   }

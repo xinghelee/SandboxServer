@@ -90,7 +90,17 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
   `SandboxServer.log(_:level:category:)` (host app, tagged `app`), and — opt-in via
   `SandboxConfig.captureConsole` — raw `stdout`/`stderr` redirected through pipes (`ConsoleCapture`,
   capturing `print`/`NSLog`, teed back to the real console). Off by default so it never interferes
-  with tests/host I/O; the SDK logger de-dupes its own line when capture is active.
+  with tests/host I/O; the SDK logger de-dupes its own line when capture is active. Screen plugin is
+  **live (iOS only)**: `GET /screen` (info: supported/width/height/scale), `GET /screen/frame` (raw
+  JPEG for the polled browser mirror), `GET /screen/snapshot` (base64 JPEG; the MCP bridge renders it
+  as an image content block), `POST /screen/tap {x,y}`, `POST /screen/text {text,clear}`, `POST
+  /screen/paste {text}`. Capture is `UIGraphicsImageRenderer` + `drawHierarchy`; tap is hitTest →
+  text-field focus / `UIControl.sendActions` / a recursive accessibility-element frame search +
+  `accessibilityActivate` (this is what drives **SwiftUI** buttons — they aren't UIViews); text/paste
+  target the first responder (`UIKeyInput` / `UIPasteboard`). Public API only, so no pixel-level
+  gestures (swipe/drag/pinch) yet — those need private touch synthesis, acceptable here since the SDK
+  never ships ([[positioning-debug-tool-no-appstore]]) but deferred. `ScreenControl` is UIKit-gated;
+  non-UIKit hosts report `supported=false` and 503 the capture routes.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

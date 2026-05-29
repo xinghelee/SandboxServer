@@ -159,6 +159,20 @@ export interface LogEntry {
   category: string | null;
 }
 
+// --- Screen plugin ---
+
+export interface ScreenInfo {
+  supported: boolean;
+  width: number; // window points
+  height: number;
+  scale: number;
+}
+
+export interface ScreenAction {
+  ok: boolean;
+  detail: string;
+}
+
 // --- WebSocket ---
 
 export type WsChannel = 'net' | 'logs' | 'fs' | 'db';

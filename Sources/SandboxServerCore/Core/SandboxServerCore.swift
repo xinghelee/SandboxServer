@@ -97,6 +97,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.files) { allPlugins.append(FilePlugin()) }
         if cfg.builtInPlugins.contains(.database) { allPlugins.append(DBPlugin()) }
         if cfg.builtInPlugins.contains(.logs) { allPlugins.append(LogPlugin()) }
+        if cfg.builtInPlugins.contains(.screen) { allPlugins.append(ScreenPlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {

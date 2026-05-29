@@ -9,6 +9,7 @@
 - 🌐 **网络请求实时抓取** —— 每条 `URLSession` 请求都可实时查看(**已上线**)
 - 🗄 **数据库查看** —— 发现 SQLite 库、浏览表/结构、运行只读 SQL(**已上线**;Core Data/Realm 与写入后续)
 - 📜 **实时日志** —— 把 App 的控制台输出(`SandboxServer.log`,以及开启控制台捕获后的 `print`/`NSLog`)实时推到浏览器,可按级别过滤(**已上线**)
+- 📱 **屏幕镜像 + 操作** —— 在浏览器里实时看到 App 界面并操作:点按(触发 UIControl / SwiftUI 按钮,经无障碍激活)、输入、向当前输入框粘贴(**已上线,iOS**)
 - 🖥 **内置 Web 控制台** —— 由 SDK 自己提供,无需安装任何 App,打开一个 URL 即可
 - 🤖 **MCP 工具** —— 把同一套设备端 API 暴露给 AI 客户端(Claude Code / Desktop)
 
@@ -32,7 +33,7 @@
 │   ├ HTTP/1.1 + RFC 6455 WebSocket(手写)             │
 │   ├ AuthGate + DNS-rebinding 防护(中间件)          │
 │   ├ Router → PluginRegistry → WSHub                  │
-│   └ 插件:net · fs · db · logs(全部已上线)         │
+│   └ 插件:net · fs · db · logs · screen(已上线)     │
 │  对外提供:                                          │
 │   • Web 控制台 (/, /assets/*)                        │
 │   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │

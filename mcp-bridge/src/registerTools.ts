@@ -20,8 +20,12 @@ import { z, type ZodRawShape } from "zod";
 import type { DeviceClient, McpToolDescriptor, PluginDescriptor } from "./deviceClient.js";
 import { log } from "./log.js";
 
+type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+
 type CallResult = {
-  content: { type: "text"; text: string }[];
+  content: ContentBlock[];
   structuredContent?: Record<string, unknown>;
   isError?: boolean;
 };
@@ -43,6 +47,7 @@ interface ToolBinding {
 const str = z.string();
 const optStr = z.string().optional();
 const optInt = z.number().int().optional();
+const optNum = z.number().optional();
 
 /** Substitute {placeholders} in a path suffix from args, consuming used keys. */
 function fillPath(suffix: string, args: Record<string, unknown>, consumed: Set<string>): string {
@@ -171,6 +176,31 @@ const BINDINGS: Record<string, ToolBinding> = {
     shape: {},
     invoke: (device) => device.del("/logs"),
   },
+
+  // ---- screen (mirror + control) -----------------------------------------
+  ui_info: {
+    shape: {},
+    invoke: (device) => device.get("/screen"),
+  },
+  ui_screenshot: {
+    shape: {
+      maxWidth: optInt.describe("downscale the longest edge to this many points"),
+      quality: optNum.describe("JPEG quality 0.1–1.0"),
+    },
+    invoke: (device, _d, args) => device.get("/screen/snapshot", pickQuery(args, ["maxWidth", "quality"])),
+  },
+  ui_tap: {
+    shape: { x: z.number().describe("window point x"), y: z.number().describe("window point y") },
+    invoke: (device, _d, args) => device.post("/screen/tap", { x: args.x, y: args.y }),
+  },
+  ui_type: {
+    shape: { text: str.describe("text to insert into the focused field"), clear: z.boolean().optional() },
+    invoke: (device, _d, args) => device.post("/screen/text", { text: args.text, clear: args.clear ?? false }),
+  },
+  ui_paste: {
+    shape: { text: str.describe("text to set on the pasteboard and paste") },
+    invoke: (device, _d, args) => device.post("/screen/paste", { text: args.text }),
+  },
 };
 
 /**
@@ -205,15 +235,28 @@ function toStructured(value: unknown): Record<string, unknown> {
   return { result: value };
 }
 
+/** Render a tool result. A `{ jpegBase64 }` payload (ui_screenshot) becomes an MCP image block. */
+function resultContent(data: unknown): CallResult {
+  if (data && typeof data === "object" && typeof (data as { jpegBase64?: unknown }).jpegBase64 === "string") {
+    const d = data as { jpegBase64: string; width?: number; height?: number };
+    return {
+      content: [
+        { type: "image", data: d.jpegBase64, mimeType: "image/jpeg" },
+        { type: "text", text: `device screen ${d.width ?? "?"}×${d.height ?? "?"} pt` },
+      ],
+    };
+  }
+  return {
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    structuredContent: toStructured(data),
+  };
+}
+
 function buildCallback(device: DeviceClient, descriptor: McpToolDescriptor, binding: ToolBinding) {
   return async (args: Record<string, unknown>): Promise<CallResult> => {
     try {
       const data = await binding.invoke(device, descriptor, args ?? {});
-      const structured = toStructured(data);
-      return {
-        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
-        structuredContent: structured,
-      };
+      return resultContent(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       log.warn(`tool ${descriptor.name} failed: ${message}`);

@@ -32,8 +32,10 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     public static let files    = BuiltInPlugins(rawValue: 1 << 1)
     public static let database = BuiltInPlugins(rawValue: 1 << 2)
     public static let logs     = BuiltInPlugins(rawValue: 1 << 3)
+    /// Live screen mirror + semantic tap (iOS only; a no-op on other platforms).
+    public static let screen   = BuiltInPlugins(rawValue: 1 << 4)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen]
     public static let none: BuiltInPlugins = []
 }
 

@@ -21,6 +21,8 @@ import type {
   DirListing,
   FsRoot,
   LogEntry,
+  ScreenInfo,
+  ScreenAction,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -242,5 +244,28 @@ export const api = {
 
   clearLogs(signal?: AbortSignal): Promise<{ cleared: number }> {
     return request<{ cleared: number }>('/logs', { method: 'DELETE', signal });
+  },
+
+  // --- Screen (live mirror + control) ---
+
+  screenInfo(signal?: AbortSignal): Promise<ScreenInfo> {
+    return request<ScreenInfo>('/screen', { signal });
+  },
+
+  /** Raw JPEG frame for the live mirror; `t` busts the browser cache each poll. */
+  screenFrame(maxWidth: number, quality: number, signal?: AbortSignal): Promise<Response> {
+    return rawRequest('/screen/frame', { maxWidth, quality, t: Date.now() }, signal);
+  },
+
+  screenTap(x: number, y: number): Promise<ScreenAction> {
+    return request<ScreenAction>('/screen/tap', { method: 'POST', body: { x, y } });
+  },
+
+  screenType(text: string, clear = false): Promise<ScreenAction> {
+    return request<ScreenAction>('/screen/text', { method: 'POST', body: { text, clear } });
+  },
+
+  screenPaste(text: string): Promise<ScreenAction> {
+    return request<ScreenAction>('/screen/paste', { method: 'POST', body: { text } });
   },
 };
