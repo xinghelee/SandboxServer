@@ -85,8 +85,8 @@ export function HierarchyPanel() {
   const stackRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
   const rotRef = useRef({ rx: -18, ry: -26 });
-  const dragRef = useRef<{ x: number; y: number; rx: number; ry: number; id: number | null; moved: boolean } | null>(null);
-  const resizeRef = useRef<{ startX: number; startW: number; cur: number } | null>(null);
+  const dragRef = useRef<{ x: number; y: number; rx: number; ry: number; id: number | null; moved: boolean; pid: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; startW: number; cur: number; pid: number } | null>(null);
 
   const load = useCallback(
     (signal?: AbortSignal) => {
@@ -126,25 +126,27 @@ export function HierarchyPanel() {
   }, []);
 
   useEffect(() => {
-    const move = (e: MouseEvent) => {
+    const move = (e: PointerEvent) => {
       const rz = resizeRef.current;
       if (rz) {
+        if (e.pointerId !== rz.pid) return; // ignore other pointers (pinch / hybrid mouse+touch)
         const nw = Math.max(160, Math.min(640, rz.startW + (e.clientX - rz.startX)));
         rz.cur = nw;
         if (treeRef.current) treeRef.current.style.flexBasis = `${nw}px`;
         return;
       }
       const d = dragRef.current;
-      if (!d) return;
+      if (!d || e.pointerId !== d.pid) return;
       if (Math.abs(e.clientX - d.x) > 3 || Math.abs(e.clientY - d.y) > 3) d.moved = true;
       const ryv = d.ry + (e.clientX - d.x) * 0.4;
       const rxv = Math.max(-89, Math.min(89, d.rx - (e.clientY - d.y) * 0.4));
       rotRef.current = { rx: rxv, ry: ryv };
       applyRot(rxv, ryv);
     };
-    const up = () => {
+    const up = (e: PointerEvent) => {
       const rz = resizeRef.current;
       if (rz) {
+        if (e.pointerId !== rz.pid) return;
         resizeRef.current = null;
         setTreeWidth(rz.cur);
         try {
@@ -155,7 +157,7 @@ export function HierarchyPanel() {
         return;
       }
       const d = dragRef.current;
-      if (!d) return;
+      if (!d || e.pointerId !== d.pid) return;
       dragRef.current = null;
       if (d.moved) {
         setRx(rotRef.current.rx);
@@ -164,15 +166,21 @@ export function HierarchyPanel() {
         setSelectedId(d.id);
       }
     };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    // Pointer (not mouse) events so orbit/resize work on touch too; touch pointers are implicitly
+    // captured to the pressed element and the events still bubble to window. pointercancel (browser
+    // stole the gesture, etc.) ends the drag like an up.
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
     return () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
     };
   }, [applyRot]);
 
-  const onMouseDown = useCallback((e: MouseEvent) => {
+  const onStageDown = useCallback((e: PointerEvent) => {
+    if (dragRef.current || resizeRef.current) return; // ignore a second finger mid-gesture
     const idAttr = (e.target as HTMLElement).dataset?.layerId;
     dragRef.current = {
       x: e.clientX,
@@ -181,6 +189,7 @@ export function HierarchyPanel() {
       ry: rotRef.current.ry,
       id: idAttr != null ? +idAttr : null,
       moved: false,
+      pid: e.pointerId,
     };
   }, []);
 
@@ -302,13 +311,14 @@ export function HierarchyPanel() {
         <div
           class="h3d-resizer"
           title={t('hier.resize')}
-          onMouseDown={(e) => {
+          onPointerDown={(e) => {
+            if (dragRef.current || resizeRef.current) return;
             const w = treeRef.current?.offsetWidth ?? treeWidth;
-            resizeRef.current = { startX: e.clientX, startW: w, cur: w };
+            resizeRef.current = { startX: e.clientX, startW: w, cur: w, pid: e.pointerId };
           }}
         />
 
-        <div class="h3d-wrap" onMouseDown={onMouseDown}>
+        <div class="h3d-wrap" onPointerDown={onStageDown}>
           <div
             class="h3d-stack"
             ref={stackRef}

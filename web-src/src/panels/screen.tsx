@@ -130,15 +130,18 @@ export function ScreenPanel() {
   );
 
   const onDown = useCallback(
-    (e: MouseEvent) => {
+    (e: PointerEvent) => {
       if (!interact || !info || !imgRef.current) return;
+      // Capture the pointer so the matching up (and a drag that wanders off the image) still lands
+      // here — works for mouse, touch, and pen alike, so onMouseLeave is no longer needed.
+      imgRef.current.setPointerCapture(e.pointerId);
       dragRef.current = { ...mapPoint(e), t: Date.now() };
     },
     [interact, info, mapPoint],
   );
 
   const onUp = useCallback(
-    (e: MouseEvent) => {
+    (e: PointerEvent) => {
       const start = dragRef.current;
       dragRef.current = null;
       if (!interact || !info || !start || !imgRef.current) return;
@@ -232,9 +235,9 @@ export function ScreenPanel() {
                   class="screen-img"
                   src={frameUrl}
                   draggable={false}
-                  onMouseDown={onDown}
-                  onMouseUp={onUp}
-                  onMouseLeave={() => {
+                  onPointerDown={onDown}
+                  onPointerUp={onUp}
+                  onPointerCancel={() => {
                     dragRef.current = null;
                   }}
                   alt="device screen"
