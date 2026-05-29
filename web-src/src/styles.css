@@ -540,15 +540,31 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 
 /* ----- Screen mirror ------------------------------------------------------ */
 .screen-layout { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
-.screen-stage {
-  display: flex; justify-content: center; padding: 18px;
-  background: var(--bg-1); border: 1px solid var(--line); border-radius: 14px;
+.screen-stage { display: flex; justify-content: center; padding: 10px 0 22px; }
+/* iPhone-style enclosure: thin uniform near-black bezel, large continuous-radius corners,
+   Dynamic Island, titanium side buttons. */
+.device-frame {
+  position: relative;
+  padding: 11px;
+  background: #15171c;
+  border-radius: 56px;
+  box-shadow: 0 32px 74px -24px rgba(0, 0, 0, 0.82),
+    inset 0 0 0 2px #050608, inset 0 0 0 4px rgba(255, 255, 255, 0.05);
 }
-.screen-frame { position: relative; line-height: 0; }
-.screen-img {
-  display: block; max-height: calc(100vh - 220px); width: auto; border-radius: 10px;
-  border: 1px solid var(--line-2); box-shadow: var(--shadow); background: #000;
+.device-frame::before { /* volume buttons (left) */
+  content: ''; position: absolute; left: -2.5px; top: 128px;
+  width: 3px; height: 104px; background: #0b0d11; border-radius: 3px 0 0 3px;
 }
+.device-frame::after { /* power button (right) */
+  content: ''; position: absolute; right: -2.5px; top: 168px;
+  width: 3px; height: 74px; background: #0b0d11; border-radius: 0 3px 3px 0;
+}
+.device-island {
+  position: absolute; top: 23px; left: 50%; transform: translateX(-50%);
+  width: 112px; height: 30px; background: #000; border-radius: 16px; z-index: 4;
+}
+.screen-frame { position: relative; line-height: 0; border-radius: 46px; overflow: hidden; background: #000; }
+.screen-img { display: block; max-height: calc(100vh - 252px); width: auto; }
 .screen-stage.interactive .screen-img { cursor: crosshair; }
 .screen-ripple {
   position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%;

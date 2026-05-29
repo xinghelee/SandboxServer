@@ -6,8 +6,16 @@ import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 
 const POLL_MS = 200; // ~5 fps live mirror
-const FRAME_MAX_WIDTH = 460;
-const FRAME_QUALITY = 0.5;
+
+// User-selectable capture clarity. `w` is the max frame width in points the device renders to
+// (higher = sharper but heavier); `w: 0` means native (device width × screen scale).
+const QUALITY_PRESETS = [
+  { key: 'smooth', w: 420, q: 0.5 },
+  { key: 'clear', w: 720, q: 0.7 },
+  { key: 'hd', w: 1080, q: 0.82 },
+  { key: 'max', w: 0, q: 0.9 },
+] as const;
+const QUALITY_STORAGE = 'sbx_screen_quality';
 
 interface Ripple { x: number; y: number; key: number }
 
@@ -27,9 +35,25 @@ export function ScreenPanel() {
   const [text, setText] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [ripples, setRipples] = useState<Ripple[]>([]);
+  const [qualityKey, setQualityKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem(QUALITY_STORAGE) || 'clear';
+    } catch {
+      return 'clear';
+    }
+  });
 
   const imgRef = useRef<HTMLImageElement>(null);
   const rippleKey = useRef(0);
+
+  const chooseQuality = useCallback((k: string) => {
+    setQualityKey(k);
+    try {
+      localStorage.setItem(QUALITY_STORAGE, k);
+    } catch {
+      /* private mode */
+    }
+  }, []);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -50,9 +74,12 @@ export function ScreenPanel() {
     if (!info?.supported || paused) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const preset = QUALITY_PRESETS.find((p) => p.key === qualityKey) ?? QUALITY_PRESETS[1];
+    const maxWidth =
+      preset.w === 0 ? Math.min(Math.round((info?.width ?? 420) * (info?.scale ?? 2)), 1600) : preset.w;
     const tick = async () => {
       try {
-        const res = await api.screenFrame(FRAME_MAX_WIDTH, FRAME_QUALITY);
+        const res = await api.screenFrame(maxWidth, preset.q);
         const blob = await res.blob();
         if (cancelled) return;
         const url = URL.createObjectURL(blob);
@@ -71,7 +98,7 @@ export function ScreenPanel() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [info?.supported, paused]);
+  }, [info?.supported, info?.width, info?.scale, paused, qualityKey]);
 
   // Revoke the final URL on unmount.
   useEffect(
@@ -134,14 +161,20 @@ export function ScreenPanel() {
 
   const send = useCallback(
     (kind: 'type' | 'paste' | 'clear') => {
-      if (!text && kind !== 'clear') return;
-      const p =
-        kind === 'paste' ? api.screenPaste(text) : api.screenType(text, kind === 'clear');
-      p.then((res) => setLastAction(`${kind} → ${res.detail}`)).catch((err: unknown) =>
-        setLastAction(err instanceof ApiRequestError ? err.message : String(err)),
-      );
+      const done = (res: { detail: string }) => setLastAction(`${kind} → ${res.detail}`);
+      const fail = (err: unknown) => setLastAction(err instanceof ApiRequestError ? err.message : String(err));
+      // Clear always empties the focused field (no text needed); type/paste need text.
+      if (kind === 'clear') {
+        api.screenType('', true).then(done).catch(fail);
+        return;
+      }
+      if (!text.trim()) {
+        setLastAction(t('screen.needtext'));
+        return;
+      }
+      (kind === 'paste' ? api.screenPaste(text) : api.screenType(text, false)).then(done).catch(fail);
     },
-    [text],
+    [text, t],
   );
 
   if (loading) {
@@ -171,6 +204,13 @@ export function ScreenPanel() {
         ) : null}
         {info?.gestures ? <span class="count-chip">{t('screen.gestures')}</span> : null}
         <div class="spacer" />
+        <div class="seg-toggle" title={t('screen.quality')}>
+          {QUALITY_PRESETS.map((p) => (
+            <button key={p.key} class={qualityKey === p.key ? 'on' : ''} onClick={() => chooseQuality(p.key)}>
+              {t(`screen.q.${p.key}`)}
+            </button>
+          ))}
+        </div>
         <button class={`btn ${interact ? 'primary' : ''}`} onClick={() => setInteract((v) => !v)}>
           {interact ? t('screen.interact.on') : t('screen.interact.off')}
         </button>
@@ -184,22 +224,25 @@ export function ScreenPanel() {
       <div class="screen-layout">
         <div class={`screen-stage ${interact ? 'interactive' : ''}`}>
           {frameUrl ? (
-            <div class="screen-frame">
-              <img
-                ref={imgRef}
-                class="screen-img"
-                src={frameUrl}
-                draggable={false}
-                onMouseDown={onDown}
-                onMouseUp={onUp}
-                onMouseLeave={() => {
-                  dragRef.current = null;
-                }}
-                alt="device screen"
-              />
-              {ripples.map((r) => (
-                <span class="screen-ripple" key={r.key} style={`left:${r.x}px;top:${r.y}px`} />
-              ))}
+            <div class="device-frame">
+              <span class="device-island" />
+              <div class="screen-frame">
+                <img
+                  ref={imgRef}
+                  class="screen-img"
+                  src={frameUrl}
+                  draggable={false}
+                  onMouseDown={onDown}
+                  onMouseUp={onUp}
+                  onMouseLeave={() => {
+                    dragRef.current = null;
+                  }}
+                  alt="device screen"
+                />
+                {ripples.map((r) => (
+                  <span class="screen-ripple" key={r.key} style={`left:${r.x}px;top:${r.y}px`} />
+                ))}
+              </div>
             </div>
           ) : (
             <Loading labelKey="screen.waiting" />
