@@ -28,6 +28,31 @@ const EN: Dict = {
   'nav.modules': 'modules',
   'nav.foot': 'served over localhost · debug-only',
 
+  'home.title': 'overview',
+  'home.identity': 'identity',
+  'home.id.app': 'bundle',
+  'home.id.device': 'device',
+  'home.id.binding': 'binding',
+  'home.id.api': 'api version',
+  'home.screen.title': 'live screen',
+  'home.screen.open': 'open mirror',
+  'home.screen.off': 'screen mirror unavailable on this build',
+  'home.screen.waiting': 'waiting for first frame…',
+  'home.modules': 'modules',
+  'home.stat.net': 'recent requests',
+  'home.stat.logs': 'recent logs',
+  'home.stat.db': 'databases',
+  'home.stat.fs': 'roots',
+  'home.stat.hierarchy': 'view tree',
+  'home.live': 'live',
+
+  'mod.net': 'Network',
+  'mod.fs': 'Files',
+  'mod.db': 'Databases',
+  'mod.logs': 'Logs',
+  'mod.screen': 'Screen',
+  'mod.hierarchy': 'Layers',
+
   'boot.0': 'initializing sbx terminal',
   'boot.1': 'establishing link',
   'boot.2': 'authenticating session token',
@@ -215,6 +240,31 @@ const ZH: Dict = {
 
   'nav.modules': '模块',
   'nav.foot': '经 localhost 提供 · 仅调试',
+
+  'home.title': '概览',
+  'home.identity': '身份信息',
+  'home.id.app': '应用 ID',
+  'home.id.device': '设备',
+  'home.id.binding': '绑定',
+  'home.id.api': '接口版本',
+  'home.screen.title': '实时屏幕',
+  'home.screen.open': '打开镜像',
+  'home.screen.off': '当前构建不支持屏幕镜像',
+  'home.screen.waiting': '正在等待首帧…',
+  'home.modules': '模块',
+  'home.stat.net': '近期请求',
+  'home.stat.logs': '近期日志',
+  'home.stat.db': '数据库',
+  'home.stat.fs': '根目录',
+  'home.stat.hierarchy': '视图树',
+  'home.live': '实时',
+
+  'mod.net': '网络',
+  'mod.fs': '文件',
+  'mod.db': '数据库',
+  'mod.logs': '日志',
+  'mod.screen': '屏幕',
+  'mod.hierarchy': '层级',
 
   'boot.0': '正在初始化 sbx 终端',
   'boot.1': '正在建立连接',
@@ -418,6 +468,18 @@ export function t(key: string, vars?: Record<string, string | number>): string {
   let s = TABLES[current][key] ?? TABLES.en[key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
   return s;
+}
+
+/** Whether a key exists in the current or English table (so callers can avoid rendering a raw key). */
+export function hasKey(key: string): boolean {
+  return key in TABLES[current] || key in TABLES.en;
+}
+
+/** Localized display name for a built-in plugin id (net/fs/db/logs/screen/hierarchy), else the
+ *  server-provided title — so the nav + overview show 网络/文件/… instead of fixed English titles. */
+export function moduleName(id: string, fallback: string): string {
+  const k = `mod.${id}`;
+  return hasKey(k) ? t(k) : fallback;
 }
 
 /** Hook returning a translator bound to the live language, re-rendering on change. */

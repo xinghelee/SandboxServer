@@ -6,11 +6,12 @@ import { api, ApiRequestError } from './api/client';
 import { socket } from './api/ws';
 import type { WsStatus } from './api/ws';
 import type { Health, Plugin } from './api/types';
-import { useRoute, navigate, currentRoute } from './router';
-import { useI18n } from './i18n';
+import { useRoute, navigate } from './router';
+import { useI18n, moduleName } from './i18n';
 import { useTheme } from './theme';
 import { Loading } from './components/Spinner';
 import { EmptyState } from './components/EmptyState';
+import { OverviewPanel } from './panels/overview';
 import { NetworkPanel } from './panels/network';
 import { FilesPanel } from './panels/files';
 import { DbPanel } from './panels/db';
@@ -123,18 +124,23 @@ function Header({ health }: { health: Health | null }) {
 
 function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
   const { t } = useI18n();
-  const firstKey = plugins[0]?.panelKey || plugins[0]?.id;
+  const overviewActive = route === '/' || route === '/overview';
   return (
     <nav class="nav">
+      <a class={`nav-item ${overviewActive ? 'active' : ''}`} onClick={() => navigate('/overview')}>
+        <span class="gutter">{overviewActive ? '▸' : '·'}</span>
+        <span class="title">{t('home.title')}</span>
+        <span class="id">home</span>
+      </a>
       <div class="nav-label">{t('nav.modules')}</div>
       {plugins.map((p) => {
         const key = p.panelKey || p.id;
         const target = `/${key}`;
-        const active = route === target || (route === '/' && firstKey === key);
+        const active = route === target;
         return (
           <a key={key} class={`nav-item ${active ? 'active' : ''}`} onClick={() => navigate(target)}>
             <span class="gutter">{active ? '▸' : '·'}</span>
-            <span class="title">{p.title}</span>
+            <span class="title">{moduleName(p.id, p.title)}</span>
             <span class="id">{p.id}</span>
           </a>
         );
@@ -217,9 +223,7 @@ function App() {
       .then((pl) => {
         if (ctrl.signal.aborted) return;
         setPlugins(pl.items);
-        if (currentRoute() === '/' && pl.items.length > 0) {
-          navigate(`/${pl.items[0].panelKey || pl.items[0].id}`);
-        }
+        // Root route ('/') lands on the Overview dashboard — no redirect to the first plugin.
         socket.connect();
       })
       .catch((e: unknown) => {
@@ -276,6 +280,7 @@ function App() {
   }
 
   const debugWarn = health && health.buildConfig !== 'debug';
+  const isOverview = route === '/' || route === '/overview';
 
   return (
     <div class="app">
@@ -283,7 +288,13 @@ function App() {
       <Nav plugins={plugins} route={route} />
       <main class="main">
         {debugWarn ? <div class="warn-banner">{t('warn.nondebug', { build: health!.buildConfig })}</div> : null}
-        {activePlugin ? panelFor(activePlugin) : <EmptyState icon="○" titleKey="err.noplugins" />}
+        {isOverview ? (
+          <OverviewPanel health={health} plugins={plugins} />
+        ) : activePlugin ? (
+          panelFor(activePlugin)
+        ) : (
+          <EmptyState icon="○" titleKey="err.noplugins" />
+        )}
       </main>
     </div>
   );
