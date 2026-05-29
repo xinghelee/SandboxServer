@@ -68,7 +68,12 @@ const EN: Dict = {
 
   'net.title': 'network',
   'net.count': '{n} req',
-  'net.filter': 'filter  method / url / status',
+  'net.count.of': '{n} / {total} req',
+  'net.filter': 'filter — api  -healthz  status:4xx',
+  'net.filter.hint':
+    'Space = AND · -term excludes · field:value (method / status / host / url) · e.g. status:4xx host:api',
+  'net.filter.clear': 'clear',
+  'net.method.all': 'all',
   'net.refresh': 'reload',
   'net.clear': 'flush',
   'net.loading': 'reading capture buffer…',
@@ -293,7 +298,11 @@ const ZH: Dict = {
 
   'net.title': '网络',
   'net.count': '{n} 条',
-  'net.filter': '过滤  方法 / 网址 / 状态',
+  'net.count.of': '{n} / {total} 条',
+  'net.filter': '过滤 — api  -healthz  status:4xx',
+  'net.filter.hint': '空格 = 且 · -词 排除 · 字段:值(method / status / host / url)· 例:status:4xx host:api',
+  'net.filter.clear': '清除',
+  'net.method.all': '全部',
   'net.refresh': '刷新',
   'net.clear': '清空',
   'net.loading': '正在读取抓包缓冲…',

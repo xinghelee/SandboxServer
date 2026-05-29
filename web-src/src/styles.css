@@ -574,6 +574,7 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 
 /* ----- Logs stream -------------------------------------------------------- */
 .level-seg { margin-left: 4px; }
+.method-seg { margin-left: 4px; }
 .level-seg button.on.lvl-debug { color: var(--s3); }
 .level-seg button.on.lvl-warn  { color: var(--s4); }
 .level-seg button.on.lvl-error { color: var(--s5); }

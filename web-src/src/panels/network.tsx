@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import { socket } from '../api/ws';
 import type {
@@ -14,10 +14,28 @@ import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { NetDetailDrawer } from './NetDetailDrawer';
 import { formatBytes, formatDuration, formatClock, shortUrl, statusClassNum } from '../util/format';
+import { parseNetQuery, matchesNetQuery, hasQuery } from '../util/net-filter';
 
 const MAX_ROWS = 1000;
 const STATUS_CLASSES = ['', 's2', 's3', 's4', 's5'] as const;
 const CLASS_LABEL: Record<string, string> = { s2: '2xx', s3: '3xx', s4: '4xx', s5: '5xx' };
+const METHOD_ORDER = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+// Filter state survives reloads (it's used constantly while debugging a single flow).
+const FILTER_KEY = 'sbx.net.filter';
+interface PersistedFilter {
+  q: string;
+  statusClass: string;
+  method: string;
+}
+function loadFilter(): PersistedFilter {
+  const empty: PersistedFilter = { q: '', statusClass: '', method: '' };
+  try {
+    return { ...empty, ...(JSON.parse(sessionStorage.getItem(FILTER_KEY) || '{}') as Partial<PersistedFilter>) };
+  } catch {
+    return empty;
+  }
+}
 
 export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
   const { t } = useI18n();
@@ -26,8 +44,11 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState('');
-  const [statusClass, setStatusClass] = useState('');
+  const persisted = useMemo(loadFilter, []);
+  const [filter, setFilter] = useState(persisted.q);
+  const [statusClass, setStatusClass] = useState(persisted.statusClass);
+  const [method, setMethod] = useState(persisted.method);
+  const [showHelp, setShowHelp] = useState(false);
 
   const rowsRef = useRef<NetRequestSummary[]>([]);
   rowsRef.current = rows;
@@ -119,19 +140,36 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
       .catch((e: unknown) => setError(e instanceof ApiRequestError ? e.message : String(e)));
   }, []);
 
-  const f = filter.trim().toLowerCase();
+  // Persist the active filter so a reload (frequent while debugging) keeps it.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTER_KEY, JSON.stringify({ q: filter, statusClass, method }));
+    } catch {
+      /* private mode / quota — non-fatal */
+    }
+  }, [filter, statusClass, method]);
+
+  // Method chips reflect the methods actually present, in a canonical order.
+  const presentMethods = useMemo(() => {
+    const set = new Set(rows.map((r) => (r.method || '').toUpperCase()).filter(Boolean));
+    return Array.from(set).sort(
+      (a, b) => (METHOD_ORDER.indexOf(a) + 1 || 99) - (METHOD_ORDER.indexOf(b) + 1 || 99),
+    );
+  }, [rows]);
+
+  const query = useMemo(() => parseNetQuery(filter), [filter]);
   const visible = rows.filter((r) => {
     // Status-class filter excludes still-pending rows (statusClassNum(null) === 'pending').
     if (statusClass && statusClassNum(r.status) !== statusClass) return false;
-    if (
-      f &&
-      !r.url.toLowerCase().includes(f) &&
-      !r.method.toLowerCase().includes(f) &&
-      !String(r.status ?? '').includes(f)
-    )
-      return false;
-    return true;
+    if (method && (r.method || '').toUpperCase() !== method) return false;
+    return matchesNetQuery(r, query);
   });
+  const filtered = !!statusClass || !!method || hasQuery(query);
+  const clearFilters = () => {
+    setFilter('');
+    setStatusClass('');
+    setMethod('');
+  };
 
   const win = useVirtualWindow(scrollRef, { count: visible.length, rowHeight: rowH, enabled: visible.length > 0 });
   const windowed = visible.slice(win.start, win.end);
@@ -147,7 +185,9 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
     <div class="panel">
       <div class="panel-toolbar">
         <h2>{t('net.title')}</h2>
-        <span class="count-chip">{t('net.count', { n: visible.length })}</span>
+        <span class="count-chip">
+          {filtered ? t('net.count.of', { n: visible.length, total: rows.length }) : t('net.count', { n: rows.length })}
+        </span>
         <div class="seg-toggle status-seg">
           {STATUS_CLASSES.map((c) => (
             <button
@@ -161,14 +201,42 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
             </button>
           ))}
         </div>
+        {presentMethods.length > 0 ? (
+          <div class="seg-toggle method-seg">
+            <button type="button" aria-pressed={!method} class={!method ? 'on' : ''} onClick={() => setMethod('')}>
+              {t('net.method.all')}
+            </button>
+            {presentMethods.map((m) => (
+              <button key={m} type="button" aria-pressed={method === m} class={method === m ? 'on' : ''} onClick={() => setMethod(m)}>
+                {m}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div class="spacer" />
         <input
           class="input"
           type="search"
           placeholder={t('net.filter')}
+          title={t('net.filter.hint')}
           value={filter}
           onInput={(e) => setFilter((e.target as HTMLInputElement).value)}
         />
+        <button
+          type="button"
+          class={`help-dot ${showHelp ? 'on' : ''}`}
+          aria-expanded={showHelp}
+          title={t('net.filter.hint')}
+          aria-label={t('net.filter.hint')}
+          onClick={() => setShowHelp((v) => !v)}
+        >
+          ?
+        </button>
+        {filtered ? (
+          <button type="button" class="btn" onClick={clearFilters} title={t('net.filter.clear')}>
+            {t('net.filter.clear')}
+          </button>
+        ) : null}
         <button class="btn" onClick={() => load()}>
           {t('net.refresh')}
         </button>
@@ -176,6 +244,8 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
           {t('net.clear')}
         </button>
       </div>
+
+      {showHelp ? <div class="help-note">{t('net.filter.hint')}</div> : null}
 
       {limitations && limitations.length > 0 ? (
         <div class="panel-note" title={limitations.join('\n')}>
