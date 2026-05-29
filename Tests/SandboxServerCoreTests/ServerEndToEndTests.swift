@@ -49,6 +49,14 @@ final class ServerEndToEndTests: XCTestCase {
         let net = items.first { $0["id"] as? String == "net" }
         let netTools = (net?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
         XCTAssertTrue(netTools.contains("net_list_requests"))
+        // It also documents its capture blind spots so the console/MCP can surface them (B1).
+        let netLimits = (net?["limitations"] as? [String]) ?? []
+        XCTAssertFalse(netLimits.isEmpty, "net plugin should advertise capture limitations")
+        XCTAssertTrue(netLimits.contains { $0.contains("WKWebView") },
+                      "limitations should name the known blind spots")
+        // Plugins without caveats omit the field entirely (additive/optional manifest contract).
+        let fs = items.first { $0["id"] as? String == "fs" }
+        XCTAssertNil(fs?["limitations"], "limitations is omitted when nil, not serialized as null")
         // The logs plugin advertises the logs channel + its tail/search/clear tools.
         let logs = items.first { $0["id"] as? String == "logs" }
         XCTAssertEqual(logs?["channels"] as? [String], ["logs"])

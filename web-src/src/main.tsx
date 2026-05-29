@@ -28,7 +28,7 @@ function panelFor(plugin: Plugin) {
   switch (plugin.panelKey || plugin.id) {
     case 'net':
     case 'network':
-      return <NetworkPanel />;
+      return <NetworkPanel plugin={plugin} />;
     case 'fs':
     case 'files':
       return <FilesPanel />;

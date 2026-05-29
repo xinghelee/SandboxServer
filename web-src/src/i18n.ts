@@ -81,6 +81,9 @@ const EN: Dict = {
   'net.col.size': 'size',
   'net.col.clock': 'at',
   'net.status.all': 'all',
+  'net.limitations.label': 'Capture scope:',
+  'net.limitations.hint':
+    'URLSession only — background sessions, WKWebView, raw sockets & non-HTTP traffic are not captured.',
 
   'copy.label': 'copy',
   'copy.done': 'copied',
@@ -302,6 +305,8 @@ const ZH: Dict = {
   'net.col.size': '大小',
   'net.col.clock': '时刻',
   'net.status.all': '全部',
+  'net.limitations.label': '捕获范围:',
+  'net.limitations.hint': '仅 URLSession —— 后台会话、WKWebView、原始套接字与非 HTTP 流量不会被捕获。',
 
   'copy.label': '复制',
   'copy.done': '已复制',

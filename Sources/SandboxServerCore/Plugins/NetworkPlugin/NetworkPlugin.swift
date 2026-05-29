@@ -30,6 +30,10 @@ final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
                 .init(name: "net_clear", title: "Clear captured requests",
                       description: "Discard all captured requests.",
                       backingMethod: "DELETE", backingPathSuffix: "requests", readOnlyHint: false, destructiveHint: true),
+            ],
+            limitations: [
+                "Captures URLSession.shared, .default and .ephemeral configurations.",
+                "Not captured: background sessions, WKWebView, raw sockets, and non-HTTP(S) schemes.",
             ]
         )
     }

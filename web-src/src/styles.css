@@ -462,6 +462,24 @@ pre.body {
 .error-banner { color: var(--s5); border: 1px solid color-mix(in srgb, var(--s5) 40%, var(--line)); background: color-mix(in srgb, var(--s5) 10%, transparent); }
 .warn-banner { color: var(--s4); border: 1px solid color-mix(in srgb, var(--s4) 45%, var(--line)); background: color-mix(in srgb, var(--s4) 12%, transparent); }
 
+/* Subtle informational caption inside a panel (e.g. network capture blind spots). */
+.panel-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: -2px 0 14px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--ink-dim);
+  font-size: 12.5px;
+  line-height: 1.5;
+  cursor: default;
+}
+.panel-note b { color: var(--ink); font-weight: 600; }
+.panel-note-ic { color: var(--accent); flex: none; line-height: 1.5; }
+
 .muted { color: var(--ink-dim); }
 
 /* ----- File browser ------------------------------------------------------- */

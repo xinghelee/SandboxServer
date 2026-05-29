@@ -3,6 +3,7 @@ import { api, ApiRequestError } from '../api/client';
 import { socket } from '../api/ws';
 import type {
   NetRequestSummary,
+  Plugin,
   WsServerMessage,
   NetStartedPayload,
   NetCompletedPayload,
@@ -17,8 +18,9 @@ const MAX_ROWS = 1000;
 const STATUS_CLASSES = ['', 's2', 's3', 's4', 's5'] as const;
 const CLASS_LABEL: Record<string, string> = { s2: '2xx', s3: '3xx', s4: '4xx', s5: '5xx' };
 
-export function NetworkPanel() {
+export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
   const { t } = useI18n();
+  const limitations = plugin?.limitations;
   const [rows, setRows] = useState<NetRequestSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +162,15 @@ export function NetworkPanel() {
           {t('net.clear')}
         </button>
       </div>
+
+      {limitations && limitations.length > 0 ? (
+        <div class="panel-note" title={limitations.join('\n')}>
+          <span class="panel-note-ic" aria-hidden="true">ⓘ</span>
+          <span>
+            <b>{t('net.limitations.label')}</b> {t('net.limitations.hint')}
+          </span>
+        </div>
+      ) : null}
 
       {error ? <div class="error-banner">{error}</div> : null}
 

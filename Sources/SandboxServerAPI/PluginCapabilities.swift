@@ -42,10 +42,15 @@ public struct PluginCapabilities: Codable, Sendable {
     /// WS channel names this plugin publishes to.
     public let channels: [String]
     public let mcpTools: [MCPToolDescriptor]
+    /// Human-readable caveats about this plugin's coverage (e.g. network capture blind spots).
+    /// Surfaced in the console panel header and visible to MCP clients reading the manifest.
+    /// Optional + omitted-when-nil, so it stays additive to the frozen manifest contract.
+    public let limitations: [String]?
 
     public init(
         id: String, version: String, title: String, panelKey: String,
-        routes: [String] = [], channels: [String] = [], mcpTools: [MCPToolDescriptor] = []
+        routes: [String] = [], channels: [String] = [], mcpTools: [MCPToolDescriptor] = [],
+        limitations: [String]? = nil
     ) {
         self.id = id
         self.version = version
@@ -54,5 +59,6 @@ public struct PluginCapabilities: Codable, Sendable {
         self.routes = routes
         self.channels = channels
         self.mcpTools = mcpTools
+        self.limitations = limitations
     }
 }

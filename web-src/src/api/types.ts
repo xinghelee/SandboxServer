@@ -66,6 +66,7 @@ export interface Plugin {
   routes: string[];
   channels: string[];
   mcpTools: McpTool[];
+  limitations?: string[]; // coverage caveats, e.g. network capture blind spots
 }
 
 // --- Network plugin ---
