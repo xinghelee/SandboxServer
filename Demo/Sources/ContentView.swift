@@ -47,11 +47,29 @@ struct ContentView: View {
                     labeled("Requests fired", "\(model.requestCount)")
                     labeled("Last", model.lastRequest, mono: true)
                     Button {
-                        model.fireSampleRequest()
+                        model.fireLocalBatch(100)
                     } label: {
-                        Label("Fire sample requests", systemImage: "antenna.radiowaves.left.and.right")
+                        Label("Fire 100 requests", systemImage: "antenna.radiowaves.left.and.right")
                     }
                     .disabled(!model.isRunning)
+                    Button {
+                        model.fireSampleRequest()
+                    } label: {
+                        Label("Fire external requests", systemImage: "globe")
+                    }
+                    .disabled(!model.isRunning)
+                }
+
+                Section("Logs") {
+                    labeled("Lines emitted", "\(model.logCount)")
+                    Button {
+                        model.emitLogs(200)
+                    } label: {
+                        Label("Emit 200 log lines", systemImage: "text.append")
+                    }
+                    .disabled(!model.isRunning)
+                    Text("A big `events` table (~6k rows) and a ~250 KB file (`data/large.log`) are seeded too — for the Databases and Files panels.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("SandboxServer")
