@@ -211,9 +211,54 @@ export interface HierarchyTree {
   root: HierarchyNode | null;
 }
 
-// --- WebSocket ---
+// --- Captured WebSocket traffic (the `ws` plugin) ---
 
-export type WsChannel = 'net' | 'logs' | 'fs' | 'db';
+export type WsConnState = 'opening' | 'open' | 'closed' | 'failed';
+
+export interface WsConnSummary {
+  id: string;
+  url: string;
+  host: string;
+  startedAt: number;
+  state: WsConnState | string;
+  closedAt: number | null;
+  messageCount: number;
+}
+
+export interface WsConnDetail extends WsConnSummary {
+  closeReason: string | null;
+  error: string | null;
+}
+
+export interface WsMsgSummary {
+  id: string;
+  connId: string;
+  direction: 'sent' | 'received' | string;
+  opcode: string; // text | binary
+  preview: string | null;
+  size: number;
+  ts: number;
+  seq: number;
+}
+
+export interface WsOpenedPayload {
+  id: string;
+  url: string;
+  host: string;
+  startedAt: number;
+}
+
+export interface WsClosedPayload {
+  id: string;
+  state: string;
+  closedAt: number;
+  closeReason?: string | null;
+  error?: string | null;
+}
+
+// --- WebSocket transport (the console's own multiplexed live channel) ---
+
+export type WsChannel = 'net' | 'logs' | 'fs' | 'db' | 'ws';
 
 export interface WsServerMessage<P = Record<string, unknown>> {
   channel: WsChannel;

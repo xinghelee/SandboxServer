@@ -10,6 +10,8 @@ public struct WSChannel: Sendable, Hashable {
     public static let logs = WSChannel("logs")
     public static let fs = WSChannel("fs")
     public static let db = WSChannel("db")
+    /// Live captured WebSocket connections + messages (the `ws` plugin publishes here).
+    public static let ws = WSChannel("ws")
 }
 
 /// A typed key for a value the host hands the SDK at registration time

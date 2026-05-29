@@ -3,10 +3,10 @@
 An [MCP](https://modelcontextprotocol.io) bridge for **SandboxServer**, an iOS
 debug SDK. It connects to a running device, reads the device's live plugin
 manifest, and exposes every plugin — network, files, databases, logs, on-screen
-mirror/control, and the view hierarchy — as MCP tools and resources over
-**stdio**, so Claude Code, Claude Desktop, or any MCP client can inspect captured
-network traffic, the app sandbox file system, embedded databases and logs, and
-even screenshot and drive the running UI.
+mirror/control, the view hierarchy, and captured WebSocket traffic — as MCP tools
+and resources over **stdio**, so Claude Code, Claude Desktop, or any MCP client can
+inspect captured network + WebSocket traffic, the app sandbox file system, embedded
+databases and logs, and even screenshot and drive the running UI.
 
 Tools are registered **dynamically from the live `/plugins` manifest**: as the
 device reports new plugins, new tools appear automatically. The static
@@ -82,6 +82,7 @@ plugins, their tools appear automatically. The full v1 tool set:
 | **logs** | `logs_tail`, `logs_search`, `logs_clear`† | Live. Tails the SDK logger, host `SandboxServer.log`, and (opt-in) redirected `stdout`/`stderr`. |
 | **screen** | `ui_info`, `ui_screenshot`, `ui_tap`, `ui_swipe`, `ui_type`, `ui_paste` | Live on iOS (UIKit). `ui_screenshot` returns an **image content block**. Non-UIKit hosts report `supported:false` and 503 the capture/control routes. |
 | **hierarchy** | `ui_hierarchy` | Live on iOS (UIKit). Snapshots the live view tree (frames, classes, labels, optional thumbnails). |
+| **ws** | `ws_list_connections`, `ws_get_connection`, `ws_list_messages`, `ws_clear`† | Live. Captures `URLSessionWebSocketTask` connections + sent/received frames. Not captured: raw-socket WS libraries or ping/pong/close control frames. |
 
 `†` = **destructive** (`destructiveHint:true` — mutates or discards data). The
 `ui_*` tap/swipe/type/paste tools drive the UI but are not flagged destructive.

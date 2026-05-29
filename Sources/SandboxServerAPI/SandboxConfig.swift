@@ -38,8 +38,10 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     public static let screen   = BuiltInPlugins(rawValue: 1 << 4)
     /// Live view-hierarchy tree for the 3D layer inspector (iOS only).
     public static let hierarchy = BuiltInPlugins(rawValue: 1 << 5)
+    /// Live capture of the app's URLSessionWebSocketTask traffic.
+    public static let websocket = BuiltInPlugins(rawValue: 1 << 6)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket]
     public static let none: BuiltInPlugins = []
 }
 

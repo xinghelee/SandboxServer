@@ -632,6 +632,27 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 .log-msg { color: var(--ink); white-space: pre-wrap; word-break: break-word; flex: 1; }
 .log-line.lvl-error .log-msg { color: var(--s5); }
 
+/* WebSocket capture panel */
+.ws-state {
+  flex: 0 0 auto; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line); color: var(--ink-dim); background: var(--bg-1);
+}
+.ws-state.open { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.ws-state.opening { color: var(--s4); }
+.ws-state.failed { color: var(--s5); border-color: color-mix(in srgb, var(--s5) 45%, var(--line)); }
+.ws-stream .ws-msg {
+  display: flex; align-items: baseline; gap: 10px; padding: 3px 14px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.55; border-left: 2px solid transparent;
+  content-visibility: auto; contain-intrinsic-size: auto 24px;
+}
+.ws-msg:hover { background: var(--bg-2); }
+.ws-msg.sent { border-left-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.ws-msg.received { border-left-color: color-mix(in srgb, var(--s2) 55%, transparent); }
+.ws-dir { flex: 0 0 auto; font-weight: 700; width: 12px; text-align: center; }
+.ws-msg.sent .ws-dir { color: var(--accent); }
+.ws-msg.received .ws-dir { color: var(--s2); }
+.ws-size { flex: 0 0 auto; color: var(--ink-dim); font-size: 11px; min-width: 48px; }
+
 /* ----- Screen mirror ------------------------------------------------------ */
 .screen-layout { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
 .screen-stage { display: flex; justify-content: center; padding: 10px 0 22px; }

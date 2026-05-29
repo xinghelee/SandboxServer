@@ -44,7 +44,7 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(status, 200)
         let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
         let ids = Set(items.compactMap { $0["id"] as? String })
-        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen", "hierarchy"])
+        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen", "hierarchy", "ws"])
         // The network plugin must advertise its MCP tools so the bridge can register them.
         let net = items.first { $0["id"] as? String == "net" }
         let netTools = (net?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
@@ -72,6 +72,19 @@ final class ServerEndToEndTests: XCTestCase {
         let hierarchy = items.first { $0["id"] as? String == "hierarchy" }
         let hTools = (hierarchy?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
         XCTAssertTrue(hTools.contains("ui_hierarchy"))
+        // The websocket plugin advertises its capture tools + channel.
+        let ws = items.first { $0["id"] as? String == "ws" }
+        XCTAssertEqual(ws?["channels"] as? [String], ["ws"])
+        let wsTools = (ws?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+        XCTAssertTrue(wsTools.contains("ws_list_connections"))
+        XCTAssertTrue(wsTools.contains("ws_list_messages"))
+    }
+
+    func testWebSocketConnectionsEndpointIsLive() async throws {
+        // No traffic captured on the test host, but the route is mounted and returns an empty list.
+        let (json, status) = try await getJSON("\(apiBase!)/ws/connections", token: token)
+        XCTAssertEqual(status, 200)
+        XCTAssertNotNil((json["data"] as? [String: Any])?["items"] as? [Any], "ws/connections should return an items array")
     }
 
     func testHierarchyUnsupportedOnHost() async throws {

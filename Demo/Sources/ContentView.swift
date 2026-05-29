@@ -71,6 +71,17 @@ struct ContentView: View {
                     Text("A big `events` table (~6k rows) and a ~250 KB file (`data/large.log`) are seeded too — for the Databases and Files panels.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+
+                Section("WebSocket") {
+                    Button {
+                        model.sendWebSocket()
+                    } label: {
+                        Label("Send WebSocket frames", systemImage: "dot.radiowaves.up.forward")
+                    }
+                    .disabled(!model.isRunning)
+                    Text("Connects to a public echo server on launch; sent + echoed frames show in the WebSocket panel.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
             .navigationTitle("SandboxServer")
         }

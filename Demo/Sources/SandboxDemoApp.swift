@@ -56,6 +56,7 @@ final class ServerModel: ObservableObject {
             seedLogs(250)        // a few hundred log lines + a live heartbeat
             fireLocalBatch(150)  // a few hundred captured requests (net virtualization + replay)
             fireSampleRequest()  // a few real external requests too, best-effort
+            openWebSocket()      // a live WebSocket so the WebSocket panel has traffic
         case .disabled:
             state = .disabled
         case .failed(let reason):
@@ -239,6 +240,34 @@ final class ServerModel: ObservableObject {
         case 5: return ("GET", "net/requests?limit=5", nil)
         case 6: return ("GET", "does/not/exist?n=\(i)", nil) // a 404 for status variety
         default: return ("POST", "healthz", Data("{\"replayable\":true,\"i\":\(i),\"note\":\"replay me\"}".utf8))
+        }
+    }
+
+    private var wsTask: URLSessionWebSocketTask?
+
+    /// Opens a WebSocket to a public echo server and keeps receiving, so the WebSocket panel shows
+    /// live captured frames (best-effort — needs internet; a failure is captured as a failed conn).
+    func openWebSocket() {
+        guard let url = URL(string: "wss://ws.postman-echo.com/raw") else { return }
+        let task = URLSession.shared.webSocketTask(with: url)
+        wsTask = task
+        task.resume()
+        receiveLoop(task)
+        sendWebSocket()
+    }
+
+    /// Sends a few frames over the open WebSocket (the echo server bounces them back).
+    func sendWebSocket() {
+        guard let task = wsTask else { return }
+        for i in 0..<5 {
+            task.send(.string("hello #\(i) from the SandboxServer demo")) { _ in }
+        }
+    }
+
+    private func receiveLoop(_ task: URLSessionWebSocketTask) {
+        task.receive { [weak self] result in
+            guard case .success = result else { return } // stop on close/error
+            self?.receiveLoop(task)
         }
     }
 

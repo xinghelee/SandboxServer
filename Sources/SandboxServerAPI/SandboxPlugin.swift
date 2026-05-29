@@ -13,6 +13,7 @@ public struct PluginID: RawRepresentable, Hashable, Sendable, CustomStringConver
     public static let logs = PluginID("logs")
     public static let screen = PluginID("screen")
     public static let hierarchy = PluginID("hierarchy")
+    public static let ws = PluginID("ws")
 }
 
 /// THE extension point. A type conforming to `SandboxPlugin` *is* a feature module.

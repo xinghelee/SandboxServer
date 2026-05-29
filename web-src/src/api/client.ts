@@ -24,6 +24,9 @@ import type {
   ScreenInfo,
   ScreenAction,
   HierarchyTree,
+  WsConnSummary,
+  WsConnDetail,
+  WsMsgSummary,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -250,6 +253,27 @@ export const api = {
 
   clearLogs(signal?: AbortSignal): Promise<{ cleared: number }> {
     return request<{ cleared: number }>('/logs', { method: 'DELETE', signal });
+  },
+
+  // --- Captured WebSocket traffic ---
+
+  wsConnections(signal?: AbortSignal): Promise<ListPayload<WsConnSummary>> {
+    return request<ListPayload<WsConnSummary>>('/ws/connections', { signal });
+  },
+
+  wsConnectionDetail(id: string, signal?: AbortSignal): Promise<WsConnDetail> {
+    return request<WsConnDetail>(`/ws/connections/${encodeURIComponent(id)}`, { signal });
+  },
+
+  wsMessages(connId: string, signal?: AbortSignal): Promise<ListPayload<WsMsgSummary>> {
+    return request<ListPayload<WsMsgSummary>>(
+      `/ws/connections/${encodeURIComponent(connId)}/messages`,
+      { signal },
+    );
+  },
+
+  clearWsConnections(signal?: AbortSignal): Promise<{ cleared: number }> {
+    return request<{ cleared: number }>('/ws/connections', { method: 'DELETE', signal });
   },
 
   // --- Screen (live mirror + control) ---
