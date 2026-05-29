@@ -198,27 +198,41 @@ export function HierarchyPanel() {
   // Memoized slab list — rebuilt only when its inputs change, NOT while orbiting.
   const layerEls = useMemo(
     () =>
-      visible.map((n) => {
-        const fill =
-          showContent && n.thumb
-            ? `background-image:url(data:image/png;base64,${n.thumb});background-size:100% 100%;background-repeat:no-repeat;`
-            : `background:${depthColor(n.depth)}1f;`;
-        const border = showBorders ? `border-color:${depthColor(n.depth)};` : 'border-color:transparent;';
-        const style =
-          `left:${n.x * scale}px;top:${n.y * scale}px;width:${Math.max(n.w * scale, 1)}px;` +
-          `height:${Math.max(n.h * scale, 1)}px;transform:translateZ(${n.depth * gap}px);` +
-          `${border}${fill}`;
-        return (
-          <div
-            key={n.id}
-            data-layer-id={n.id}
-            class={`h3d-layer ${n.id === selectedId ? 'sel' : ''} ${n.hidden ? 'hid' : ''}`}
-            style={style}
-            title={`${shortName(n.cls)}  ${Math.round(n.w)}×${Math.round(n.h)}`}
-          />
-        );
-      }),
-    [visible, gap, scale, selectedId, showContent, showBorders],
+      visible
+        .map((n) => {
+          // Clamp to the on-screen window: scrollable content has off-screen / oversized views
+          // whose window frames sit far below the screen, which otherwise draw a long empty tail.
+          const ix0 = Math.max(0, n.x);
+          const iy0 = Math.max(0, n.y);
+          const ix1 = Math.min(w, n.x + n.w);
+          const iy1 = Math.min(h, n.y + n.h);
+          if (ix1 - ix0 < 0.5 || iy1 - iy0 < 0.5) return null; // fully off-screen → drop
+          let fill: string;
+          if (showContent && n.thumb) {
+            // Show only the visible crop of the full-view thumbnail.
+            fill =
+              `background-image:url(data:image/png;base64,${n.thumb});` +
+              `background-size:${n.w * scale}px ${n.h * scale}px;` +
+              `background-position:${(n.x - ix0) * scale}px ${(n.y - iy0) * scale}px;background-repeat:no-repeat;`;
+          } else {
+            fill = `background:${depthColor(n.depth)}1f;`;
+          }
+          const border = showBorders ? `border-color:${depthColor(n.depth)};` : 'border-color:transparent;';
+          const style =
+            `left:${ix0 * scale}px;top:${iy0 * scale}px;width:${Math.max((ix1 - ix0) * scale, 1)}px;` +
+            `height:${Math.max((iy1 - iy0) * scale, 1)}px;transform:translateZ(${n.depth * gap}px);${border}${fill}`;
+          return (
+            <div
+              key={n.id}
+              data-layer-id={n.id}
+              class={`h3d-layer ${n.id === selectedId ? 'sel' : ''} ${n.hidden ? 'hid' : ''}`}
+              style={style}
+              title={`${shortName(n.cls)}  ${Math.round(n.w)}×${Math.round(n.h)}`}
+            />
+          );
+        })
+        .filter(Boolean),
+    [visible, gap, scale, selectedId, showContent, showBorders, w, h],
   );
 
   const reset = () => {
