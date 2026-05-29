@@ -13,6 +13,7 @@ import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { NetDetailDrawer } from './NetDetailDrawer';
+import { FilterBuilder } from '../components/FilterBuilder';
 import { formatBytes, formatDuration, formatClock, shortUrl, statusClassNum } from '../util/format';
 import { parseNetQuery, matchesNetQuery, hasQuery } from '../util/net-filter';
 
@@ -49,6 +50,7 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
   const [statusClass, setStatusClass] = useState(persisted.statusClass);
   const [method, setMethod] = useState(persisted.method);
   const [showHelp, setShowHelp] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
 
   const rowsRef = useRef<NetRequestSummary[]>([]);
   rowsRef.current = rows;
@@ -224,6 +226,14 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
         />
         <button
           type="button"
+          class={`btn ${showBuilder ? 'primary' : ''}`}
+          aria-pressed={showBuilder}
+          onClick={() => setShowBuilder((v) => !v)}
+        >
+          {t('fb.toggle')}
+        </button>
+        <button
+          type="button"
           class={`help-dot ${showHelp ? 'on' : ''}`}
           aria-expanded={showHelp}
           title={t('net.filter.hint')}
@@ -246,6 +256,7 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
       </div>
 
       {showHelp ? <div class="help-note">{t('net.filter.hint')}</div> : null}
+      {showBuilder ? <FilterBuilder filter={filter} setFilter={setFilter} /> : null}
 
       {limitations && limitations.length > 0 ? (
         <div class="panel-note" title={limitations.join('\n')}>

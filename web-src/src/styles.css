@@ -575,6 +575,25 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 /* ----- Logs stream -------------------------------------------------------- */
 .level-seg { margin-left: 4px; }
 .method-seg { margin-left: 4px; }
+
+/* Visual filter builder (compiles to the query string) */
+.filter-builder {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2);
+  padding: 10px 12px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.fb-head { display: flex; align-items: center; gap: 10px; }
+.fb-row { display: flex; align-items: center; gap: 8px; }
+.fb-row .input { padding: 6px 9px; font-size: 12.5px; }
+.fb-row select.input { cursor: pointer; flex: 0 0 auto; }
+.fb-op { min-width: 92px; }
+.fb-val { flex: 1; min-width: 0; }
+.fb-not, .fb-del {
+  flex: 0 0 auto; border: 1px solid var(--line); background: var(--bg-1); color: var(--ink-dim);
+  border-radius: 7px; cursor: pointer; padding: 6px 9px; font-size: 12px; line-height: 1;
+}
+.fb-not:hover, .fb-del:hover { color: var(--ink); border-color: var(--line-2); }
+.fb-not.on { color: var(--s5); border-color: color-mix(in srgb, var(--s5) 50%, var(--line)); background: color-mix(in srgb, var(--s5) 10%, transparent); }
+.fb-del { font-size: 15px; padding: 3px 9px; }
 .level-seg button.on.lvl-debug { color: var(--s3); }
 .level-seg button.on.lvl-warn  { color: var(--s4); }
 .level-seg button.on.lvl-error { color: var(--s5); }

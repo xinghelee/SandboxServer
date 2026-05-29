@@ -198,6 +198,85 @@ function termMatches(t: Term, r: NetRequestSummary): boolean {
   }
 }
 
+// --- Visual builder ⇄ query string ---
+// The builder is a thin UI layer that compiles to the query string above (the single source of
+// truth). v1 reverse-parses only the simple AND case; OR / nested queries start the builder fresh.
+
+export type BuilderField = 'any' | 'method' | 'status' | 'host' | 'url' | 'dur' | 'size';
+export interface BuilderRow {
+  field: BuilderField;
+  op: string; // contains | is | matches | > | < | >= | <= | =
+  value: string;
+  negate: boolean;
+}
+
+export function blankRow(): BuilderRow {
+  return { field: 'any', op: 'contains', value: '', negate: false };
+}
+
+function compileRow(r: BuilderRow): string {
+  const v = r.value.trim();
+  if (!v) return '';
+  const neg = r.negate ? '-' : '';
+  switch (r.field) {
+    case 'any':
+      return neg + v;
+    case 'method':
+      return `${neg}method:${v}`;
+    case 'host':
+      return `${neg}host:${v}`;
+    case 'url':
+      return r.op === 'matches' ? `${neg}url:/${v}/` : `${neg}url:${v}`;
+    case 'status':
+      return r.op === 'is' ? `${neg}status:${v}` : `${neg}status${r.op}${v}`;
+    case 'dur':
+      return `${neg}dur${r.op}${v}`;
+    case 'size':
+      return `${neg}size${r.op}${v}`;
+  }
+}
+
+/** Compile builder rows to a query string. `matchAny` joins with OR (else AND / space). */
+export function compileBuilder(rows: BuilderRow[], matchAny: boolean): string {
+  const toks = rows.map(compileRow).filter((t) => t.length > 0);
+  return toks.join(matchAny ? ' OR ' : ' ');
+}
+
+/** Best-effort reverse: turn a simple AND query into rows. Returns null if it can't (OR / empty). */
+export function rowsFromQuery(input: string): BuilderRow[] | null {
+  const trimmed = input.trim();
+  if (!trimmed || / OR /.test(trimmed)) return null;
+  const rows: BuilderRow[] = [];
+  for (const tok of trimmed.split(/\s+/)) {
+    let s = tok;
+    let negate = false;
+    if (s.length > 1 && s.startsWith('-')) {
+      negate = true;
+      s = s.slice(1);
+    }
+    const num = /^(status|dur|size)(>=|<=|=|>|<)(\d+)$/.exec(s);
+    if (num) {
+      rows.push({ field: num[1] as BuilderField, op: num[2] ?? '>', value: num[3] ?? '', negate });
+      continue;
+    }
+    const colon = s.indexOf(':');
+    if (colon > 0) {
+      const f = s.slice(0, colon);
+      const rest = s.slice(colon + 1);
+      if ((f === 'method' || f === 'host' || f === 'url' || f === 'status') && rest) {
+        if (f === 'url' && rest.length > 1 && rest.startsWith('/') && rest.endsWith('/')) {
+          rows.push({ field: 'url', op: 'matches', value: rest.slice(1, -1), negate });
+        } else {
+          rows.push({ field: f, op: f === 'method' || f === 'status' ? 'is' : 'contains', value: rest, negate });
+        }
+        continue;
+      }
+    }
+    rows.push({ field: 'any', op: 'contains', value: s, negate });
+  }
+  return rows.length ? rows : null;
+}
+
 export function matchesNetQuery(r: NetRequestSummary, q: NetQuery): boolean {
   if (q.groups.length === 0) return true;
   return q.groups.some((group) =>
