@@ -71,7 +71,7 @@ const EN: Dict = {
   'net.count.of': '{n} / {total} req',
   'net.filter': 'filter — api  -healthz  status:4xx',
   'net.filter.hint':
-    'Space = AND · -term excludes · field:value (method / status / host / url) · e.g. status:4xx host:api',
+    'Space = AND · OR splits groups · -term excludes · field:value (method/status/host/url) · /regex/ · status>=400 dur>500 size<1000',
   'net.filter.clear': 'clear',
   'net.method.all': 'all',
   'net.refresh': 'reload',
@@ -300,7 +300,8 @@ const ZH: Dict = {
   'net.count': '{n} 条',
   'net.count.of': '{n} / {total} 条',
   'net.filter': '过滤 — api  -healthz  status:4xx',
-  'net.filter.hint': '空格 = 且 · -词 排除 · 字段:值(method / status / host / url)· 例:status:4xx host:api',
+  'net.filter.hint':
+    '空格 = 且 · OR 分组 · -词 排除 · 字段:值(method/status/host/url)· /正则/ · status>=400 dur>500 size<1000',
   'net.filter.clear': '清除',
   'net.method.all': '全部',
   'net.refresh': '刷新',
