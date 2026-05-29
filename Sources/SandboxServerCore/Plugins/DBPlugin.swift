@@ -29,7 +29,7 @@ struct DBPlugin: SandboxPlugin {
                       description: "Discover SQLite databases in the sandbox.",
                       backingMethod: "GET", backingPathSuffix: "", readOnlyHint: true, destructiveHint: false),
                 .init(name: "db_list_tables", title: "List tables",
-                      description: "List tables/views in a database (with row counts).",
+                      description: "List tables/views in a database. Pass counts=true for row counts (slower on large DBs).",
                       backingMethod: "GET", backingPathSuffix: "{dbId}/tables", readOnlyHint: true, destructiveHint: false),
                 .init(name: "db_get_schema", title: "Get table schema",
                       description: "Columns and foreign keys for a table.",
@@ -51,7 +51,9 @@ struct DBPlugin: SandboxPlugin {
             },
             HTTPRoute("GET", "{dbId}/tables", annotations: .read) { req, ctx in
                 guard let path = DBPlugin.dbPath(req, ctx) else { return DBPlugin.notFound() }
-                do { return .json(Page(items: try SQLiteReader.tables(at: path))) }
+                // Row counts are opt-in (`?counts=true`) — they're a full scan per table on big DBs.
+                let includeCounts = req.query["counts"] == "true"
+                do { return .json(Page(items: try SQLiteReader.tables(at: path, includeCounts: includeCounts))) }
                 catch { return .error("db_error", "\(error)", status: 500) }
             },
             HTTPRoute("GET", "{dbId}/tables/{table}/schema", annotations: .read) { req, ctx in

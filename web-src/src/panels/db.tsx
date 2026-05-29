@@ -77,12 +77,21 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
 
   useEffect(() => {
     const ctrl = new AbortController();
+    // Fetch the table list without row counts first — that's instant even on huge DBs. Then load
+    // counts in the background (a per-table COUNT(*) full scan) and merge them in so the chips fill
+    // without ever blocking the panel.
     api
       .dbTables(db.id, ctrl.signal)
       .then((res) => {
         if (ctrl.signal.aborted) return;
         setTables(res.items);
         if (res.items[0]) openTable(res.items[0].name);
+        return api.dbTables(db.id, ctrl.signal, { counts: true });
+      })
+      .then((counted) => {
+        if (!counted || ctrl.signal.aborted) return;
+        const byName = new Map(counted.items.map((tb) => [tb.name, tb.rowCount]));
+        setTables((prev) => prev.map((tb) => ({ ...tb, rowCount: byName.get(tb.name) ?? tb.rowCount })));
       })
       .catch((e: unknown) => {
         if (!ctrl.signal.aborted) setError(e instanceof ApiRequestError ? e.message : String(e));
@@ -151,7 +160,7 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
               onClick={() => openTable(tb.name)}
             >
               {tb.name}
-              <span class="ct">{tb.rowCount >= 0 ? tb.rowCount : '?'}</span>
+              <span class="ct">{tb.rowCount != null && tb.rowCount >= 0 ? tb.rowCount : '—'}</span>
             </button>
           ))}
         </div>

@@ -127,7 +127,7 @@ export interface DbDescriptor {
 
 export interface DbTable {
   name: string;
-  rowCount: number;
+  rowCount: number | null; // null until requested (?counts=true); -1 if the count query failed
 }
 
 export interface DbColumn {

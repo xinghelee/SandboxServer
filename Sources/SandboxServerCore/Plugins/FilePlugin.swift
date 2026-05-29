@@ -148,8 +148,14 @@ struct FilePlugin: SandboxPlugin {
         var status = 200
         var headers: [String: String] = ["Accept-Ranges": "bytes"]
         if let range = req.range, size > 0 {
-            start = max(0, range.lowerBound)
-            end = min(size - 1, range.upperBound)
+            switch range {
+            case .explicit(let lower, let upper):
+                start = max(0, lower)
+                end = min(size - 1, upper)
+            case .suffix(let n):
+                start = max(0, size - n) // last N bytes; clamps to the whole file when N ≥ size
+                end = size - 1
+            }
             if start > end { return .error("range_not_satisfiable", "Invalid range.", status: 416) }
             status = 206
             headers["Content-Range"] = "bytes \(start)-\(end)/\(size)"

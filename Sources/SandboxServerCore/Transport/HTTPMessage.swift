@@ -34,14 +34,25 @@ struct HTTPRequestHead: Sendable {
         (header("connection")?.lowercased().contains("upgrade") ?? false)
     }
 
-    /// Single byte range parsed from `Range: bytes=start-end`, if present.
-    var byteRange: ClosedRange<Int>? {
+    /// Single byte range parsed from a `Range: bytes=…` header, if present. Supports the three
+    /// RFC 7233 single-range forms: `bytes=start-end`, `bytes=start-` (open-ended), and
+    /// `bytes=-N` (suffix — the final N bytes). The producer resolves/clamps against the length.
+    var byteRange: ByteRange? {
         guard let raw = header("range"), raw.hasPrefix("bytes=") else { return nil }
         let spec = raw.dropFirst("bytes=".count)
         let parts = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
-        guard parts.count == 2, let start = Int(parts[0]) else { return nil }
-        if let end = Int(parts[1]), end >= start { return start...end }
-        return start...Int.max // open-ended; clamped by the producer to the resource length
+        guard parts.count == 2 else { return nil }
+        if parts[0].isEmpty {
+            // Suffix range `bytes=-N`; N must be a positive count (`bytes=-0` is meaningless).
+            guard let n = Int(parts[1]), n > 0 else { return nil }
+            return .suffix(n)
+        }
+        guard let start = Int(parts[0]) else { return nil }
+        if let end = Int(parts[1]) {
+            guard end >= start else { return nil }
+            return .explicit(start: start, end: end)
+        }
+        return .explicit(start: start, end: .max) // open-ended; clamped to the resource length
     }
 }
 

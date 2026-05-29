@@ -1,5 +1,16 @@
 import Foundation
 
+/// A parsed `Range:` byte range. A suffix range (`bytes=-N`) can only be resolved against the
+/// resource length, which the transport doesn't know — so it's carried as a distinct case and
+/// resolved by the producer (e.g. `FilePlugin`) once the size is known.
+public enum ByteRange: Sendable, Equatable {
+    /// `bytes=start-end` (or `bytes=start-`, with `end == Int.max` for open-ended). Both clamped
+    /// to the resource length by the producer.
+    case explicit(start: Int, end: Int)
+    /// `bytes=-N` — the final `N` bytes of the resource.
+    case suffix(Int)
+}
+
 /// The value-type request the router hands to a plugin handler.
 ///
 /// The body is exposed as a stream so large uploads never have to be buffered whole;
@@ -15,7 +26,7 @@ public struct SBRequest: Sendable {
     /// Header names are lower-cased for case-insensitive lookup.
     public let headers: [String: String]
     /// Parsed `Range:` header (single range only), if present.
-    public let range: ClosedRange<Int>?
+    public let range: ByteRange?
 
     private let bodyProvider: @Sendable () -> AsyncThrowingStream<ArraySlice<UInt8>, Error>
 
@@ -25,7 +36,7 @@ public struct SBRequest: Sendable {
         pathParams: [String: String] = [:],
         query: [String: String] = [:],
         headers: [String: String] = [:],
-        range: ClosedRange<Int>? = nil,
+        range: ByteRange? = nil,
         body: @escaping @Sendable () -> AsyncThrowingStream<ArraySlice<UInt8>, Error> = { .init { $0.finish() } }
     ) {
         self.method = method

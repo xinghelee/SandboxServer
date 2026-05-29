@@ -25,7 +25,7 @@ enum SQLiteError: Error, CustomStringConvertible {
 /// `SQLITE_OPEN_READONLY` connection, so the host app's database is never mutated and a
 /// separate connection sees committed WAL pages without checkpointing.
 enum SQLiteReader {
-    struct TableInfo: Encodable, Sendable { let name: String; let rowCount: Int }
+    struct TableInfo: Encodable, Sendable { let name: String; let rowCount: Int? }
     struct ColumnInfo: Encodable, Sendable { let name: String; let type: String; let pk: Bool; let notnull: Bool }
     struct ForeignKey: Encodable, Sendable { let from: String; let table: String; let to: String }
     struct Schema: Encodable, Sendable { let columns: [ColumnInfo]; let foreignKeys: [ForeignKey] }
@@ -52,7 +52,11 @@ enum SQLiteReader {
 
     // MARK: - Public reads
 
-    static func tables(at path: String) throws -> [TableInfo] {
+    /// Lists tables/views. Row counts are **opt-in** (`includeCounts`): on large DBs a per-table
+    /// `SELECT COUNT(*)` is a multi-second full scan, so by default `rowCount` is `nil` (the
+    /// console renders "—" and the count fills in lazily). `-1` flags a table whose count query
+    /// failed (e.g. a corrupt view) so it stays distinguishable from "not requested".
+    static func tables(at path: String, includeCounts: Bool = false) throws -> [TableInfo] {
         try withConnection(path) { db in
             let names = try rawQuery(db,
                 "SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -60,7 +64,9 @@ enum SQLiteReader {
                 if case .string(let s) = row.first { return s } else { return nil }
             }
             return names.map { name in
-                let count = (try? scalarInt(db, "SELECT COUNT(*) FROM \(quote(name))")) ?? -1
+                let count: Int? = includeCounts
+                    ? ((try? scalarInt(db, "SELECT COUNT(*) FROM \(quote(name))")) ?? -1)
+                    : nil
                 return TableInfo(name: name, rowCount: count)
             }
         }

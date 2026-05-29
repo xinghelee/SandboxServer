@@ -182,8 +182,13 @@ export const api = {
     return request<ListPayload<DbDescriptor>>('/db', { signal });
   },
 
-  dbTables(dbId: string, signal?: AbortSignal): Promise<ListPayload<DbTable>> {
-    return request<ListPayload<DbTable>>(`/db/${encodeURIComponent(dbId)}/tables`, { signal });
+  dbTables(
+    dbId: string,
+    signal?: AbortSignal,
+    opts?: { counts?: boolean },
+  ): Promise<ListPayload<DbTable>> {
+    const qs = opts?.counts ? '?counts=true' : '';
+    return request<ListPayload<DbTable>>(`/db/${encodeURIComponent(dbId)}/tables${qs}`, { signal });
   },
 
   dbSchema(dbId: string, table: string, signal?: AbortSignal): Promise<DbSchema> {
