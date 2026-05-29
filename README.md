@@ -164,4 +164,32 @@ VITE_API_BASE=http://<device-ip>:<port> npm run dev # HMR against a running devi
 cd mcp-bridge && npm install && npm run build
 ```
 
+### Local dev host (browser, no device)
+
+`SandboxServerDevHost` boots the real core on macOS so you can open the console in a browser
+without an iOS app — handy when working on `web-src/` or the REST/WS API:
+
+```bash
+swift run --traits SandboxServerEnabled SandboxServerDevHost   # then open the printed http://127.0.0.1:8080/ URL
+```
+
+Env knobs (each is "set = on"); `Ctrl-C` to stop:
+
+| Var | Effect | Default |
+| --- | --- | --- |
+| `PORT` | Listen port | `8080` |
+| `TOKEN` | Require a session token (URL becomes `…/?token=…`) | off (`auth: .none`) |
+| `CAPTURE` | Redirect `print` / `NSLog` into the logs panel (`captureConsole`) | off |
+| `LOGSEED` | Emit sample log lines + a 2 s heartbeat so the logs panel has data | off |
+| `SEED` | Fire a few sample requests so the network panel has data | off |
+
+```bash
+PORT=8092 LOGSEED=1 SEED=1 swift run --traits SandboxServerEnabled SandboxServerDevHost
+```
+
+It binds loopback and registers the temp dir as an extra browsable/writable root. Being a macOS
+host it has no UIKit, so the **screen mirror** and **view hierarchy** panels report unsupported —
+use `Demo/run.sh` (iOS Simulator) for those. There are no fallback ports, so if `PORT` is busy it
+fails fast — pick a free one.
+
 See `CLAUDE.md` for the full architecture notes and open questions.
