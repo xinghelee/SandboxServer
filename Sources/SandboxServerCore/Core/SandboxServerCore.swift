@@ -98,6 +98,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.database) { allPlugins.append(DBPlugin()) }
         if cfg.builtInPlugins.contains(.logs) { allPlugins.append(LogPlugin()) }
         if cfg.builtInPlugins.contains(.screen) { allPlugins.append(ScreenPlugin()) }
+        if cfg.builtInPlugins.contains(.hierarchy) { allPlugins.append(HierarchyPlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {

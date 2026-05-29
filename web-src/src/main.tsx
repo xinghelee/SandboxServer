@@ -16,6 +16,7 @@ import { FilesPanel } from './panels/files';
 import { DbPanel } from './panels/db';
 import { LogsPanel } from './panels/logs';
 import { ScreenPanel } from './panels/screen';
+import { HierarchyPanel } from './panels/hierarchy';
 import './styles.css';
 
 // Consume any bootstrap ?token= before anything reads sessionStorage.
@@ -39,6 +40,9 @@ function panelFor(plugin: Plugin) {
     case 'screen':
     case 'ui':
       return <ScreenPanel />;
+    case 'hierarchy':
+    case 'layers':
+      return <HierarchyPanel />;
     default:
       return <EmptyState icon="?" title={plugin.panelKey} subKey="err.unknownpanel" />;
   }

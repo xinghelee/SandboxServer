@@ -174,6 +174,33 @@ export interface ScreenAction {
   detail: string;
 }
 
+// --- Hierarchy plugin ---
+
+export interface HierarchyNode {
+  id: number;
+  cls: string;
+  depth: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  alpha: number;
+  hidden: boolean;
+  label: string | null;
+  bg: string | null;
+  thumb: string | null; // base64 PNG of the view's own content (leaf/content views), when requested
+  children: HierarchyNode[];
+}
+
+export interface HierarchyTree {
+  supported: boolean;
+  width: number;
+  height: number;
+  nodeCount: number;
+  truncated: boolean;
+  root: HierarchyNode | null;
+}
+
 // --- WebSocket ---
 
 export type WsChannel = 'net' | 'logs' | 'fs' | 'db';

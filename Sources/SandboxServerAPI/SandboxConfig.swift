@@ -34,8 +34,10 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     public static let logs     = BuiltInPlugins(rawValue: 1 << 3)
     /// Live screen mirror + semantic tap (iOS only; a no-op on other platforms).
     public static let screen   = BuiltInPlugins(rawValue: 1 << 4)
+    /// Live view-hierarchy tree for the 3D layer inspector (iOS only).
+    public static let hierarchy = BuiltInPlugins(rawValue: 1 << 5)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy]
     public static let none: BuiltInPlugins = []
 }
 

@@ -23,6 +23,7 @@ import type {
   LogEntry,
   ScreenInfo,
   ScreenAction,
+  HierarchyTree,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -271,5 +272,17 @@ export const api = {
 
   screenPaste(text: string): Promise<ScreenAction> {
     return request<ScreenAction>('/screen/paste', { method: 'POST', body: { text } });
+  },
+
+  // --- View hierarchy (3D layers) ---
+
+  hierarchy(
+    opts: { maxDepth?: number; maxNodes?: number; thumbs?: boolean } = {},
+    signal?: AbortSignal,
+  ): Promise<HierarchyTree> {
+    return request<HierarchyTree>('/hierarchy', {
+      query: { maxDepth: opts.maxDepth, maxNodes: opts.maxNodes, thumbs: opts.thumbs ? 1 : undefined },
+      signal,
+    });
   },
 };

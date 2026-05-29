@@ -210,6 +210,15 @@ const BINDINGS: Record<string, ToolBinding> = {
     shape: { text: str.describe("text to set on the pasteboard and paste") },
     invoke: (device, _d, args) => device.post("/screen/paste", { text: args.text }),
   },
+
+  // ---- view hierarchy -----------------------------------------------------
+  ui_hierarchy: {
+    shape: {
+      maxDepth: optInt.describe("max tree depth to walk"),
+      maxNodes: optInt.describe("cap on total nodes returned"),
+    },
+    invoke: (device, _d, args) => device.get("/hierarchy", pickQuery(args, ["maxDepth", "maxNodes"])),
+  },
 };
 
 /**
