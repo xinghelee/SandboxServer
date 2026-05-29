@@ -147,7 +147,7 @@ function literalMatch(t: LiteralTerm, r: NetRequestSummary): boolean {
     }
     case 'status':
       if (/^\dxx$/.test(v)) return r.status != null && Math.floor(r.status / 100) === Number(v.charAt(0));
-      return String(r.status ?? '').includes(v);
+      return String(r.status ?? '') === v; // exact code (status:404); use status:4xx for a class
     case 'host':
       return hostOf(r.url).toLowerCase().includes(v);
     case 'url':

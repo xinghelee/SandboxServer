@@ -14,7 +14,13 @@ nonisolated(unsafe) private var wsConnIdKey: UInt8 = 0
 /// The SDK's own console WebSocket uses Network.framework, not URLSession, so it's never captured.
 enum WebSocketSwizzler {
     nonisolated(unsafe) static var store: WSStore?
+    /// Recording gate. `nonisolated(unsafe)` is acceptable for the same reason as
+    /// `SandboxURLProtocol.isEnabled`: it's a plain `Bool` flipped at activate/deactivate and read
+    /// on the URL loading threads — the only race is recording one frame either side of the flip.
     nonisolated(unsafe) static var isEnabled = false
+    /// True once all three WS selectors were found and swizzled (else capture can't work — e.g. a
+    /// future OS renamed them). Lets the plugin log accurately instead of a blind "active".
+    nonisolated(unsafe) private(set) static var available = false
 
     private static let lock = NSLock()
     nonisolated(unsafe) private static var installed = false
@@ -28,17 +34,17 @@ enum WebSocketSwizzler {
             guard let url = URL(string: "wss://127.0.0.1/"),
                   let cls: AnyClass = object_getClass(URLSession.shared.webSocketTask(with: url))
             else { return }
-            swizzleSend(cls)
-            swizzleReceive(cls)
-            swizzleCancel(cls)
+            available = swizzleSend(cls) && swizzleReceive(cls) && swizzleCancel(cls)
         }
     }
 
     // MARK: - Swizzles
 
-    private static func swizzleSend(_ cls: AnyClass) {
+    // ObjC: -(void)sendMessage:(NSURLSessionWebSocketMessage *)m completionHandler:(void(^)(NSError *))h
+    // The IMP is (self, _cmd, message, block); imp_implementationWithBlock blocks omit _cmd.
+    private static func swizzleSend(_ cls: AnyClass) -> Bool {
         let sel = NSSelectorFromString("sendMessage:completionHandler:")
-        guard let method = class_getInstanceMethod(cls, sel) else { return }
+        guard let method = class_getInstanceMethod(cls, sel) else { return false }
         typealias Fn = @convention(c) (AnyObject, Selector, AnyObject?, ((Error?) -> Void)?) -> Void
         let original = unsafeBitCast(method_getImplementation(method), to: Fn.self)
         let block: @convention(block) (AnyObject, AnyObject?, ((Error?) -> Void)?) -> Void = { task, message, handler in
@@ -50,11 +56,12 @@ enum WebSocketSwizzler {
             original(task, sel, message, handler)
         }
         method_setImplementation(method, imp_implementationWithBlock(block))
+        return true
     }
 
-    private static func swizzleReceive(_ cls: AnyClass) {
+    private static func swizzleReceive(_ cls: AnyClass) -> Bool {
         let sel = NSSelectorFromString("receiveMessageWithCompletionHandler:")
-        guard let method = class_getInstanceMethod(cls, sel) else { return }
+        guard let method = class_getInstanceMethod(cls, sel) else { return false }
         typealias Fn = @convention(c) (AnyObject, Selector, ((AnyObject?, Error?) -> Void)?) -> Void
         let original = unsafeBitCast(method_getImplementation(method), to: Fn.self)
         let block: @convention(block) (AnyObject, ((AnyObject?, Error?) -> Void)?) -> Void = { task, handler in
@@ -75,11 +82,12 @@ enum WebSocketSwizzler {
             }
         }
         method_setImplementation(method, imp_implementationWithBlock(block))
+        return true
     }
 
-    private static func swizzleCancel(_ cls: AnyClass) {
+    private static func swizzleCancel(_ cls: AnyClass) -> Bool {
         let sel = NSSelectorFromString("cancelWithCloseCode:reason:")
-        guard let method = class_getInstanceMethod(cls, sel) else { return }
+        guard let method = class_getInstanceMethod(cls, sel) else { return false }
         typealias Fn = @convention(c) (AnyObject, Selector, Int, AnyObject?) -> Void
         let original = unsafeBitCast(method_getImplementation(method), to: Fn.self)
         let block: @convention(block) (AnyObject, Int, AnyObject?) -> Void = { task, code, reason in
@@ -91,6 +99,7 @@ enum WebSocketSwizzler {
             original(task, sel, code, reason)
         }
         method_setImplementation(method, imp_implementationWithBlock(block))
+        return true
     }
 
     // MARK: - Helpers

@@ -44,7 +44,9 @@ final class WSPlugin: SandboxPlugin, @unchecked Sendable {
         WebSocketSwizzler.store = store
         WebSocketSwizzler.isEnabled = true
         WebSocketSwizzler.installIfNeeded()
-        context.log("websocket capture active")
+        context.log(WebSocketSwizzler.available
+            ? "websocket capture active"
+            : "websocket capture unavailable — URLSessionWebSocketTask hooks not found")
     }
 
     func deactivate() async {

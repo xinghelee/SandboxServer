@@ -25,6 +25,9 @@ export function FilterBuilder({ filter, setFilter }: { filter: string; setFilter
   // Seed from the current filter when possible; never clobber on open (only edits write back).
   const [rows, setRows] = useState<BuilderRow[]>(() => rowsFromQuery(filter) ?? [blankRow()]);
   const [matchAny, setMatchAny] = useState(false);
+  // The active text filter uses syntax the builder can't represent (e.g. OR) — warn that editing
+  // here will replace it, so a builder edit doesn't silently clobber it.
+  const [advanced] = useState(() => filter.trim() !== '' && rowsFromQuery(filter) === null);
 
   const apply = (nextRows: BuilderRow[], nextAny: boolean) => {
     setRows(nextRows);
@@ -38,6 +41,7 @@ export function FilterBuilder({ filter, setFilter }: { filter: string; setFilter
 
   return (
     <div class="filter-builder">
+      {advanced ? <div class="fb-warn">{t('fb.advanced')}</div> : null}
       <div class="fb-head">
         <div class="seg-toggle">
           <button type="button" class={!matchAny ? 'on' : ''} onClick={() => apply(rows, false)}>
