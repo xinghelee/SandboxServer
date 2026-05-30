@@ -95,42 +95,42 @@
 
 ## D. 防回归测试(你点名要的:保工具不被改坏)
 
-### [ ] D1 · 单测 FilePlugin 路径围栏(核心正确性,改动不踩雷)
+### [x] D1 · 单测 FilePlugin 路径围栏(核心正确性,改动不踩雷)  ✅ (c00ffdd)
 **工作量** M · **影响** 高 · 〔原 P1-1〕
 **问题** `FilePlugin.resolve` 把每个 fs/db 路径限制在允许根内,是 fs/db 一切操作的地基;grep 确认**零测试**触达它。即便是内部工具,一次回归也会让文件浏览/DB 行为悄悄出错。
 **做法** 新建 `FilePluginResolveTests`:`../../etc/passwd`/越界绝对路径→nil;nil/空/`/`→首个根;`'/a/b'` vs `'/a/bb'` 前缀被拒(line 81 尾斜杠守卫);根内指向根外符号链接被拒;合法根下不存在的叶子可解析(PUT)。再驱动 handler 用越界 path 断言 403。
 **涉及** `Tests/.../FilePluginResolveTests.swift`(新) · `FilePlugin.swift` · `PluginContext.swift`
 **验收** `swift test --traits SandboxServerEnabled --filter FilePluginResolveTests`。
 
-### [ ] D2 · 单测 Range 解析 + 206/416/Content-Range,以及顺序契约(LogStore 分页、WSHub per-channel seq)
+### [x] D2 · 单测 Range 解析 + 206/416/Content-Range,以及顺序契约(LogStore 分页、WSHub per-channel seq)  ✅ (c00ffdd)
 **工作量** M · **影响** 高 · 〔原 P1-10〕
 **问题** 这些都是前端控制台直接依赖的契约,却只被冒烟测过:`byteRange` 三分支 + `FilePlugin.read` 的 206/416 钳制(off-by-one 会损坏分段下载);`LogStore.list` 两形态 + 环形淘汰;`WSHub` per-channel 单调 seq(resume 契约)。macOS host 全可测。
 **做法** `RangeReadTests`(byteRange 各情形 + read 状态码/Content-Range/切片长度)、`LogStoreTests`(tail/sinceSeq/nextCursor/过滤/淘汰且 seq 不复用)、`WSHubSeqTests`(双 channel seq 各自 1,2,3 且 payload 往返)。
 **涉及** `Tests/.../{RangeReadTests,LogStoreTests,WSHubSeqTests}.swift`(新) · `FilePlugin.swift` · `WSHub.swift`
 **验收** `swift test --traits SandboxServerEnabled --filter 'RangeReadTests|LogStoreTests|WSHubSeqTests'`。
 
-### [ ] D3 · MCP bridge 单测 + CI 跑 NoOp 路径
+### [x] D3 · MCP bridge 单测 + CI 跑 NoOp 路径  ✅ (afa31bd)
 **工作量** M · **影响** 中 · 〔原 P1-11〕
 **问题** bridge 零测试(CI 只 tsc):`parseFlags`/`resolveEndpoint`(0-1-多 peer)/envelope·DeviceApiError 解包/`fillPath`/`pickQuery` 无覆盖。另外 `scripts/ci.sh` 构建 no-op 路径却从不在 trait 关闭下 `swift test`——坏掉的 no-op `start()` 或没编成空的测试会静默过 CI。
 **做法** bridge 加 `node:test`+`tsx`(无新运行时依赖)覆盖上述及 jpegBase64 图块分支,加 `npm test`;`ci.sh` tsc 后调 `npm test`,加一个 trait 关闭的 `swift test` job;在 CLAUDE.md 记录该 no-op 测试命令。
 **涉及** `mcp-bridge/package.json` · `discovery.ts` · `deviceClient.ts` · `scripts/ci.sh`
 **验收** `ci.sh` 同跑 `npm test` 与 trait-OFF `swift test` 且通过。
 
-### [ ] D4 · 让 HTTP 读超时可注入 + 快速 slow-loris 测试
+### [x] D4 · 让 HTTP 读超时可注入 + 快速 slow-loris 测试  ✅ (c4dc097)
 **工作量** M · **影响** 中 · 〔原 P1-6;CLAUDE.md 点名〕
 **问题** `NWServerConnection.defaultReadTimeout` 硬编码静态 30(line 120),无配置旋钮,导致半开连接清理逻辑不等 30s 就无法测、当前未测。一处竞态回归会静默发版。
 **做法** `SandboxConfig` 加 `requestReadTimeout=30`(必要时镜像 NoOp);经 accept 路径穿到 `NWServerConnection.init`;加测试:裸 loopback socket 发部分 header 不终止、setUp 设 ~0.5s,断言 ~1s 内关闭;生产默认仍 30s。
 **涉及** `SandboxConfig.swift` · `NetworkFrameworkTransport.swift` · `SandboxServerCore.swift` · `Tests/.../ReadTimeoutTests.swift`(新)
 **验收** `swift test --traits SandboxServerEnabled --filter ReadTimeoutTests` ~1s 通过。
 
-### [ ] D5 · 单测 Host 检查 + AuthGate 锁定 / ReleaseGuard 拒绝矩阵(偏安全,可后置)
+### [x] D5 · 单测 Host 检查 + AuthGate 锁定 / ReleaseGuard 拒绝矩阵(偏安全,可后置)  ✅ (3ca72e1)
 **工作量** S · **影响** 中 · 〔原 P1-8 + P1-9〕
 **问题** `MiddlewareChain.validateHost`(line 27-47,解析非平凡)、`AuthGate` 20 次/30s 锁定(line 34-40)、`ReleaseGuard.verify`(直读 `Bundle.main` 无注入缝,macOS 不可达)都未测。受信任网络下安全性优先级降低,但这些是廉价的正确性兜底。
 **做法** `MiddlewareHostTests`(合法/非法 host 矩阵 + authed 路由 host 先于 token)+ AuthGate 锁定窗口;`ReleaseGuard` 抽出纯函数 `evaluate(isSimulator:isMacOS:isTestFlight:hasProvisioning:)`,单测五行矩阵。
 **涉及** `Tests/.../{MiddlewareHostTests,ReleaseGuardTests}.swift`(新) · `MiddlewareChain.swift` · `AuthGate.swift` · `ReleaseGuard.swift`
 **验收** 对应 `--filter` 通过。
 
-### [ ] D6 · 强化 PublicAPICompatTests 捕获 NoOp/Core 新增式漂移
+### [x] D6 · 强化 PublicAPICompatTests 捕获 NoOp/Core 新增式漂移  ✅ (c00ffdd)
 **工作量** S · **影响** 中 · 〔原 P2-5〕
 **问题** 它只把两引擎绑成 `any SandboxServerEngine` 断言两次 `isRunning==false`,抓不到新增式漂移(给 Core 加公有方法不加协议/NoOp 仍能编)——而 CLAUDE.md 称这个双产品不变量"承重"。
 **做法** 通过协议类型对两引擎跑遍全表面(register/setHostValue/addRoot/log/stop + 模式匹配 start 的 StartResult),签名变更强制两处更新;协议加"两个引擎都要加"注释。
