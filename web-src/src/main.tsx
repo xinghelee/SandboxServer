@@ -129,50 +129,101 @@ function Header({ health }: { health: Health | null }) {
   );
 }
 
+type NavVisual = {
+  icon: string;
+  accent: string;
+};
+
+const DEFAULT_NAV_VISUAL: NavVisual = { icon: '·', accent: 'var(--ink-dim)' };
+
+const NAV_VISUALS: Record<string, NavVisual> = {
+  home: { icon: '⌂', accent: 'var(--accent)' },
+  net: { icon: '↗', accent: 'var(--s3)' },
+  network: { icon: '↗', accent: 'var(--s3)' },
+  fs: { icon: '▣', accent: 'var(--accent)' },
+  files: { icon: '▣', accent: 'var(--accent)' },
+  db: { icon: '◫', accent: '#a371f7' },
+  database: { icon: '◫', accent: '#a371f7' },
+  logs: { icon: '≡', accent: 'var(--s4)' },
+  log: { icon: '≡', accent: 'var(--s4)' },
+  screen: { icon: '▯', accent: '#39c5bb' },
+  hierarchy: { icon: '▱', accent: '#f778ba' },
+  layers: { icon: '▱', accent: '#f778ba' },
+  ws: { icon: '⇄', accent: 'var(--link)' },
+  websocket: { icon: '⇄', accent: 'var(--link)' },
+  bundle: { icon: '⬡', accent: '#d29922' },
+};
+
+function navVisual(id: string, key?: string): NavVisual {
+  return NAV_VISUALS[key || ''] ?? NAV_VISUALS[id] ?? DEFAULT_NAV_VISUAL;
+}
+
+function NavLink({
+  target,
+  active,
+  title,
+  code,
+  visual,
+}: {
+  target: string;
+  active: boolean;
+  title: string;
+  code: string;
+  visual: NavVisual;
+}) {
+  return (
+    <a
+      href={`#${target}`}
+      class={`nav-item ${active ? 'active' : ''}`}
+      aria-current={active ? 'page' : undefined}
+      style={`--item-accent:${visual.accent}`}
+      onClick={(e) => {
+        e.preventDefault();
+        navigate(target);
+      }}
+    >
+      <span class="nav-icon" aria-hidden="true">
+        {visual.icon}
+      </span>
+      <span class="nav-text">
+        <span class="title">{title}</span>
+        <span class="id">{code}</span>
+      </span>
+    </a>
+  );
+}
+
 function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
   const { t } = useI18n();
   const overviewActive = route === '/' || route === '/overview';
-  const go = (target: string) => (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      navigate(target);
-    }
-  };
   return (
     <nav class="nav">
-      <a
-        class={`nav-item ${overviewActive ? 'active' : ''}`}
-        role="link"
-        tabIndex={0}
-        aria-current={overviewActive ? 'page' : undefined}
-        onClick={() => navigate('/overview')}
-        onKeyDown={go('/overview')}
-      >
-        <span class="gutter">{overviewActive ? '▸' : '·'}</span>
-        <span class="title">{t('home.title')}</span>
-        <span class="id">home</span>
-      </a>
-      <div class="nav-label">{t('nav.modules')}</div>
-      {plugins.map((p) => {
-        const key = p.panelKey || p.id;
-        const target = `/${key}`;
-        const active = route === target;
-        return (
-          <a
-            key={key}
-            class={`nav-item ${active ? 'active' : ''}`}
-            role="link"
-            tabIndex={0}
-            aria-current={active ? 'page' : undefined}
-            onClick={() => navigate(target)}
-            onKeyDown={go(target)}
-          >
-            <span class="gutter">{active ? '▸' : '·'}</span>
-            <span class="title">{moduleName(p.id, p.title)}</span>
-            <span class="id">{p.id}</span>
-          </a>
-        );
-      })}
+      <div class="nav-section nav-section-primary">
+        <NavLink
+          target="/overview"
+          active={overviewActive}
+          title={t('home.title')}
+          code="home"
+          visual={navVisual('home')}
+        />
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">{t('nav.modules')}</div>
+        {plugins.map((p) => {
+          const key = p.panelKey || p.id;
+          const target = `/${key}`;
+          return (
+            <NavLink
+              key={key}
+              target={target}
+              active={route === target}
+              title={moduleName(p.id, p.title)}
+              code={p.id}
+              visual={navVisual(p.id, key)}
+            />
+          );
+        })}
+      </div>
       <div class="nav-foot">
         <div>
           SBX <span class="v">v0.1.0</span>
