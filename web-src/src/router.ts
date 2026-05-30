@@ -4,7 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 
 export function currentRoute(): string {
   const hash = window.location.hash || '';
-  const path = hash.replace(/^#/, '');
+  const path = hash.replace(/^#/, '').split('?')[0] || '/';
   return path.startsWith('/') ? path : `/${path}`;
 }
 

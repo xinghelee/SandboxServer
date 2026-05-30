@@ -229,6 +229,17 @@ final class ServerEndToEndTests: XCTestCase {
         let newID = try XCTUnwrap(detail?["id"] as? String)
         XCTAssertNotEqual(newID, id, "replay must create a NEW transaction, not mutate the original")
 
+        // Replay can also edit the request line: method and URL are first-class overrides.
+        let (lineJSON, lineStatus) = try await getJSON(
+            "\(apiBase!)/net/requests/\(id)/replay", token: token, method: "POST",
+            jsonBody: ["method": "POST", "url": "\(apiBase!)/plugins"]
+        )
+        XCTAssertEqual(lineStatus, 200)
+        let line = lineJSON["data"] as? [String: Any]
+        XCTAssertEqual(line?["method"] as? String, "POST")
+        XCTAssertTrue((line?["url"] as? String)?.contains("/plugins") ?? false)
+        XCTAssertEqual(line?["status"] as? Int, 200)
+
         // Replay WITH a header override: it MERGES onto the captured (unredacted) headers. Because it
         // merges (not replaces), the original auth survives without being re-sent — so the replay is
         // still authorized (status 200) and the override header shows up on the new transaction.

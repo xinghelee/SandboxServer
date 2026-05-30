@@ -91,17 +91,21 @@ final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
                 guard let payload = await store.replayPayload(id: id) else {
                     return .error("not_found", "No captured request '\(id)'.", status: 404)
                 }
-                guard let url = URL(string: payload.url) else {
-                    return .error("bad_request", "Captured request has no replayable URL.", status: 400)
-                }
-                // Optional overrides: { "headers": {…}, "body": "<base64>" }. Omitted fields keep
-                // the original. Header overrides MERGE onto the captured (unredacted) headers — the
+                // Optional overrides: { "method": "POST", "url": "https://…", "headers": {…}, "body": "<base64>" }.
+                // Omitted fields keep the original. Header overrides MERGE onto the captured (unredacted) headers — the
                 // override value wins per key — so a console/agent only has to send the headers it
                 // wants to change while the original auth is preserved automatically (the wire-facing
                 // detail redacts auth, so a full-replace would force re-sending "<redacted>"). To
                 // swap auth, override that one key; removing a header isn't supported (rare for replay).
-                struct Overrides: Decodable { let headers: [String: String]?; let body: String? }
+                struct Overrides: Decodable { let method: String?; let url: String?; let headers: [String: String]?; let body: String? }
                 let overrides = try? await req.decodeJSON(Overrides.self)
+                let method = overrides?.method?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                let replayMethod = (method?.isEmpty == false) ? method! : payload.method
+                let urlString = overrides?.url?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let replayURLString = (urlString?.isEmpty == false) ? urlString! : payload.url
+                guard let url = URL(string: replayURLString) else {
+                    return .error("bad_request", "Replay request has no valid URL.", status: 400)
+                }
                 // Case-insensitive merge: HTTP header names are case-insensitive, so an override for
                 // "authorization" must WIN over a captured "Authorization" rather than producing two
                 // keys (which URLRequest would then coalesce in an undefined order). Drop any original
@@ -113,14 +117,14 @@ final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
                 let body = overrides?.body.flatMap { Data(base64Encoded: $0) } ?? payload.body
 
                 var urlReq = URLRequest(url: url)
-                urlReq.httpMethod = payload.method
+                urlReq.httpMethod = replayMethod
                 urlReq.allHTTPHeaderFields = headers
                 urlReq.httpBody = body
 
                 // Record the replay as a NEW transaction, then issue it through the non-capturing
                 // session (so it isn't double-recorded) and complete that same transaction.
                 let newID = UUID().uuidString
-                await store.begin(id: newID, method: payload.method, url: url, headers: headers, reqBody: body)
+                await store.begin(id: newID, method: replayMethod, url: url, headers: headers, reqBody: body)
                 do {
                     let (data, http) = try await SandboxURLProtocol.sendUncaptured(urlReq)
                     await store.complete(

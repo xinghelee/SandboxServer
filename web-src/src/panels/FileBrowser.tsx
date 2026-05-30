@@ -6,6 +6,62 @@ import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { FilePreviewDrawer } from './FilePreviewDrawer';
 import { formatBytes, formatClock } from '../util/format';
+import { navigate } from '../router';
+
+type FileViewMode = 'list' | 'grid';
+type FileIconKind = 'db' | 'json' | 'plist' | 'text' | 'image' | 'archive' | 'code' | 'binary' | 'file';
+const VIEW_KEY = 'sbx.fs.view';
+
+function loadViewMode(): FileViewMode {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+function fileIconKind(entry: FileEntry): FileIconKind {
+  const name = entry.name.toLowerCase();
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+  if (['sqlite', 'sqlite3', 'db', 'db3', 'realm'].includes(ext) || name.endsWith('.sqlite-shm') || name.endsWith('.sqlite-wal')) return 'db';
+  if (['json', 'geojson', 'har'].includes(ext)) return 'json';
+  if (ext === 'plist') return 'plist';
+  if (['txt', 'log', 'md', 'csv', 'tsv'].includes(ext) || entry.mime.startsWith('text/')) return 'text';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'svg', 'pdf'].includes(ext) || entry.mime.startsWith('image/')) return 'image';
+  if (['zip', 'gz', 'tgz', 'tar', 'ipa'].includes(ext)) return 'archive';
+  if (['swift', 'js', 'ts', 'tsx', 'jsx', 'html', 'css', 'xml', 'yml', 'yaml'].includes(ext)) return 'code';
+  if (entry.mime === 'application/octet-stream') return 'binary';
+  return 'file';
+}
+
+function isOpenableDatabase(entry: FileEntry) {
+  const name = entry.name.toLowerCase();
+  const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '';
+  return ['sqlite', 'sqlite3', 'db', 'db3', 'realm'].includes(ext);
+}
+
+function fileIconLabel(kind: FileIconKind) {
+  switch (kind) {
+    case 'db':
+      return 'DB';
+    case 'json':
+      return '{}';
+    case 'plist':
+      return 'PL';
+    case 'text':
+      return 'TXT';
+    case 'image':
+      return 'IMG';
+    case 'archive':
+      return 'ZIP';
+    case 'code':
+      return '</>';
+    case 'binary':
+      return 'BIN';
+    case 'file':
+      return 'FILE';
+  }
+}
 
 /** Browses a single root (the sandbox container, or the read-only app bundle). Owns its own cwd,
  *  breadcrumbs, listing, and preview drawer; resets to `rootPath` whenever the root changes. */
@@ -24,6 +80,16 @@ export function FileBrowser({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<FileEntry | null>(null);
+  const [viewMode, setViewMode] = useState<FileViewMode>(loadViewMode);
+
+  const setView = (mode: FileViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_KEY, mode);
+    } catch {
+      /* storage is optional */
+    }
+  };
 
   // A new root → jump back to its top.
   useEffect(() => {
@@ -79,6 +145,14 @@ export function FileBrowser({
           </span>
         ))}
         <div class="spacer" />
+        <div class="seg-toggle fs-view-toggle" title={t('fs.view')}>
+          <button type="button" class={viewMode === 'list' ? 'on' : ''} aria-pressed={viewMode === 'list'} onClick={() => setView('list')}>
+            ▤ {t('fs.view.list')}
+          </button>
+          <button type="button" class={viewMode === 'grid' ? 'on' : ''} aria-pressed={viewMode === 'grid'} onClick={() => setView('grid')}>
+            ▦ {t('fs.view.grid')}
+          </button>
+        </div>
         {listing ? <span class="count-chip">{items.length}</span> : null}
         <button class="btn" onClick={reload}>
           {t('net.refresh')}
@@ -91,6 +165,57 @@ export function FileBrowser({
         <Loading labelKey="fs.loading" />
       ) : items.length === 0 && !error ? (
         <EmptyState icon="∅" titleKey="fs.empty" />
+      ) : viewMode === 'grid' ? (
+        <div class="fs-card-grid">
+          {items.map((e) => {
+            if (e.isDir) {
+              return (
+                <button type="button" key={e.path} class="fs-card dir" onClick={() => setCwd(e.path)} title={e.path}>
+                  <span class="fs-card-ico" aria-hidden="true">
+                    ▸
+                  </span>
+                  <span class="fs-card-main">
+                    <span class="fs-card-name">{e.name}/</span>
+                    <span class="fs-card-meta">
+                      {t('fs.kind.folder')}
+                      <span aria-hidden="true"> · </span>
+                      {e.mtime ? formatClock(e.mtime) : '—'}
+                    </span>
+                  </span>
+                </button>
+              );
+            }
+            const kind = fileIconKind(e);
+            const openFile = () => {
+              if (isOpenableDatabase(e)) {
+                navigate(`/db?path=${encodeURIComponent(e.path)}`);
+              } else {
+                setSelected(e);
+              }
+            };
+            return (
+              <button
+                type="button"
+                key={e.path}
+                class={`fs-card file file-${kind}`}
+                onClick={openFile}
+                title={e.path}
+              >
+                <span class="fs-card-ico" aria-hidden="true">
+                  {fileIconLabel(kind)}
+                </span>
+                <span class="fs-card-main">
+                  <span class="fs-card-name">{e.name}</span>
+                  <span class="fs-card-meta">
+                    {formatBytes(e.size)}
+                    <span aria-hidden="true"> · </span>
+                    {e.mtime ? formatClock(e.mtime) : '—'}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       ) : (
         <div class="table-wrap">
           <table class="grid">

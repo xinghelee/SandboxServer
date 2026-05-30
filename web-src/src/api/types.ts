@@ -296,6 +296,8 @@ export interface WsConnSummary {
   startedAt: number;
   state: WsConnState | string;
   closedAt: number | null;
+  closeReason?: string | null;
+  error?: string | null;
   messageCount: number;
 }
 

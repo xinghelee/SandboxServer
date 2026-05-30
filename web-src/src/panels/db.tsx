@@ -5,15 +5,42 @@ import { useI18n } from '../i18n';
 import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { navigate } from '../router';
 
 const DB_MAX_ROWS = 5000; // cap on accumulated loadMore rows so the grid can't grow unbounded
+type DbViewMode = 'list' | 'grid';
+const DB_VIEW_KEY = 'sbx.db.view';
+
+function loadDbViewMode(): DbViewMode {
+  try {
+    return localStorage.getItem(DB_VIEW_KEY) === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+function requestedDbPath() {
+  const query = window.location.hash.split('?')[1] || '';
+  return new URLSearchParams(query).get('path');
+}
 
 export function DbPanel() {
   const { t } = useI18n();
+  const targetPath = requestedDbPath();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dbs, setDbs] = useState<DbDescriptor[]>([]);
   const [selected, setSelected] = useState<DbDescriptor | null>(null);
+  const [viewMode, setViewMode] = useState<DbViewMode>(loadDbViewMode);
+
+  const setView = (mode: DbViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(DB_VIEW_KEY, mode);
+    } catch {
+      /* storage is optional */
+    }
+  };
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -31,7 +58,18 @@ export function DbPanel() {
     return () => ctrl.abort();
   }, []);
 
-  if (selected) return <DbExplorer db={selected} onBack={() => setSelected(null)} />;
+  useEffect(() => {
+    if (!targetPath || selected || dbs.length === 0) return;
+    const match = dbs.find((db) => db.path === targetPath || db.id === targetPath);
+    if (match) setSelected(match);
+  }, [dbs, selected, targetPath]);
+
+  const backToList = () => {
+    setSelected(null);
+    if (targetPath) navigate('/db');
+  };
+
+  if (selected) return <DbExplorer db={selected} onBack={backToList} />;
 
   return (
     <div class="panel">
@@ -39,6 +77,16 @@ export function DbPanel() {
         <h2>{t('db.title')}</h2>
         {!loading && dbs.length > 0 ? <span class="count-chip">{t('db.found', { n: dbs.length })}</span> : null}
         <div class="spacer" />
+        {!loading && dbs.length > 0 ? (
+          <div class="seg-toggle db-view-toggle" title={t('db.view')}>
+            <button type="button" class={viewMode === 'list' ? 'on' : ''} aria-pressed={viewMode === 'list'} onClick={() => setView('list')}>
+              ▤ {t('db.view.list')}
+            </button>
+            <button type="button" class={viewMode === 'grid' ? 'on' : ''} aria-pressed={viewMode === 'grid'} onClick={() => setView('grid')}>
+              ▦ {t('db.view.grid')}
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {error ? <div class="error-banner">{error}</div> : null}
@@ -48,11 +96,16 @@ export function DbPanel() {
       ) : dbs.length === 0 ? (
         <EmptyState icon="▤" titleKey="db.empty.title" subKey="db.empty.sub" />
       ) : (
-        <div class="db-list">
+        <div class={`db-list ${viewMode}`}>
           {dbs.map((db) => (
-            <button class="db-card as-button" key={db.id} onClick={() => setSelected(db)}>
+            <button class={`db-card as-button ${viewMode} db-${db.engine}`} key={db.id} onClick={() => setSelected(db)}>
+              {viewMode === 'grid' ? (
+                <span class={`db-card-visual ${db.engine}`} aria-hidden="true">
+                  <span>{db.engine === 'sqlite' ? 'SQL' : db.engine === 'coredata' ? 'CD' : 'RM'}</span>
+                </span>
+              ) : null}
               <span class={`engine-badge ${db.engine}`}>{db.engine}</span>
-              <div style="flex:1; min-width:0; text-align:left">
+              <div class="db-card-main">
                 <div class="db-name">{db.name}</div>
                 <div class="db-path" title={db.path}>
                   {db.path}

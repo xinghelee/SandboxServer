@@ -13,6 +13,19 @@ import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { formatBytes, formatClock } from '../util/format';
 
+function cleanWsReason(raw: string) {
+  const localized = raw.match(/NSLocalizedDescription=([^,}]+)/)?.[1];
+  if (localized) return localized.trim();
+  const quoted = raw.match(/"([^"]+)"/)?.[1];
+  return (quoted || raw).trim();
+}
+
+function wsProblem(conn: Pick<WsConnSummary, 'error' | 'closeReason'>) {
+  if (conn.error) return { labelKey: 'ws.failure', text: cleanWsReason(conn.error), title: conn.error };
+  if (conn.closeReason) return { labelKey: 'ws.closeReason', text: cleanWsReason(conn.closeReason), title: conn.closeReason };
+  return null;
+}
+
 /** Captured WebSocket connections (URLSessionWebSocketTask). List → per-connection message stream. */
 export function WSPanel() {
   const { t } = useI18n();
@@ -57,7 +70,13 @@ export function WSPanel() {
           );
         } else if (msg.type === 'connection.closed') {
           const p = msg.payload as unknown as WsClosedPayload;
-          setConns((prev) => prev.map((c) => (c.id === p.id ? { ...c, state: p.state, closedAt: p.closedAt } : c)));
+          setConns((prev) =>
+            prev.map((c) =>
+              c.id === p.id
+                ? { ...c, state: p.state, closedAt: p.closedAt, closeReason: p.closeReason ?? null, error: p.error ?? null }
+                : c,
+            ),
+          );
         } else if (msg.type === 'message') {
           const p = msg.payload as unknown as WsMsgSummary;
           setConns((prev) => prev.map((c) => (c.id === p.connId ? { ...c, messageCount: c.messageCount + 1 } : c)));
@@ -106,19 +125,27 @@ export function WSPanel() {
         <EmptyState icon="⇅" titleKey="ws.empty.title" subKey="ws.empty.sub" />
       ) : (
         <div class="db-list">
-          {conns.map((c) => (
-            <button class="db-card as-button" key={c.id} onClick={() => setSelected(c.id)}>
-              <span class={`ws-state ${c.state}`}>{c.state}</span>
-              <div style="flex:1; min-width:0; text-align:left">
-                <div class="db-name" title={c.url}>
-                  {c.url}
+          {conns.map((c) => {
+            const problem = wsProblem(c);
+            return (
+              <button class="db-card as-button" key={c.id} onClick={() => setSelected(c.id)}>
+                <span class={`ws-state ${c.state}`}>{c.state}</span>
+                <div class="ws-conn-main">
+                  <div class="db-name" title={c.url}>
+                    {c.url}
+                  </div>
+                  <div class="db-path">{c.host}</div>
+                  {problem ? (
+                    <div class="ws-reason" title={problem.title}>
+                      <span>{t(problem.labelKey)}:</span> {problem.text}
+                    </div>
+                  ) : null}
                 </div>
-                <div class="db-path">{c.host}</div>
-              </div>
-              <span class="count-chip">{t('ws.msgs', { n: c.messageCount })}</span>
-              <span class="db-go">›</span>
-            </button>
-          ))}
+                <span class="count-chip">{t('ws.msgs', { n: c.messageCount })}</span>
+                <span class="db-go">›</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -130,6 +157,7 @@ function WSConnectionView({ conn, onBack }: { conn: WsConnSummary; onBack: () =>
   const [msgs, setMsgs] = useState<WsMsgSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const problem = wsProblem(conn);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -171,6 +199,12 @@ function WSConnectionView({ conn, onBack }: { conn: WsConnSummary; onBack: () =>
         <div class="spacer" />
         <span class="count-chip">{t('ws.msgs', { n: msgs.length })}</span>
       </div>
+
+      {problem ? (
+        <div class="ws-detail-reason" title={problem.title}>
+          <span>{t(problem.labelKey)}:</span> {problem.text}
+        </div>
+      ) : null}
 
       {error ? <div class="error-banner">{error}</div> : null}
 

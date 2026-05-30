@@ -37,6 +37,8 @@ struct WSConnSummary: Encodable, Sendable {
     let startedAt: Int
     let state: String
     let closedAt: Int?
+    let closeReason: String?
+    let error: String?
     let messageCount: Int
 }
 
@@ -136,7 +138,9 @@ actor WSStore {
     func listConnections(limit: Int) -> Page<WSConnSummary> {
         let items = conns.reversed().prefix(limit).map {
             WSConnSummary(id: $0.id, url: $0.url, host: $0.host, startedAt: $0.startedAtMs,
-                          state: $0.state.rawValue, closedAt: $0.closedAtMs, messageCount: $0.messageCount)
+                          state: $0.state.rawValue, closedAt: $0.closedAtMs,
+                          closeReason: $0.closeReason, error: $0.error,
+                          messageCount: $0.messageCount)
         }
         return Page(items: Array(items), nextCursor: nil)
     }

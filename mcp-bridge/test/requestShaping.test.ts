@@ -32,8 +32,10 @@ test("pickQuery keeps only present, non-empty keys", () => {
 test("buildReplayBody base64-encodes a UTF-8 body, passes headers through, and omits absent fields", () => {
   // id-only → faithful replay (empty override body): no headers, no body.
   assert.deepEqual(buildReplayBody({ id: "x" }), {});
-  // headers pass straight through (the device merges them); body is base64 of the UTF-8 text.
-  assert.deepEqual(buildReplayBody({ id: "x", headers: { "X-Tag": "1" }, body: "héllo" }), {
+  // method/url replace the request line; headers pass straight through; body is base64 of the UTF-8 text.
+  assert.deepEqual(buildReplayBody({ id: "x", method: "post", url: " https://example.com/retry ", headers: { "X-Tag": "1" }, body: "héllo" }), {
+    method: "POST",
+    url: "https://example.com/retry",
     headers: { "X-Tag": "1" },
     body: Buffer.from("héllo", "utf8").toString("base64"),
   });

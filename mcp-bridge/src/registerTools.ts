@@ -73,6 +73,7 @@ export function pickQuery(args: Record<string, unknown>, keys: string[]): Record
 
 /**
  * Build the JSON body for POST /net/requests/{id}/replay from tool args.
+ * - `method` and `url` replace the original request line when provided.
  * - `headers` (object) pass straight through — the device MERGES them onto the captured request's
  *   original (unredacted) headers, so only the headers you want to change need to be sent and the
  *   original auth is preserved unless you override that key.
@@ -82,6 +83,12 @@ export function pickQuery(args: Record<string, unknown>, keys: string[]): Record
  */
 export function buildReplayBody(args: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
+  if (typeof args.method === "string" && args.method.trim() !== "") {
+    out.method = args.method.trim().toUpperCase();
+  }
+  if (typeof args.url === "string" && args.url.trim() !== "") {
+    out.url = args.url.trim();
+  }
   if (args.headers && typeof args.headers === "object" && !Array.isArray(args.headers)) {
     out.headers = args.headers;
   }
@@ -116,6 +123,8 @@ const BINDINGS: Record<string, ToolBinding> = {
   net_replay_request: {
     shape: {
       id: str.describe("request id to replay"),
+      method: optStr.describe("replacement HTTP method; omit to keep the captured method"),
+      url: optStr.describe("replacement URL; omit to keep the captured URL"),
       headers: z
         .record(z.string(), z.string())
         .optional()

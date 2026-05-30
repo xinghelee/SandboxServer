@@ -80,6 +80,8 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
 
   // Replay editor state.
   const [replayOpen, setReplayOpen] = useState(false);
+  const [methodText, setMethodText] = useState('');
+  const [urlText, setUrlText] = useState('');
   const [headersText, setHeadersText] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [replaying, setReplaying] = useState(false);
@@ -116,6 +118,8 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
   // Prefill the editor fields from the loaded detail (raw, so an untouched field round-trips exactly
   // and is therefore NOT sent — the device then keeps the original unredacted header / full body).
   const fillFromDetail = useCallback(() => {
+    setMethodText(detail?.method ?? '');
+    setUrlText(detail?.url ?? '');
     setHeadersText(headersToText(detail?.reqHeaders));
     setBodyText(detail?.reqBody ?? '');
   }, [detail]);
@@ -145,7 +149,11 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
     for (const [k, v] of Object.entries(edited)) {
       if (originalByLower[k.toLowerCase()] !== v) headerOverrides[k] = v;
     }
-    const overrides: { headers?: Record<string, string>; body?: string } = {};
+    const overrides: { method?: string; url?: string; headers?: Record<string, string>; body?: string } = {};
+    const method = methodText.trim().toUpperCase();
+    if (method && method !== detail.method.toUpperCase()) overrides.method = method;
+    const url = urlText.trim();
+    if (url && url !== detail.url) overrides.url = url;
     if (Object.keys(headerOverrides).length > 0) overrides.headers = headerOverrides;
     if (bodyText !== (detail.reqBody ?? '')) overrides.body = utf8ToBase64(bodyText);
 
@@ -157,7 +165,7 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
       .then((d) => setReplayResult({ id: d.id, status: d.status, durationMs: d.durationMs }))
       .catch((e: unknown) => setReplayError(e instanceof ApiRequestError ? e.message : String(e)))
       .finally(() => setReplaying(false));
-  }, [detail, headersText, bodyText, id]);
+  }, [detail, methodText, urlText, headersText, bodyText, id]);
 
   return (
     <>
@@ -241,8 +249,24 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
               {replayOpen ? (
                 <div class="replay-editor">
                   <div class="replay-line">
-                    <span class="d-method">{detail.method}</span>
-                    <span class="d-url" title={detail.url}>{detail.url}</span>
+                    <label class="replay-inline">
+                      <span>{t('d.replay.method')}</span>
+                      <input
+                        class="input replay-method"
+                        value={methodText}
+                        spellcheck={false}
+                        onInput={(e) => setMethodText((e.target as HTMLInputElement).value)}
+                      />
+                    </label>
+                    <label class="replay-inline replay-url-field">
+                      <span>{t('d.replay.url')}</span>
+                      <input
+                        class="input replay-url"
+                        value={urlText}
+                        spellcheck={false}
+                        onInput={(e) => setUrlText((e.target as HTMLInputElement).value)}
+                      />
+                    </label>
                   </div>
                   <div class="help-note">{t('d.replay.note')}</div>
 
@@ -252,6 +276,7 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
                     class="replay-ta"
                     rows={5}
                     spellcheck={false}
+                    placeholder={t('d.replay.headers.placeholder')}
                     value={headersText}
                     onInput={(e) => setHeadersText((e.target as HTMLTextAreaElement).value)}
                   />
@@ -263,6 +288,7 @@ export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
                     class="replay-ta mono"
                     rows={6}
                     spellcheck={false}
+                    placeholder={t('d.replay.body.placeholder')}
                     value={bodyText}
                     onInput={(e) => setBodyText((e.target as HTMLTextAreaElement).value)}
                   />
