@@ -21,6 +21,7 @@ import { ScreenPanel } from './panels/screen';
 import { HierarchyPanel } from './panels/hierarchy';
 import { WSPanel } from './panels/ws';
 import { BundlePanel } from './panels/bundle';
+import { PerfPanel } from './panels/perf';
 import './styles.css';
 
 // Consume any bootstrap ?token= before anything reads sessionStorage.
@@ -52,6 +53,9 @@ function panelFor(plugin: Plugin) {
       return <WSPanel />;
     case 'bundle':
       return <BundlePanel />;
+    case 'perf':
+    case 'performance':
+      return <PerfPanel />;
     default:
       return <EmptyState icon="?" title={plugin.panelKey} subKey="err.unknownpanel" />;
   }
@@ -173,6 +177,8 @@ const NAV_VISUALS: Record<string, NavVisual> = {
   ws: { icon: '⇄', accent: 'var(--link)' },
   websocket: { icon: '⇄', accent: 'var(--link)' },
   bundle: { icon: '⬡', accent: '#d29922' },
+  perf: { icon: '◴', accent: '#3fb950' },
+  performance: { icon: '◴', accent: '#3fb950' },
   mcp: { icon: '⌘', accent: '#39c5bb' },
 };
 

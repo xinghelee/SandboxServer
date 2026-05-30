@@ -44,8 +44,11 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     /// browsable root (so the `files` plugin can list the whole Payload tree). iOS-focused but
     /// safe everywhere — degrades to `supported: false` on a non-app host.
     public static let appBundle = BuiltInPlugins(rawValue: 1 << 7)
+    /// Live performance HUD — FPS, CPU, memory footprint, and thermal state, streamed over the
+    /// `perf` channel. Safe everywhere; FPS/hitch need UIKit (null on a non-UIKit host).
+    public static let performance = BuiltInPlugins(rawValue: 1 << 8)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle, .performance]
     public static let none: BuiltInPlugins = []
 }
 

@@ -299,6 +299,11 @@ const BINDINGS: Record<string, ToolBinding> = {
     },
     invoke: (device, _d, args) => device.get("/hierarchy", pickQuery(args, ["maxDepth", "maxNodes"])),
   },
+  // ---- perf ---------------------------------------------------------------
+  perf_snapshot: {
+    shape: {},
+    invoke: (device) => device.get("/perf"),
+  },
 };
 
 /**

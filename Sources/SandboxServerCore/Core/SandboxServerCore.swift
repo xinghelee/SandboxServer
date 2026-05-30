@@ -115,6 +115,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.hierarchy) { allPlugins.append(HierarchyPlugin()) }
         if cfg.builtInPlugins.contains(.websocket) { allPlugins.append(WSPlugin()) }
         if cfg.builtInPlugins.contains(.appBundle) { allPlugins.append(BundlePlugin()) }
+        if cfg.builtInPlugins.contains(.performance) { allPlugins.append(PerfPlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {

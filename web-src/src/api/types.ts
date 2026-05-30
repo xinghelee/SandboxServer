@@ -26,6 +26,18 @@ export interface ListPayload<T> {
   nextCursor: string | null;
 }
 
+export interface PerfSample {
+  ts: number;
+  supported: boolean;
+  fps: number | null;
+  hitchMs: number | null;
+  cpu: number;
+  memMB: number;
+  memLimitMB: number;
+  memPct: number | null;
+  thermal: string;
+}
+
 // --- Meta ---
 
 export type BindingPolicy = 'loopback' | 'localNetwork';
@@ -365,7 +377,7 @@ export interface WsClosedPayload {
 
 // --- WebSocket transport (the console's own multiplexed live channel) ---
 
-export type WsChannel = 'net' | 'logs' | 'fs' | 'db' | 'ws';
+export type WsChannel = 'net' | 'logs' | 'fs' | 'db' | 'ws' | 'perf';
 
 export interface WsServerMessage<P = Record<string, unknown>> {
   channel: WsChannel;

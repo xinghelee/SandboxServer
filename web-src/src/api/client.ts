@@ -33,6 +33,7 @@ import type {
   BundlePrivacy,
   PlistDecode,
   SecurityReport,
+  PerfSample,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -369,5 +370,11 @@ export const api = {
       query: { maxDepth: opts.maxDepth, maxNodes: opts.maxNodes, thumbs: opts.thumbs ? 1 : undefined },
       signal,
     });
+  },
+
+  // --- Performance HUD ---
+
+  perfSnapshot(signal?: AbortSignal): Promise<PerfSample> {
+    return request<PerfSample>('/perf', { signal });
   },
 };

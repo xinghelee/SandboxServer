@@ -12,6 +12,8 @@ public struct WSChannel: Sendable, Hashable {
     public static let db = WSChannel("db")
     /// Live captured WebSocket connections + messages (the `ws` plugin publishes here).
     public static let ws = WSChannel("ws")
+    /// Live performance-HUD samples — FPS/CPU/memory/thermal (the `perf` plugin publishes here).
+    public static let perf = WSChannel("perf")
 }
 
 /// A typed key for a value the host hands the SDK at registration time

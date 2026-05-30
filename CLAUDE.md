@@ -105,7 +105,13 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
   SDK never ships ([[positioning-debug-tool-no-appstore]]); **verified working on the iOS 26
   Simulator** (a synthesized swipe scrolls a real List). Every private symbol/selector is resolved at
   runtime, so `info.gestures=false` (and swipe no-ops) if a future OS drops one. `ScreenControl` is
-  UIKit-gated; non-UIKit hosts report `supported=false` and 503 the capture routes.
+  UIKit-gated; non-UIKit hosts report `supported=false` and 503 the capture routes. Perf plugin is **live**: `GET
+  /perf` returns a one-shot snapshot (the `perf_snapshot` MCP tool) and the `perf` WS channel streams a
+  HUD sample (`perf.sample`) every ~500ms — FPS + worst frame hitch (`CADisplayLink`), process CPU%
+  (summed `thread_info`), memory `phys_footprint` (the Jetsam-relevant figure) with % of device RAM, and
+  `ProcessInfo.thermalState`. All read-only mach/UIKit introspection (no private API); FPS/hitch need a
+  display link so they are null on a non-UIKit host (CPU/memory/thermal still report). Gated by
+  `BuiltInPlugins.performance`.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

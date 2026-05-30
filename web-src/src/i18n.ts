@@ -10,7 +10,7 @@ const STORAGE_KEY = 'sbx_lang';
 type Dict = Record<string, string>;
 
 const EN: Dict = {
-  'brand.sub': 'sandbox inspector',
+  'brand.sub': 'Sandbox Lab',
   'prompt.path': '~/__sandbox',
 
   'hdr.build': 'build',
@@ -368,7 +368,7 @@ const EN: Dict = {
 };
 
 const ZH: Dict = {
-  'brand.sub': '沙盒检查器',
+  'brand.sub': 'Sandbox Lab',
   'prompt.path': '~/__sandbox',
 
   'hdr.build': '构建',
