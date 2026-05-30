@@ -51,7 +51,7 @@ const optInt = z.number().int().optional();
 const optNum = z.number().optional();
 
 /** Substitute {placeholders} in a path suffix from args, consuming used keys. */
-function fillPath(suffix: string, args: Record<string, unknown>, consumed: Set<string>): string {
+export function fillPath(suffix: string, args: Record<string, unknown>, consumed: Set<string>): string {
   return suffix.replace(/\{(\w+)\}/g, (_m, key: string) => {
     consumed.add(key);
     const v = args[key];
@@ -62,7 +62,7 @@ function fillPath(suffix: string, args: Record<string, unknown>, consumed: Set<s
   });
 }
 
-function pickQuery(args: Record<string, unknown>, keys: string[]): Record<string, string | number | boolean> {
+export function pickQuery(args: Record<string, unknown>, keys: string[]): Record<string, string | number | boolean> {
   const q: Record<string, string | number | boolean> = {};
   for (const k of keys) {
     const v = args[k];

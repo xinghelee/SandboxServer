@@ -9,9 +9,9 @@
 #
 # Jobs:
 #   1. Swift — real core (trait on): build + full test suite
-#   2. Swift — no-op path (trait off): build (the Release-safe facade must stay green)
+#   2. Swift — no-op path (trait off): build + test (the Release-safe facade must stay green)
 #   3. Web console — build, then assert the committed Resources/web is in sync (drift check)
-#   4. MCP bridge — TypeScript build
+#   4. MCP bridge — TypeScript build + unit tests
 #
 # Dependencies: in CI ($CI is set, e.g. by GitHub Actions) node deps are installed
 # with `npm ci`; locally, an existing node_modules is reused for speed (set CI=1 to force).
@@ -48,12 +48,15 @@ else
   fail "swift test --traits SandboxServerEnabled"
 fi
 
-# ── Job 2: Swift, no-op path (trait off) — build ────────────────────────────
-step "Swift — no-op path (trait off): build"
-if swift build; then
-  ok "swift build (no-op / Release-safe path)"
+# ── Job 2: Swift, no-op path (trait off) — build + test ─────────────────────
+# `swift test` (not just build) so a broken no-op start(), or a test that fails to compile to empty
+# under the disabled trait, can't slip through. The suite is wrapped in #if SandboxServerEnabled,
+# so trait-off runs 0 tests but still type-checks the no-op product + facade + the test target.
+step "Swift — no-op path (trait off): build + test"
+if swift test; then
+  ok "swift test (no-op / Release-safe path)"
 else
-  fail "swift build (no-op / Release-safe path)"
+  fail "swift test (no-op / Release-safe path)"
 fi
 
 # ── Job 3: Web console — build + committed-artifact drift check ──────────────
@@ -71,13 +74,18 @@ else
   fail "web console build"
 fi
 
-# ── Job 4: MCP bridge — TypeScript build ────────────────────────────────────
-step "MCP bridge — TypeScript build"
+# ── Job 4: MCP bridge — TypeScript build + tests ────────────────────────────
+step "MCP bridge — TypeScript build + tests"
 ensure_deps "$ROOT/mcp-bridge"
 if ( cd "$ROOT/mcp-bridge" && npm run build ); then
   ok "mcp-bridge tsc build"
 else
   fail "mcp-bridge build"
+fi
+if ( cd "$ROOT/mcp-bridge" && npm test ); then
+  ok "mcp-bridge npm test"
+else
+  fail "mcp-bridge npm test"
 fi
 
 # ── Summary ─────────────────────────────────────────────────────────────────
