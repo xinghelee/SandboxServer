@@ -24,6 +24,13 @@ struct WSFrame: Sendable {
 enum WebSocketCodec {
     private static let guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
+    /// Upper bound on a single inbound frame's declared payload length, mirroring the HTTP body
+    /// cap. A frame claiming more (or a malformed negative length) is refused with Close 1009
+    /// instead of buffering attacker-controlled bytes up to that length.
+    static let maxFramePayloadBytes = 1 << 20 // 1 MiB
+    /// Close status 1009 "message too big", big-endian, as a close-frame payload.
+    static let closeMessageTooBig: [UInt8] = [0x03, 0xF1]
+
     /// `Sec-WebSocket-Accept` value for a client's `Sec-WebSocket-Key`.
     static func acceptKey(for key: String) -> String {
         let digest = Insecure.SHA1.hash(data: Data((key + guid).utf8))
@@ -62,7 +69,7 @@ enum WebSocketCodec {
 
     /// Extracts every complete frame from `buffer`, consuming their bytes; incomplete
     /// trailing data is left for the next read.
-    static func decode(_ buffer: inout [UInt8]) -> [WSFrame] {
+    static func decode(_ buffer: inout [UInt8], maxPayload: Int = .max) -> [WSFrame] {
         var frames: [WSFrame] = []
         while true {
             guard buffer.count >= 2 else { break }
@@ -82,6 +89,13 @@ enum WebSocketCodec {
                 for i in 0..<8 { value = (value << 8) | Int(buffer[offset + i]) }
                 payloadLen = value
                 offset += 8
+            }
+            // Refuse an oversized (or a malformed negative, from a 127-frame with bit 63 set) length
+            // before waiting for / allocating that many bytes: drop the buffer and signal Close 1009.
+            if payloadLen < 0 || payloadLen > maxPayload {
+                buffer.removeAll(keepingCapacity: false)
+                frames.append(WSFrame(fin: true, opcode: .close, payload: closeMessageTooBig))
+                break
             }
             var maskKey: [UInt8] = []
             if masked {

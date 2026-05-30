@@ -123,7 +123,7 @@ actor WSHub {
         await add(connection)
         var buffer = leftover
         loop: while true {
-            for frame in WebSocketCodec.decode(&buffer) {
+            for frame in WebSocketCodec.decode(&buffer, maxPayload: WebSocketCodec.maxFramePayloadBytes) {
                 switch frame.opcode {
                 case .text:
                     await handleControl(connectionID: connection.id, payload: frame.payload)
@@ -132,6 +132,9 @@ actor WSHub {
                     // queued events and there's still exactly one writer to the socket.
                     await enqueue(connection.id, WebSocketCodec.encode(.pong, frame.payload))
                 case .close:
+                    // Echo a Close (the decoder yields a synthetic 1009 frame for an oversized
+                    // frame), best-effort, then tear down.
+                    await enqueue(connection.id, WebSocketCodec.encode(.close, frame.payload))
                     break loop
                 default:
                     break
