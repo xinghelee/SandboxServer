@@ -115,6 +115,11 @@ export interface MachOSlice {
   encrypted: boolean;
   cryptId?: number | null;
   fileType?: string | null;
+  pie?: boolean | null;
+  stackCanary?: boolean | null;
+  arc?: boolean | null;
+  codeSignature?: boolean | null;
+  restrict?: boolean | null;
 }
 
 export interface MachOInfo {
@@ -123,6 +128,24 @@ export interface MachOInfo {
   fileSize: number;
   fat: boolean;
   slices: MachOSlice[];
+}
+
+export type SecurityStatus = 'pass' | 'fail' | 'info' | 'unknown';
+
+export interface SecurityCheck {
+  id: string;
+  title: string;
+  status: SecurityStatus | string;
+  detail: string;
+  weight: number;
+}
+
+export interface SecurityReport {
+  supported: boolean;
+  arch?: string | null;
+  score: number;
+  grade: string;
+  checks: SecurityCheck[];
 }
 
 export interface Provisioning {

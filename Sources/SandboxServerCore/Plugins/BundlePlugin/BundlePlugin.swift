@@ -15,14 +15,17 @@ struct BundlePlugin: SandboxPlugin {
     var capabilities: PluginCapabilities {
         PluginCapabilities(
             id: id.rawValue, version: "1.0.0", title: "Bundle", panelKey: "bundle",
-            routes: ["GET (summary)", "GET macho", "GET provisioning", "GET privacy", "GET plist"],
+            routes: ["GET (summary)", "GET macho", "GET security", "GET provisioning", "GET privacy", "GET plist"],
             mcpTools: [
                 .init(name: "bundle_summary", title: "Bundle summary",
                       description: "App bundle identity: bundle id, name, version/build, minimum OS, device families, icon.",
                       backingMethod: "GET", backingPathSuffix: "", readOnlyHint: true, destructiveHint: false),
                 .init(name: "bundle_macho", title: "Mach-O info",
-                      description: "CPU architectures of the main executable and whether each slice is FairPlay-encrypted (cryptid).",
+                      description: "CPU architectures of the main executable and whether each slice is FairPlay-encrypted (cryptid), plus hardening flags (PIE, stack canary, ARC, code signature).",
                       backingMethod: "GET", backingPathSuffix: "macho", readOnlyHint: true, destructiveHint: false),
+                .init(name: "bundle_security", title: "Security check",
+                      description: "Static security/hardening report of the main executable — PIE/ASLR, stack canary, ARC, code signature, debuggable (get-task-allow), encryption — with a weighted score and grade.",
+                      backingMethod: "GET", backingPathSuffix: "security", readOnlyHint: true, destructiveHint: false),
                 .init(name: "bundle_provisioning", title: "Provisioning profile",
                       description: "embedded.mobileprovision: team, app id, dates, provisioned device count, and the entitlements. Absent on Simulator/App Store builds.",
                       backingMethod: "GET", backingPathSuffix: "provisioning", readOnlyHint: true, destructiveHint: false),
@@ -37,6 +40,7 @@ struct BundlePlugin: SandboxPlugin {
                 "The provisioning profile is absent on the Simulator and on App Store builds.",
                 "Mach-O cryptid is 0 (decrypted) on Simulator and dev builds; FairPlay encryption (cryptid=1) appears only on App Store binaries.",
                 "Compiled assets (Assets.car, nibs) are binary blobs; loose resources and plists are readable.",
+                "Security stack-canary/ARC checks scan the classic symbol table; modern arm64e binaries resolve some imports via chained fixups, so these can read as absent — treat them as a hint, not proof.",
             ]
         )
     }
@@ -48,6 +52,11 @@ struct BundlePlugin: SandboxPlugin {
             },
             HTTPRoute("GET", "macho", annotations: .read) { _, _ in
                 .json(MachOInspector.inspect(Bundle.main.executableURL))
+            },
+            HTTPRoute("GET", "security", annotations: .read) { _, _ in
+                let macho = MachOInspector.inspect(Bundle.main.executableURL)
+                let prov = ProvisioningInspector.inspect(bundleURL: Bundle.main.bundleURL)
+                return .json(SecurityInspector.evaluate(macho: macho, provisioning: prov))
             },
             HTTPRoute("GET", "provisioning", annotations: .read) { _, _ in
                 .json(ProvisioningInspector.inspect(bundleURL: Bundle.main.bundleURL))

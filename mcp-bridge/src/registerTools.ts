@@ -274,6 +274,10 @@ const BINDINGS: Record<string, ToolBinding> = {
     shape: {},
     invoke: (device) => device.get("/bundle/macho"),
   },
+  bundle_security: {
+    shape: {},
+    invoke: (device) => device.get("/bundle/security"),
+  },
   bundle_provisioning: {
     shape: {},
     invoke: (device) => device.get("/bundle/provisioning"),

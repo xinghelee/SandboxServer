@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
-import type { BundleSummary, MachOInfo, Provisioning, BundlePrivacy } from '../api/types';
+import type { BundleSummary, MachOInfo, Provisioning, BundlePrivacy, SecurityReport } from '../api/types';
 import { useI18n } from '../i18n';
 import { Loading } from '../components/Spinner';
 import { FileBrowser } from './FileBrowser';
@@ -17,6 +17,7 @@ export function BundlePanel() {
   const [macho, setMacho] = useState<MachOInfo | null>(null);
   const [prov, setProv] = useState<Provisioning | null>(null);
   const [privacy, setPrivacy] = useState<BundlePrivacy | null>(null);
+  const [security, setSecurity] = useState<SecurityReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +35,7 @@ export function BundlePanel() {
         if (!signal?.aborted) setLoading(false);
       });
     api.bundleMacho(signal).then(setMacho).catch(() => {});
+    api.bundleSecurity(signal).then(setSecurity).catch(() => {});
     api.bundleProvisioning(signal).then(setProv).catch(() => {});
     api.bundlePrivacy(signal).then(setPrivacy).catch(() => {});
   }, []);
@@ -122,6 +124,35 @@ export function BundlePanel() {
               </>
             ) : (
               <div class="muted">{t('bundle.macho.none')}</div>
+            )}
+          </section>
+
+          {/* Security check */}
+          <section class="bundle-card">
+            <div class="section-title">{t('bundle.sec.security')}</div>
+            {security && security.supported ? (
+              <>
+                <div class={`sec-score grade-${security.grade}`}>
+                  <span class="sec-grade">{security.grade}</span>
+                  <span class="sec-num">{security.score}<span class="muted">/100</span></span>
+                  {security.arch ? <span class="muted mono">{security.arch}</span> : null}
+                </div>
+                <table class="headers sec-checks">
+                  <tbody>
+                    {security.checks.map((c) => (
+                      <tr key={c.id}>
+                        <td class="hk">
+                          <span class={`sec-dot ${c.status}`} aria-hidden="true" />
+                          {c.title}
+                        </td>
+                        <td class="hv muted">{c.detail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              <div class="muted">{t('bundle.sec.security.none')}</div>
             )}
           </section>
 

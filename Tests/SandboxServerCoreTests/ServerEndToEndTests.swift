@@ -49,6 +49,7 @@ final class ServerEndToEndTests: XCTestCase {
         let bundle = items.first { $0["id"] as? String == "bundle" }
         let bundleTools = (bundle?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
         XCTAssertTrue(bundleTools.contains("bundle_macho"))
+        XCTAssertTrue(bundleTools.contains("bundle_security"))
         XCTAssertTrue(bundleTools.contains("bundle_decode_plist"))
         // The network plugin must advertise its MCP tools so the bridge can register them.
         let net = items.first { $0["id"] as? String == "net" }

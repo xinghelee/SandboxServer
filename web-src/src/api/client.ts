@@ -32,6 +32,7 @@ import type {
   Provisioning,
   BundlePrivacy,
   PlistDecode,
+  SecurityReport,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -335,6 +336,10 @@ export const api = {
 
   bundleMacho(signal?: AbortSignal): Promise<MachOInfo> {
     return request<MachOInfo>('/bundle/macho', { signal });
+  },
+
+  bundleSecurity(signal?: AbortSignal): Promise<SecurityReport> {
+    return request<SecurityReport>('/bundle/security', { signal });
   },
 
   bundleProvisioning(signal?: AbortSignal): Promise<Provisioning> {

@@ -16,6 +16,12 @@ enum MachOInspector {
         let encrypted: Bool
         let cryptId: Int?      // nil when no encryption load command is present
         let fileType: String?
+        // Hardening facts (nil = could not determine, e.g. a fat stub with no slice body).
+        let pie: Bool?           // MH_PIE — position-independent → ASLR
+        let stackCanary: Bool?   // a `stack_chk` symbol is present
+        let arc: Bool?           // an `_objc_release` symbol is present (Automatic Reference Counting)
+        let codeSignature: Bool? // an LC_CODE_SIGNATURE load command is present
+        let restrict: Bool?      // a `__RESTRICT` segment is present (anti-debug)
     }
 
     struct Info: Encodable, Sendable {
@@ -36,9 +42,15 @@ enum MachOInspector {
     private static let MH_CIGAM_64: UInt32 = 0xCFFA_EDFE
     private static let LC_ENCRYPTION_INFO: UInt32 = 0x21
     private static let LC_ENCRYPTION_INFO_64: UInt32 = 0x2C
+    private static let LC_SYMTAB: UInt32 = 0x2
+    private static let LC_CODE_SIGNATURE: UInt32 = 0x1D
+    private static let LC_SEGMENT: UInt32 = 0x1
+    private static let LC_SEGMENT_64: UInt32 = 0x19
+    private static let MH_PIE: UInt32 = 0x0020_0000  // mach_header.flags bit: position-independent
 
     private static let maxArchs = 32        // a fat binary never has more; caps a hostile nfat_arch
     private static let maxLoadCommands = 100_000
+    private static let maxStringTableScan = 16 * 1024 * 1024  // cap the symbol-string read for huge apps
 
     static func inspect(_ url: URL?) -> Info {
         guard let url else {
@@ -103,7 +115,8 @@ enum MachOInspector {
                     magic: "(fat arch)",
                     encrypted: false,
                     cryptId: nil,
-                    fileType: nil
+                    fileType: nil,
+                    pie: nil, stackCanary: nil, arc: nil, codeSignature: nil, restrict: nil
                 ))
             }
         }
@@ -132,12 +145,16 @@ enum MachOInspector {
               let cpuSubtype = u32(hdr, 8, bigEndian: fieldsBigEndian),
               let fileType = u32(hdr, 12, bigEndian: fieldsBigEndian),
               let ncmdsRaw = u32(hdr, 16, bigEndian: fieldsBigEndian),
-              let sizeofcmds = u32(hdr, 20, bigEndian: fieldsBigEndian)
+              let sizeofcmds = u32(hdr, 20, bigEndian: fieldsBigEndian),
+              let flags = u32(hdr, 24, bigEndian: fieldsBigEndian)
         else { return nil }
 
         let ncmds = min(Int(ncmdsRaw), maxLoadCommands)
         let cmdsRegion = min(Int(sizeofcmds), max(0, fileSize - Int(offset) - headerSize))
         var cryptId: UInt32?
+        var hasCodeSignature = false
+        var hasRestrict = false
+        var strTab: (off: UInt64, size: Int)?
         if cmdsRegion >= 8, let lc = bytes(h, at: offset + UInt64(headerSize), cmdsRegion) {
             var cursor = 0
             for _ in 0..<ncmds {
@@ -145,13 +162,38 @@ enum MachOInspector {
                       let cmd = u32(lc, cursor, bigEndian: fieldsBigEndian),
                       let cmdsize = u32(lc, cursor + 4, bigEndian: fieldsBigEndian),
                       cmdsize >= 8 else { break }
-                if cmd == LC_ENCRYPTION_INFO || cmd == LC_ENCRYPTION_INFO_64 {
+                switch cmd {
+                case LC_ENCRYPTION_INFO, LC_ENCRYPTION_INFO_64:
                     // encryption_info_command{ cmd@0; cmdsize@4; cryptoff@8; cryptsize@12; cryptid@16 }.
                     if cursor + 20 <= lc.count { cryptId = u32(lc, cursor + 16, bigEndian: fieldsBigEndian) }
+                case LC_CODE_SIGNATURE:
+                    hasCodeSignature = true
+                case LC_SYMTAB:
+                    // symtab_command{ cmd@0; cmdsize@4; symoff@8; nsyms@12; stroff@16; strsize@20 }.
+                    // stroff is image-relative; absolute file offset adds the slice offset.
+                    if cursor + 24 <= lc.count,
+                       let stroff = u32(lc, cursor + 16, bigEndian: fieldsBigEndian),
+                       let strsize = u32(lc, cursor + 20, bigEndian: fieldsBigEndian) {
+                        strTab = (offset + UInt64(stroff), Int(strsize))
+                    }
+                case LC_SEGMENT, LC_SEGMENT_64:
+                    // segment_command{ cmd@0; cmdsize@4; segname[16]@8 }. "__RESTRICT" = anti-debug.
+                    if segmentName(lc, at: cursor) == "__RESTRICT" { hasRestrict = true }
+                default:
+                    break
                 }
                 cursor += Int(cmdsize)
                 if cursor > lc.count { break }
             }
+        }
+
+        // Symbol-string scan for stack-canary / ARC markers (bounded; nil if no symbol table).
+        var stackCanary: Bool?
+        var arc: Bool?
+        if let strTab, strTab.size > 0, strTab.off + UInt64(min(strTab.size, maxStringTableScan)) <= UInt64(fileSize),
+           let blob = bytes(h, at: strTab.off, min(strTab.size, maxStringTableScan)) {
+            stackCanary = contains(blob, Array("stack_chk".utf8))
+            arc = contains(blob, Array("_objc_release".utf8))
         }
 
         return Slice(
@@ -161,8 +203,39 @@ enum MachOInspector {
             magic: magicName,
             encrypted: (cryptId ?? 0) != 0,
             cryptId: cryptId.map(Int.init),
-            fileType: fileTypeName(fileType)
+            fileType: fileTypeName(fileType),
+            pie: (flags & MH_PIE) != 0,
+            stackCanary: stackCanary,
+            arc: arc,
+            codeSignature: hasCodeSignature,
+            restrict: hasRestrict
         )
+    }
+
+    /// The 16-byte `segname` of a segment load command at `cursor`, trimmed at the first NUL.
+    private static func segmentName(_ lc: [UInt8], at cursor: Int) -> String? {
+        let start = cursor + 8
+        guard start + 16 <= lc.count else { return nil }
+        let raw = lc[start..<(start + 16)].prefix { $0 != 0 }
+        return String(decoding: raw, as: UTF8.self)
+    }
+
+    /// Naive byte-substring search (Boyer-Moore is overkill; the needles are tiny and the haystack
+    /// is bounded by `maxStringTableScan`).
+    private static func contains(_ haystack: [UInt8], _ needle: [UInt8]) -> Bool {
+        guard !needle.isEmpty, haystack.count >= needle.count else { return false }
+        let first = needle[0]
+        let last = haystack.count - needle.count
+        var i = 0
+        while i <= last {
+            if haystack[i] == first {
+                var j = 1
+                while j < needle.count, haystack[i + j] == needle[j] { j += 1 }
+                if j == needle.count { return true }
+            }
+            i += 1
+        }
+        return false
     }
 
     // MARK: - Name tables

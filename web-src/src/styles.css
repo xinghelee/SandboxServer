@@ -687,6 +687,29 @@ pre.body {
 .bundle-files { margin-top: 16px; }
 .bundle-files .table-wrap { max-height: 460px; overflow: auto; }
 
+/* Security score + per-check rows */
+.sec-score { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.sec-grade {
+  font-size: 26px; font-weight: 800; line-height: 1;
+  width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; color: var(--accent-ink); background: var(--ink-dim);
+}
+.sec-score.grade-A .sec-grade { background: var(--s2); }
+.sec-score.grade-B .sec-grade { background: var(--s3); }
+.sec-score.grade-C .sec-grade { background: var(--s4); }
+.sec-score.grade-D .sec-grade { background: var(--s5); }
+.sec-num { font-size: 20px; font-weight: 700; color: var(--ink); }
+.sec-num .muted { font-size: 13px; font-weight: 400; }
+.sec-checks .hk { white-space: nowrap; }
+.sec-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 8px; vertical-align: middle; background: var(--ink-dim);
+}
+.sec-dot.pass { background: var(--s2); }
+.sec-dot.fail { background: var(--s5); }
+.sec-dot.info { background: var(--s3); }
+.sec-dot.unknown { background: var(--ink-dim); }
+
 /* ----- DB list ------------------------------------------------------------ */
 .db-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .db-list.grid {
