@@ -9,6 +9,7 @@ interface Props {
   entry: FileEntry;
   onClose: () => void;
   onChanged: () => void; // reload the directory after a write/delete
+  readOnly?: boolean; // entry lives in a read-only root (e.g. the app bundle): no edit/delete
 }
 
 function isTextual(mime: string): boolean {
@@ -18,7 +19,7 @@ function isTextual(mime: string): boolean {
   );
 }
 
-export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
+export function FilePreviewDrawer({ entry, onClose, onChanged, readOnly = false }: Props) {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,7 +173,8 @@ export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
           <div class="spacer" />
           {saved ? <span class="saved-flag">✓ {t('fs.saved')}</span> : null}
           {plistFormat ? <span class="chip-sm">plist · {plistFormat}</span> : null}
-          {textual && !editing && !isPlist ? (
+          {readOnly ? <span class="chip-sm">🔒 {t('fs.readonly')}</span> : null}
+          {!readOnly && textual && !editing && !isPlist ? (
             <button class="btn" onClick={() => { setDraft(text ?? ''); setEditing(true); }}>
               {t('fs.edit')}
             </button>
@@ -190,9 +192,11 @@ export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
           <button class="btn" onClick={download}>
             {t('fs.download')}
           </button>
-          <button class="btn danger" onClick={remove}>
-            {t('fs.delete')}
-          </button>
+          {!readOnly ? (
+            <button class="btn danger" onClick={remove}>
+              {t('fs.delete')}
+            </button>
+          ) : null}
         </div>
 
         <div class="drawer-body">

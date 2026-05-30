@@ -184,6 +184,7 @@ export interface DirListing {
 export interface FsRoot {
   name: string;
   path: string;
+  readOnly?: boolean; // e.g. the OS-mounted .app bundle — writes/deletes are refused
 }
 
 // --- DB plugin ---

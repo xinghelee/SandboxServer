@@ -102,13 +102,16 @@ struct FilePlugin: SandboxPlugin {
         let mtime: Int      // unix milliseconds
         let mime: String
     }
-    struct RootEntry: Encodable, Sendable { let name: String; let path: String }
+    struct RootEntry: Encodable, Sendable { let name: String; let path: String; let readOnly: Bool }
     struct WriteResult: Encodable, Sendable { let path: String; let size: Int }
 
     // MARK: - Handlers
 
     static func listRoots(_ ctx: any PluginContext) -> SBResponse {
-        let items = roots(ctx).map { RootEntry(name: $0.lastPathComponent, path: $0.path) }
+        let readOnly = Set(ctx.readOnlyRoots().map { $0.standardizedFileURL.path })
+        let items = roots(ctx).map {
+            RootEntry(name: $0.lastPathComponent, path: $0.path, readOnly: readOnly.contains($0.path))
+        }
         return .json(Page(items: items))
     }
 

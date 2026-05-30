@@ -3,7 +3,7 @@ import { api, ApiRequestError } from '../api/client';
 import type { BundleSummary, MachOInfo, Provisioning, BundlePrivacy } from '../api/types';
 import { useI18n } from '../i18n';
 import { Loading } from '../components/Spinner';
-import { EmptyState } from '../components/EmptyState';
+import { FileBrowser } from './FileBrowser';
 import { formatBytes } from '../util/format';
 
 function dateStr(sec?: number): string {
@@ -24,9 +24,15 @@ export function BundlePanel() {
     setLoading(true);
     setError(null);
     // Independent fetches: one failing shouldn't blank the others.
-    api.bundleSummary(signal).then(setSummary).catch((e: unknown) => {
-      if (!signal?.aborted) setError(e instanceof ApiRequestError ? e.message : String(e));
-    }).finally(() => { if (!signal?.aborted) setLoading(false); });
+    api
+      .bundleSummary(signal)
+      .then(setSummary)
+      .catch((e: unknown) => {
+        if (!signal?.aborted) setError(e instanceof ApiRequestError ? e.message : String(e));
+      })
+      .finally(() => {
+        if (!signal?.aborted) setLoading(false);
+      });
     api.bundleMacho(signal).then(setMacho).catch(() => {});
     api.bundleProvisioning(signal).then(setProv).catch(() => {});
     api.bundlePrivacy(signal).then(setPrivacy).catch(() => {});
@@ -43,15 +49,13 @@ export function BundlePanel() {
       <div class="panel-toolbar">
         <h2>{t('bundle.title')}</h2>
         <div class="spacer" />
-        <button class="btn" onClick={() => load()}>{t('bundle.reload')}</button>
+        <button class="btn" onClick={() => load()}>
+          {t('bundle.reload')}
+        </button>
       </div>
 
       {error ? <div class="error-banner">{error}</div> : null}
       {loading && !summary ? <Loading labelKey="bundle.loading" /> : null}
-
-      {summary && summary.supported === false ? (
-        <EmptyState icon="📦" titleKey="bundle.unsupported" subKey="bundle.unsupported.sub" />
-      ) : null}
 
       {summary && summary.supported !== false ? (
         <div class="bundle-grid">
@@ -66,15 +70,23 @@ export function BundlePanel() {
             </div>
             <dl class="bundle-dl">
               <dt>{t('bundle.version')}</dt>
-              <dd>{summary.shortVersion ?? '—'} <span class="muted">({summary.build ?? '—'})</span></dd>
+              <dd>
+                {summary.shortVersion ?? '—'} <span class="muted">({summary.build ?? '—'})</span>
+              </dd>
               <dt>{t('bundle.minOS')}</dt>
               <dd>{summary.minimumOSVersion ?? '—'}</dd>
               <dt>{t('bundle.platform')}</dt>
-              <dd>{summary.platform ?? '—'} <span class="muted">{summary.sdkName ?? ''}</span></dd>
+              <dd>
+                {summary.platform ?? '—'} <span class="muted">{summary.sdkName ?? ''}</span>
+              </dd>
               <dt>{t('bundle.families')}</dt>
               <dd>
                 {summary.deviceFamilies.length
-                  ? summary.deviceFamilies.map((f) => <span key={f} class="chip-sm">{f}</span>)
+                  ? summary.deviceFamilies.map((f) => (
+                      <span key={f} class="chip-sm">
+                        {f}
+                      </span>
+                    ))
                   : '—'}
               </dd>
               <dt>{t('bundle.path')}</dt>
@@ -95,7 +107,9 @@ export function BundlePanel() {
                   <tbody>
                     {macho.slices.map((s, i) => (
                       <tr key={i}>
-                        <td class="hk">{s.cpuType} <span class="muted">{s.cpuSubtype}</span></td>
+                        <td class="hk">
+                          {s.cpuType} <span class="muted">{s.cpuSubtype}</span>
+                        </td>
                         <td class="hv">
                           <span class={`chip-sm ${s.encrypted ? 'danger' : 'ok'}`}>
                             {s.encrypted ? t('bundle.macho.encrypted') : t('bundle.macho.decrypted')}
@@ -116,12 +130,16 @@ export function BundlePanel() {
             <div class="section-title">{t('bundle.sec.provisioning')}</div>
             {prov && prov.present ? (
               prov.parseError ? (
-                <div class="muted">{t('bundle.prov.error')}: {prov.parseError}</div>
+                <div class="muted">
+                  {t('bundle.prov.error')}: {prov.parseError}
+                </div>
               ) : (
                 <>
                   <dl class="bundle-dl">
                     <dt>{t('bundle.prov.team')}</dt>
-                    <dd>{prov.teamName ?? '—'} <span class="muted mono">{prov.teamIdentifier ?? ''}</span></dd>
+                    <dd>
+                      {prov.teamName ?? '—'} <span class="muted mono">{prov.teamIdentifier ?? ''}</span>
+                    </dd>
                     <dt>{t('bundle.prov.appId')}</dt>
                     <dd class="mono break">{prov.appId ?? prov.appIdName ?? '—'}</dd>
                     <dt>{t('bundle.prov.created')}</dt>
@@ -169,23 +187,40 @@ export function BundlePanel() {
                 {privacy.urlSchemes.length ? (
                   <div class="bundle-sub">
                     <span class="muted">{t('bundle.priv.schemes')}</span>
-                    {privacy.urlSchemes.map((s) => <span key={s} class="chip-sm">{s}</span>)}
+                    {privacy.urlSchemes.map((s) => (
+                      <span key={s} class="chip-sm">
+                        {s}
+                      </span>
+                    ))}
                   </div>
                 ) : null}
                 {privacy.backgroundModes.length ? (
                   <div class="bundle-sub">
                     <span class="muted">{t('bundle.priv.background')}</span>
-                    {privacy.backgroundModes.map((m) => <span key={m} class="chip-sm">{m}</span>)}
+                    {privacy.backgroundModes.map((m) => (
+                      <span key={m} class="chip-sm">
+                        {m}
+                      </span>
+                    ))}
                   </div>
                 ) : null}
                 {privacy.ats ? (
                   <div class="bundle-sub">
                     <span class="muted">{t('bundle.priv.ats')}</span>
-                    {privacy.ats.allowsArbitraryLoads ? <span class="chip-sm danger">{t('bundle.priv.atsArbitrary')}</span> : null}
-                    {privacy.ats.exceptionDomains.map((d) => <span key={d} class="chip-sm">{d}</span>)}
+                    {privacy.ats.allowsArbitraryLoads ? (
+                      <span class="chip-sm danger">{t('bundle.priv.atsArbitrary')}</span>
+                    ) : null}
+                    {privacy.ats.exceptionDomains.map((d) => (
+                      <span key={d} class="chip-sm">
+                        {d}
+                      </span>
+                    ))}
                   </div>
                 ) : null}
-                {!privacy.usageDescriptions.length && !privacy.urlSchemes.length && !privacy.backgroundModes.length && !privacy.ats ? (
+                {!privacy.usageDescriptions.length &&
+                !privacy.urlSchemes.length &&
+                !privacy.backgroundModes.length &&
+                !privacy.ats ? (
                   <div class="muted">{t('bundle.priv.none')}</div>
                 ) : null}
               </>
@@ -194,6 +229,17 @@ export function BundlePanel() {
             )}
           </section>
         </div>
+      ) : null}
+
+      {summary?.bundlePath ? (
+        <section class="bundle-card bundle-files">
+          <div class="section-title">{t('bundle.sec.payload')}</div>
+          <FileBrowser
+            rootPath={summary.bundlePath}
+            rootName={summary.displayName ? `${summary.displayName}.app` : 'Payload'}
+            readOnly
+          />
+        </section>
       ) : null}
     </div>
   );

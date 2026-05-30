@@ -497,6 +497,9 @@ pre.body {
 }
 .chip-sm.ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .chip-sm.danger { color: var(--s5); border-color: color-mix(in srgb, var(--s5) 45%, var(--line)); }
+/* Payload file tree embedded in the Bundle panel (full width, below the inspector cards). */
+.bundle-files { margin-top: 16px; }
+.bundle-files .table-wrap { max-height: 460px; overflow: auto; }
 
 /* ----- DB list ------------------------------------------------------------ */
 .db-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }

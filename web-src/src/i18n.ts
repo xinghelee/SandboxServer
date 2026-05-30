@@ -194,6 +194,7 @@ const EN: Dict = {
   'bundle.priv.ats': 'ATS',
   'bundle.priv.atsArbitrary': 'allows arbitrary loads',
   'bundle.priv.none': 'no declared usage descriptions, schemes, or ATS exceptions',
+  'bundle.sec.payload': 'Payload files',
 
   'fs.title': 'files',
   'fs.loading': 'reading directory…',
@@ -205,6 +206,7 @@ const EN: Dict = {
   'fs.col.modified': 'modified',
   'fs.preview': 'preview',
   'fs.download': 'download',
+  'fs.readonly': 'read-only',
   'fs.edit': 'edit',
   'fs.save': 'save',
   'fs.cancel': 'cancel',
@@ -503,6 +505,7 @@ const ZH: Dict = {
   'bundle.priv.ats': 'ATS',
   'bundle.priv.atsArbitrary': '允许任意加载',
   'bundle.priv.none': '未声明用途描述、scheme 或 ATS 例外',
+  'bundle.sec.payload': 'Payload 文件',
 
   'fs.title': '文件',
   'fs.loading': '正在读取目录…',
@@ -514,6 +517,7 @@ const ZH: Dict = {
   'fs.col.modified': '修改时间',
   'fs.preview': '预览',
   'fs.download': '下载',
+  'fs.readonly': '只读',
   'fs.edit': '编辑',
   'fs.save': '保存',
   'fs.cancel': '取消',
