@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
+import { CopyButton } from '../components/CopyButton';
 import { navigate } from '../router';
 import { formatBytes } from '../util/format';
 import { isBinaryPlist, parseBinaryPlist } from '../util/ipa/bplist';
@@ -14,6 +15,8 @@ type DbViewMode = 'list' | 'grid';
 const DB_VIEW_KEY = 'sbx.db.view';
 type BlobSelection = { column: string; rowNumber: number; cell: DbBlobCell };
 type RowSelection = { rowNumber: number; columns: string[]; row: DbCell[] };
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+type DecodedPreview = { label: string; text: string; tree?: JsonValue };
 
 function loadDbViewMode(): DbViewMode {
   try {
@@ -451,8 +454,7 @@ function RowField({ column, cell }: { column: string; cell: DbCell }) {
             {cell.truncated ? ` · ${t('db.blob.truncated', { n: formatBytes(cell.previewBytes) })}` : ''}
           </div>
         </div>
-        <div class="db-blob-mode">{preview.label}</div>
-        <pre class="body db-row-value">{preview.text}</pre>
+        <ValuePreview preview={preview} />
       </div>
     );
   }
@@ -461,8 +463,7 @@ function RowField({ column, cell }: { column: string; cell: DbCell }) {
   return (
     <div class="db-row-field">
       <div class="db-row-col">{column}</div>
-      <div class="db-blob-mode">{preview.label || t('db.row.value')}</div>
-      <pre class="body db-row-value scalar">{preview.text}</pre>
+      <ValuePreview preview={{ ...preview, label: preview.label || t('db.row.value') }} scalar />
     </div>
   );
 }
@@ -484,18 +485,135 @@ function BlobPreview({ selection, onClose }: { selection: BlobSelection; onClose
           {t('d.close')}
         </button>
       </div>
-      <div class="db-blob-mode">{preview.label}</div>
-      <pre class="body db-blob-body">{preview.text}</pre>
+      <ValuePreview preview={preview} blobPreview />
     </section>
   );
 }
 
-function decodeScalar(cell: Exclude<DbCell, DbBlobCell | null>): { label: string; text: string } {
+function ValuePreview({
+  preview,
+  scalar = false,
+  blobPreview = false,
+}: {
+  preview: DecodedPreview;
+  scalar?: boolean;
+  blobPreview?: boolean;
+}) {
+  const { t } = useI18n();
+  const hasTree = preview.tree !== undefined;
+  const [view, setView] = useState<'tree' | 'raw'>('raw');
+
+  useEffect(() => {
+    setView('raw');
+  }, [preview.text]);
+
+  const rawClass = blobPreview ? 'body db-blob-body' : `body db-row-value ${scalar ? 'scalar' : ''}`;
+  return (
+    <>
+      <div class="db-value-head">
+        <div class="db-blob-mode">{preview.label}</div>
+        <div class="db-value-actions">
+          {hasTree ? (
+            <div class="seg-toggle db-view-toggle">
+              <button type="button" class={view === 'tree' ? 'on' : ''} aria-pressed={view === 'tree'} onClick={() => setView('tree')}>
+                {t('db.view.tree')}
+              </button>
+              <button type="button" class={view === 'raw' ? 'on' : ''} aria-pressed={view === 'raw'} onClick={() => setView('raw')}>
+                {t('db.view.raw')}
+              </button>
+            </div>
+          ) : null}
+          <CopyButton text={() => preview.text} />
+        </div>
+      </div>
+      {hasTree && view === 'tree' ? (
+        <div class={`body db-json-tree ${scalar ? 'scalar' : ''}`}>
+          <JsonTree value={preview.tree as JsonValue} />
+        </div>
+      ) : (
+        <pre class={rawClass}>{hasTree ? <JsonSyntax text={preview.text} /> : preview.text}</pre>
+      )}
+    </>
+  );
+}
+
+function JsonTree({ value }: { value: JsonValue }) {
+  return (
+    <div class="json-table">
+      <div class="json-table-head">
+        <span>Key</span>
+        <span>Value</span>
+      </div>
+      <JsonTreeNode name="Root" value={value} depth={0} root />
+    </div>
+  );
+}
+
+function JsonTreeNode({ name, value, depth, root = false }: { name: string; value: JsonValue; depth: number; root?: boolean }) {
+  if (Array.isArray(value) || isJsonObject(value)) {
+    const entries = Array.isArray(value) ? value.map((item, index) => [String(index), item] as const) : Object.entries(value);
+    return (
+      <details class={`json-node ${root ? 'root' : ''}`} open={depth < 2}>
+        <summary class="json-tree-line json-node-line" style={`--json-depth:${depth}`}>
+          <span class={`json-key-cell ${root ? 'root' : ''}`}>
+            <span class="json-caret" aria-hidden="true">
+              ›
+            </span>
+            {name}
+          </span>
+          <span class="json-value-cell json-container-value">{containerLabel(value, entries.length)}</span>
+        </summary>
+        <div class="json-children">
+          {entries.map(([key, item]) => (
+            <JsonTreeNode key={key} name={key} value={item} depth={depth + 1} />
+          ))}
+        </div>
+      </details>
+    );
+  }
+
+  return (
+    <div class={`json-tree-line json-leaf ${root ? 'root' : ''}`} style={`--json-depth:${depth}`}>
+      <span class={`json-key-cell ${root ? 'root' : ''}`}>
+        <span class="json-caret-spacer" aria-hidden="true" />
+        {name}
+      </span>
+      <JsonPrimitive value={value} />
+    </div>
+  );
+}
+
+function JsonPrimitive({ value }: { value: Exclude<JsonValue, JsonValue[] | { [key: string]: JsonValue }> }) {
+  if (value === null) return <span class="json-value-cell json-tree-null">null</span>;
+  if (typeof value === 'string') return <span class="json-value-cell json-tree-string">{value}</span>;
+  if (typeof value === 'boolean') return <span class="json-value-cell json-tree-boolean">{String(value)}</span>;
+  return <span class="json-value-cell json-tree-number">{String(value)}</span>;
+}
+
+function containerLabel(value: JsonValue[] | { [key: string]: JsonValue }, count: number) {
+  const type = Array.isArray(value) ? 'Array' : 'Object';
+  return `${type}(${count} ${count === 1 ? 'item' : 'items'})`;
+}
+
+function JsonSyntax({ text }: { text: string }) {
+  return (
+    <>
+      {tokenizeJson(text).map((token, index) => (
+        <span key={index} class={token.kind === 'plain' ? undefined : `json-token-${token.kind}`}>
+          {token.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function decodeScalar(cell: Exclude<DbCell, DbBlobCell | null>): DecodedPreview {
   if (typeof cell === 'string') {
     const trimmed = cell.trim();
     if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
       try {
-        return { label: 'JSON text', text: JSON.stringify(JSON.parse(trimmed), null, 2) };
+        const parsed = JSON.parse(trimmed) as unknown;
+        return { label: 'JSON text', text: JSON.stringify(parsed, null, 2), tree: normalizeJsonValue(parsed) };
       } catch {
         return { label: 'text', text: cell };
       }
@@ -505,15 +623,17 @@ function decodeScalar(cell: Exclude<DbCell, DbBlobCell | null>): { label: string
   return { label: typeof cell, text: String(cell) };
 }
 
-function decodeBlob(cell: DbBlobCell): { label: string; text: string } {
+function decodeBlob(cell: DbBlobCell): DecodedPreview {
   const bytes = base64ToBytes(cell.base64);
   if (!bytes.length) return { label: 'empty blob', text: '' };
 
   if (isBinaryPlist(bytes)) {
     try {
+      const parsed = parseBinaryPlist(bytes) as unknown;
       return {
         label: 'binary plist',
-        text: JSON.stringify(parseBinaryPlist(bytes), null, 2),
+        text: JSON.stringify(parsed, null, 2),
+        tree: normalizeJsonValue(parsed),
       };
     } catch {
       // Fall through to hex if the plist is an NSKeyedArchiver variant outside our parser subset.
@@ -525,7 +645,8 @@ function decodeBlob(cell: DbBlobCell): { label: string; text: string } {
     const trimmed = text.trim();
     if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
       try {
-        return { label: 'JSON text', text: JSON.stringify(JSON.parse(trimmed), null, 2) };
+        const parsed = JSON.parse(trimmed) as unknown;
+        return { label: 'JSON text', text: JSON.stringify(parsed, null, 2), tree: normalizeJsonValue(parsed) };
       } catch {
         return { label: 'text', text };
       }
@@ -534,6 +655,46 @@ function decodeBlob(cell: DbBlobCell): { label: string; text: string } {
   }
 
   return { label: 'hex', text: hexDump(bytes) };
+}
+
+function normalizeJsonValue(value: unknown): JsonValue {
+  if (value === null) return null;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (Array.isArray(value)) return value.map((item) => normalizeJsonValue(item));
+  if (typeof value === 'object') {
+    const out: { [key: string]: JsonValue } = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = normalizeJsonValue(item);
+    }
+    return out;
+  }
+  return String(value);
+}
+
+function isJsonObject(value: JsonValue): value is { [key: string]: JsonValue } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function tokenizeJson(text: string): Array<{ kind: 'plain' | 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct'; text: string }> {
+  const tokens: Array<{ kind: 'plain' | 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct'; text: string }> = [];
+  const re = /("(?:\\.|[^"\\])*"(?=\s*:))|("(?:\\.|[^"\\])*")|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    if (match.index > last) tokens.push({ kind: 'plain', text: text.slice(last, match.index) });
+    const raw = match[0];
+    let kind: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct';
+    if (match[1]) kind = 'key';
+    else if (match[2]) kind = 'string';
+    else if (raw === 'true' || raw === 'false') kind = 'boolean';
+    else if (raw === 'null') kind = 'null';
+    else if (/^[{}\[\],:]$/.test(raw)) kind = 'punct';
+    else kind = 'number';
+    tokens.push({ kind, text: raw });
+    last = re.lastIndex;
+  }
+  if (last < text.length) tokens.push({ kind: 'plain', text: text.slice(last) });
+  return tokens;
 }
 
 function base64ToBytes(base64: string): Uint8Array {

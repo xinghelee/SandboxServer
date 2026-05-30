@@ -266,6 +266,8 @@ const EN: Dict = {
   'db.row.preview': 'row details',
   'db.row.number': 'row {n}',
   'db.row.value': 'value',
+  'db.view.tree': 'tree',
+  'db.view.raw': 'raw',
 
   'logs.title': 'logs',
   'logs.count': '{n} lines',
@@ -603,6 +605,8 @@ const ZH: Dict = {
   'db.row.preview': '行详情',
   'db.row.number': '第 {n} 行',
   'db.row.value': '值',
+  'db.view.tree': '树',
+  'db.view.raw': '原文',
 
   'logs.title': '日志',
   'logs.count': '{n} 行',

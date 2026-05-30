@@ -1228,6 +1228,29 @@ pre.body {
   font: 700 12.5px/1.3 var(--mono);
   word-break: break-word;
 }
+.db-value-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.db-value-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.db-view-toggle {
+  min-height: 26px;
+  padding: 2px;
+}
+.db-view-toggle button {
+  height: 20px;
+  min-width: 38px;
+  padding: 0 8px;
+  font-size: 11px;
+}
 .db-row-value {
   max-height: 260px;
   overflow: auto;
@@ -1238,6 +1261,107 @@ pre.body {
 .db-row-value.scalar {
   max-height: 160px;
 }
+.db-json-tree {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  white-space: normal;
+}
+.db-json-tree.scalar {
+  max-height: 160px;
+}
+.json-table {
+  min-width: 560px;
+}
+.json-table-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(220px, 42%) minmax(0, 1fr);
+  gap: 0;
+  padding: 7px 10px;
+  color: var(--ink);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line-2);
+  font: 700 12px/1.35 var(--sans);
+}
+.json-table-head span + span {
+  border-left: 1px solid var(--line-2);
+  padding-left: 14px;
+}
+.json-node {
+  margin: 0;
+}
+.json-node > summary {
+  list-style: none;
+}
+.json-node > summary::-webkit-details-marker {
+  display: none;
+}
+.json-tree-line {
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(220px, 42%) minmax(0, 1fr);
+  gap: 0;
+  align-items: baseline;
+  min-height: 25px;
+  padding: 3px 10px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.json-tree-line:hover {
+  background: color-mix(in srgb, var(--link) 7%, transparent);
+}
+.json-leaf {
+  cursor: default;
+}
+.json-key-cell {
+  min-width: 0;
+  padding-left: calc(var(--json-depth, 0) * 20px);
+  color: color-mix(in srgb, var(--s2) 68%, var(--ink));
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.json-key-cell.root {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+.json-value-cell {
+  min-width: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--line-2);
+  overflow-wrap: anywhere;
+}
+.json-container-value {
+  color: var(--ink-dim);
+  font: 700 13px/1.5 var(--sans);
+}
+.json-caret,
+.json-caret-spacer {
+  display: inline-flex;
+  width: 16px;
+  margin-left: -2px;
+  color: var(--ink-dim);
+  transform-origin: 45% 52%;
+  transition: transform 0.12s;
+}
+.json-node[open] > .json-tree-line .json-caret {
+  transform: rotate(90deg);
+}
+.json-tree-string { color: #ff8a7a; }
+.json-tree-number { color: #b8a5ff; }
+.json-tree-boolean { color: var(--s4); }
+.json-tree-null { color: var(--ink-dim); font-style: italic; }
+.json-token-key { color: var(--link); }
+.json-token-string { color: var(--s2); }
+.json-token-number { color: var(--s3); }
+.json-token-boolean { color: var(--s4); }
+.json-token-null { color: var(--ink-dim); font-style: italic; }
+.json-token-punct { color: var(--ink-dim); }
 table.grid td { font-family: var(--mono); font-size: 12.5px; }
 
 /* ----- Logs stream -------------------------------------------------------- */
