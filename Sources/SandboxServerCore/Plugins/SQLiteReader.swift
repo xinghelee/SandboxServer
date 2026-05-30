@@ -13,10 +13,12 @@ import SQLite3
 enum SQLiteError: Error, CustomStringConvertible {
     case open(String)
     case prepare(String)
+    case multipleStatements
     var description: String {
         switch self {
         case .open(let m): return "open failed: \(m)"
         case .prepare(let m): return "SQL error: \(m)"
+        case .multipleStatements: return "only a single statement is allowed"
         }
     }
 }
@@ -47,6 +49,12 @@ enum SQLiteReader {
         }
         defer { sqlite3_close_v2(db) }
         sqlite3_busy_timeout(db, 2000)
+        // Defense-in-depth beyond SQLITE_OPEN_READONLY: deny ATTACH/DETACH so user SQL can't read
+        // other SQLite files in the sandbox by attaching them. Everything else is allowed (the
+        // read-only connection already blocks writes at the storage layer).
+        sqlite3_set_authorizer(db, { _, action, _, _, _, _ in
+            (action == SQLITE_ATTACH || action == SQLITE_DETACH) ? SQLITE_DENY : SQLITE_OK
+        }, nil)
         return try body(db)
     }
 
@@ -119,8 +127,22 @@ enum SQLiteReader {
 
     private static func rawQuery(_ db: OpaquePointer, _ sql: String, limit: Int) throws -> RawRows {
         var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK, let stmt else {
+        // Capture the unparsed tail so a multi-statement input is rejected rather than silently
+        // running only the first statement. (Done inside withCString: the tail points into the
+        // C string, valid only for that scope.)
+        var tail = ""
+        let rc: Int32 = sql.withCString { c in
+            var t: UnsafePointer<CChar>?
+            let r = sqlite3_prepare_v2(db, c, -1, &stmt, &t)
+            if let t { tail = String(cString: t) }
+            return r
+        }
+        guard rc == SQLITE_OK, let stmt else {
             throw SQLiteError.prepare(cstr(sqlite3_errmsg(db)))
+        }
+        if !tail.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r\n;")).isEmpty {
+            sqlite3_finalize(stmt)
+            throw SQLiteError.multipleStatements
         }
         defer { sqlite3_finalize(stmt) }
         let ncol = Int(sqlite3_column_count(stmt))
