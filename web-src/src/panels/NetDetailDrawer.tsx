@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import type { NetRequestDetail } from '../api/types';
 import { useI18n } from '../i18n';
@@ -8,14 +8,34 @@ import { CopyButton } from '../components/CopyButton';
 import { formatBytes, formatDuration, formatClock, prettyBody, statusClassNum } from '../util/format';
 import { toCurl, toHar, harFilename } from '../util/net-export';
 import { downloadText } from '../util/clipboard';
+import { utf8ToBase64 } from '../util/base64';
 
 interface Props {
   id: string;
   onClose: () => void;
+  /** Open another captured request by id (used by "view new" after a replay creates one). */
+  onOpen?: (id: string) => void;
 }
 
 function headersToText(headers?: Record<string, string>): string {
   return headers ? Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\n') : '';
+}
+
+/** Parse a "Name: value" block back into a header map (first colon splits; blank/invalid lines skipped). */
+function parseHeaders(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split('\n')) {
+    const i = line.indexOf(':');
+    if (i <= 0) continue;
+    const k = line.slice(0, i).trim();
+    if (k) out[k] = line.slice(i + 1).trim();
+  }
+  return out;
+}
+
+/** Body whose preview the device truncated — editing it would resend only the shown slice. */
+function isTruncated(body?: string | null): boolean {
+  return !!body && /\(truncated, \d+ bytes total\)/.test(body);
 }
 
 function SectionTitle({ label, copy }: { label: string; copy?: string | null }) {
@@ -50,13 +70,21 @@ function Body({ body, empty }: { body?: string | null; empty: string }) {
   return <pre class="body">{pretty}</pre>;
 }
 
-export function NetDetailDrawer({ id, onClose }: Props) {
+export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
   const { t } = useI18n();
   const [detail, setDetail] = useState<NetRequestDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showHarHelp, setShowHarHelp] = useState(false);
   const dialogRef = useRef<HTMLElement>(null);
+
+  // Replay editor state.
+  const [replayOpen, setReplayOpen] = useState(false);
+  const [headersText, setHeadersText] = useState('');
+  const [bodyText, setBodyText] = useState('');
+  const [replaying, setReplaying] = useState(false);
+  const [replayResult, setReplayResult] = useState<{ id: string; status: number | null; durationMs: number | null } | null>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
 
   // Trap focus inside the drawer while open and restore it to the opening row on close; Escape closes.
   useFocusTrap(dialogRef, { onEscape: onClose });
@@ -66,6 +94,12 @@ export function NetDetailDrawer({ id, onClose }: Props) {
     setLoading(true);
     setError(null);
     setDetail(null);
+    // Reset the replay editor whenever we switch requests (incl. an in-flight `replaying` flag, so
+    // a new request never opens with the Send/Reset buttons stuck disabled).
+    setReplayOpen(false);
+    setReplaying(false);
+    setReplayResult(null);
+    setReplayError(null);
     api
       .netRequestDetail(id, ctrl.signal)
       .then((d) => setDetail(d))
@@ -78,6 +112,52 @@ export function NetDetailDrawer({ id, onClose }: Props) {
       });
     return () => ctrl.abort();
   }, [id]);
+
+  // Prefill the editor fields from the loaded detail (raw, so an untouched field round-trips exactly
+  // and is therefore NOT sent — the device then keeps the original unredacted header / full body).
+  const fillFromDetail = useCallback(() => {
+    setHeadersText(headersToText(detail?.reqHeaders));
+    setBodyText(detail?.reqBody ?? '');
+  }, [detail]);
+
+  const toggleReplay = useCallback(() => {
+    setReplayOpen((open) => {
+      if (!open) {
+        fillFromDetail();
+        setReplayError(null);
+      }
+      return !open;
+    });
+  }, [fillFromDetail]);
+
+  const sendReplay = useCallback(() => {
+    if (!detail) return;
+    // Only send headers the user actually changed/added; unchanged lines (incl. "<redacted>") are
+    // omitted so the device's merge keeps their real captured value. Body is sent only when edited.
+    // Compare case-insensitively (HTTP header names are) so merely re-casing a name (e.g. leaving a
+    // redacted "Authorization" as "authorization") isn't seen as a change — which would otherwise
+    // send the literal "<redacted>" and clobber the real auth. The user's typed key casing is kept.
+    const original = detail.reqHeaders ?? {};
+    const originalByLower: Record<string, string> = {};
+    for (const [k, v] of Object.entries(original)) originalByLower[k.toLowerCase()] = v;
+    const edited = parseHeaders(headersText);
+    const headerOverrides: Record<string, string> = {};
+    for (const [k, v] of Object.entries(edited)) {
+      if (originalByLower[k.toLowerCase()] !== v) headerOverrides[k] = v;
+    }
+    const overrides: { headers?: Record<string, string>; body?: string } = {};
+    if (Object.keys(headerOverrides).length > 0) overrides.headers = headerOverrides;
+    if (bodyText !== (detail.reqBody ?? '')) overrides.body = utf8ToBase64(bodyText);
+
+    setReplaying(true);
+    setReplayError(null);
+    setReplayResult(null);
+    api
+      .netReplay(id, overrides)
+      .then((d) => setReplayResult({ id: d.id, status: d.status, durationMs: d.durationMs }))
+      .catch((e: unknown) => setReplayError(e instanceof ApiRequestError ? e.message : String(e)))
+      .finally(() => setReplaying(false));
+  }, [detail, headersText, bodyText, id]);
 
   return (
     <>
@@ -128,6 +208,14 @@ export function NetDetailDrawer({ id, onClose }: Props) {
               </div>
 
               <div class="drawer-actions">
+                <button
+                  type="button"
+                  class={`copy-btn ${replayOpen ? 'on' : ''}`}
+                  aria-pressed={replayOpen}
+                  onClick={toggleReplay}
+                >
+                  {t('d.replay')}
+                </button>
                 <CopyButton text={detail.url} label={t('d.copyUrl')} />
                 <CopyButton text={() => toCurl(detail)} label={t('d.curl')} />
                 <button
@@ -149,6 +237,60 @@ export function NetDetailDrawer({ id, onClose }: Props) {
                 </button>
               </div>
               {showHarHelp ? <div class="help-note">{t('d.har.help')}</div> : null}
+
+              {replayOpen ? (
+                <div class="replay-editor">
+                  <div class="replay-line">
+                    <span class="d-method">{detail.method}</span>
+                    <span class="d-url" title={detail.url}>{detail.url}</span>
+                  </div>
+                  <div class="help-note">{t('d.replay.note')}</div>
+
+                  <label class="replay-label" for="replay-headers">{t('d.replay.headers')}</label>
+                  <textarea
+                    id="replay-headers"
+                    class="replay-ta"
+                    rows={5}
+                    spellcheck={false}
+                    value={headersText}
+                    onInput={(e) => setHeadersText((e.target as HTMLTextAreaElement).value)}
+                  />
+
+                  <label class="replay-label" for="replay-body">{t('d.replay.body')}</label>
+                  {isTruncated(detail.reqBody) ? <div class="replay-warn">{t('d.replay.truncNote')}</div> : null}
+                  <textarea
+                    id="replay-body"
+                    class="replay-ta mono"
+                    rows={6}
+                    spellcheck={false}
+                    value={bodyText}
+                    onInput={(e) => setBodyText((e.target as HTMLTextAreaElement).value)}
+                  />
+
+                  <div class="replay-row">
+                    <button type="button" class="btn primary" disabled={replaying} onClick={sendReplay}>
+                      {replaying ? t('d.replay.sending') : t('d.replay.send')}
+                    </button>
+                    <button type="button" class="btn" disabled={replaying} onClick={fillFromDetail}>
+                      {t('d.replay.reset')}
+                    </button>
+                  </div>
+
+                  {replayError ? <div class="error-banner">{t('d.replay.failed')}: {replayError}</div> : null}
+                  {replayResult ? (
+                    <div class="replay-result">
+                      <span class="replay-ok">{t('d.replay.ok')}</span>
+                      <span class={`status ${statusClassNum(replayResult.status)}`}>{replayResult.status ?? '—'}</span>
+                      <span class="muted">{formatDuration(replayResult.durationMs)}</span>
+                      {onOpen ? (
+                        <button type="button" class="copy-btn" onClick={() => onOpen(replayResult.id)}>
+                          {t('d.replay.view')}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <SectionTitle label={t('d.reqheaders')} copy={headersToText(detail.reqHeaders) || null} />
               <Headers headers={detail.reqHeaders} empty={t('d.noheaders')} />

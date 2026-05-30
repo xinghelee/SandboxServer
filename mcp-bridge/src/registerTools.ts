@@ -71,6 +71,26 @@ export function pickQuery(args: Record<string, unknown>, keys: string[]): Record
   return q;
 }
 
+/**
+ * Build the JSON body for POST /net/requests/{id}/replay from tool args.
+ * - `headers` (object) pass straight through — the device MERGES them onto the captured request's
+ *   original (unredacted) headers, so only the headers you want to change need to be sent and the
+ *   original auth is preserved unless you override that key.
+ * - `body` is taken as a UTF-8 string and base64-encoded here (the device decodes base64).
+ * Omitted fields fall back to the original captured request on the device. An empty result ({})
+ * therefore re-issues the request faithfully.
+ */
+export function buildReplayBody(args: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (args.headers && typeof args.headers === "object" && !Array.isArray(args.headers)) {
+    out.headers = args.headers;
+  }
+  if (typeof args.body === "string") {
+    out.body = Buffer.from(args.body, "utf8").toString("base64");
+  }
+  return out;
+}
+
 const BINDINGS: Record<string, ToolBinding> = {
   // ---- network -----------------------------------------------------------
   net_list_requests: {
@@ -94,8 +114,16 @@ const BINDINGS: Record<string, ToolBinding> = {
       device.get(`/net/requests/${encodeURIComponent(String(args.id))}`, pickQuery(args, ["include"])),
   },
   net_replay_request: {
-    shape: { id: str.describe("request id to replay") },
-    invoke: (device, _d, args) => device.post(`/net/requests/${encodeURIComponent(String(args.id))}/replay`),
+    shape: {
+      id: str.describe("request id to replay"),
+      headers: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe("header overrides MERGED onto the original request (only changed keys needed; original auth is kept unless you override it)"),
+      body: optStr.describe("replacement request body as UTF-8 text; omit to resend the original body unchanged"),
+    },
+    invoke: (device, _d, args) =>
+      device.post(`/net/requests/${encodeURIComponent(String(args.id))}/replay`, buildReplayBody(args)),
   },
   net_clear: {
     shape: {},

@@ -224,11 +224,73 @@ final class ServerEndToEndTests: XCTestCase {
         let newID = try XCTUnwrap(detail?["id"] as? String)
         XCTAssertNotEqual(newID, id, "replay must create a NEW transaction, not mutate the original")
 
+        // Replay WITH a header override: it MERGES onto the captured (unredacted) headers. Because it
+        // merges (not replaces), the original auth survives without being re-sent — so the replay is
+        // still authorized (status 200) and the override header shows up on the new transaction.
+        let (ovJSON, ovStatus) = try await getJSON(
+            "\(apiBase!)/net/requests/\(id)/replay", token: token, method: "POST",
+            jsonBody: ["headers": ["X-Replay-Tag": "1"]]
+        )
+        XCTAssertEqual(ovStatus, 200)
+        let ov = ovJSON["data"] as? [String: Any]
+        XCTAssertEqual(ov?["status"] as? Int, 200, "merge preserves the original auth, so the replay stays authorized")
+        XCTAssertEqual((ov?["reqHeaders"] as? [String: String])?["X-Replay-Tag"], "1",
+                       "the override header should be merged into the replayed request")
+
+        // Case-insensitive override: the captured probe sent "Authorization"; a lowercase
+        // "authorization" override must WIN (not coexist as a duplicate key), so a bad token is
+        // deterministically rejected — proving the merge canonicalises header names by case.
+        let (ciJSON, ciStatus) = try await getJSON(
+            "\(apiBase!)/net/requests/\(id)/replay", token: token, method: "POST",
+            jsonBody: ["headers": ["authorization": "Bearer not-the-real-token"]]
+        )
+        XCTAssertEqual(ciStatus, 200, "the replay route succeeds; the replayed call's own status is reported in data")
+        XCTAssertEqual((ciJSON["data"] as? [String: Any])?["status"] as? Int, 401,
+                       "a lowercase 'authorization' override must replace the captured 'Authorization', so the bad token is rejected")
+
         // An unknown id is a clean 404, not a 501/500.
         let (errJSON, errStatus) = try await getJSON("\(apiBase!)/net/requests/does-not-exist/replay",
                                                      token: token, method: "POST")
         XCTAssertEqual(errStatus, 404)
         XCTAssertEqual((errJSON["error"] as? [String: Any])?["code"] as? String, "not_found")
+    }
+
+    func testNetReplayBodyOverride() async throws {
+        // Capture a POST, then replay it with a body override; the new transaction must record the
+        // overridden body (its byte count), proving the base64 body-replacement path end-to-end.
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [SandboxURLProtocol.self] + (config.protocolClasses ?? [])
+        let session = URLSession(configuration: config)
+
+        var probe = URLRequest(url: try XCTUnwrap(URL(string: "\(apiBase!)/db/x/query")))
+        probe.httpMethod = "POST"
+        probe.setValue("Bearer \(token!)", forHTTPHeaderField: "Authorization")
+        probe.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        probe.httpBody = Data(#"{"sql":"SELECT 1"}"#.utf8)
+        _ = try await session.data(for: probe)
+
+        var capturedID: String?
+        for _ in 0..<20 {
+            let (json, _) = try await getJSON("\(apiBase!)/net/requests?method=POST", token: token)
+            let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
+            if let hit = items.first(where: { ($0["url"] as? String)?.contains("/db/x/query") ?? false }) {
+                capturedID = hit["id"] as? String
+                break
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        let id = try XCTUnwrap(capturedID, "the POST probe was not captured")
+
+        let overrideBody = "hello-body"
+        let (ovJSON, ovStatus) = try await getJSON(
+            "\(apiBase!)/net/requests/\(id)/replay", token: token, method: "POST",
+            jsonBody: ["body": Data(overrideBody.utf8).base64EncodedString()]
+        )
+        XCTAssertEqual(ovStatus, 200, "the replay route itself succeeds even if the replayed call returns non-2xx")
+        let ov = ovJSON["data"] as? [String: Any]
+        XCTAssertEqual(ov?["reqBytes"] as? Int, overrideBody.utf8.count,
+                       "the overridden body's byte count should be recorded on the new transaction")
+        XCTAssertNotEqual(ov?["id"] as? String, id, "replay must create a NEW transaction")
     }
 
     func testOversizeRequestBodyReturns413() throws {
@@ -302,10 +364,15 @@ final class ServerEndToEndTests: XCTestCase {
         return String(bytes: out, encoding: .utf8)
     }
 
-    private func getJSON(_ urlString: String, token: String?, method: String = "GET") async throws -> ([String: Any], Int) {
+    private func getJSON(_ urlString: String, token: String?, method: String = "GET",
+                         jsonBody: [String: Any]? = nil) async throws -> ([String: Any], Int) {
         var request = URLRequest(url: try XCTUnwrap(URL(string: urlString)))
         request.httpMethod = method
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let jsonBody {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
+        }
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 5
         let (data, response) = try await URLSession(configuration: config).data(for: request)

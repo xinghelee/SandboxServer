@@ -145,6 +145,19 @@ const EN: Dict = {
   'd.har.help':
     'HAR (HTTP Archive) is a JSON file recording this request — method, URL, headers, query, request/response bodies, status and timing. Import the .har into Chrome / Firefox DevTools, Charles, Proxyman or Postman to inspect or replay it. (curl reproduces just this one call; HAR archives the full transaction.)',
 
+  'd.replay': 'replay',
+  'd.replay.note':
+    'Re-sends this request from inside the app (no proxy, pinning-proof). Edit headers/body below, or send as-is. Unchanged lines keep their original value — including the real auth shown as <redacted> — so you only edit what you want to change. Each replay is recorded as a new request.',
+  'd.replay.headers': 'headers — one per line, "Name: value"',
+  'd.replay.body': 'body',
+  'd.replay.truncNote': 'The original body was truncated for preview. Leave it unchanged to resend the full original; editing sends only the text shown.',
+  'd.replay.send': 'send',
+  'd.replay.sending': 'sending…',
+  'd.replay.reset': 'reset',
+  'd.replay.ok': 'replayed',
+  'd.replay.view': 'view new →',
+  'd.replay.failed': 'replay failed',
+
   'fs.title': 'files',
   'fs.loading': 'reading directory…',
   'fs.empty': 'empty directory',
@@ -403,6 +416,19 @@ const ZH: Dict = {
   'd.har.helpTitle': 'HAR 是什么?',
   'd.har.help':
     'HAR(HTTP Archive)是记录本次请求的 JSON 文件 —— 方法、网址、请求头、查询参数、请求/响应体、状态码与耗时。把 .har 导入 Chrome / Firefox DevTools、Charles、Proxyman 或 Postman 即可查看或重放。(curl 只复跑这一个请求;HAR 归档完整的请求-响应记录。)',
+
+  'd.replay': '重放',
+  'd.replay.note':
+    '从应用内部重新发起这个请求(免代理、不受 pinning 影响)。在下面编辑请求头/体,或原样发送。未改动的行会保留原始值 —— 包括显示为 <redacted> 的真实鉴权 —— 所以你只需改想改的部分。每次重放都会记录为一条新请求。',
+  'd.replay.headers': '请求头 —— 每行一个,"名称: 值"',
+  'd.replay.body': '请求体',
+  'd.replay.truncNote': '原始请求体在预览中被截断。不改动则重发完整的原始体;一旦编辑,只会发送当前显示的文本。',
+  'd.replay.send': '发送',
+  'd.replay.sending': '发送中…',
+  'd.replay.reset': '重置',
+  'd.replay.ok': '已重放',
+  'd.replay.view': '查看新请求 →',
+  'd.replay.failed': '重放失败',
 
   'fs.title': '文件',
   'fs.loading': '正在读取目录…',

@@ -334,7 +334,9 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
         </div>
       )}
 
-      {selected ? <NetDetailDrawer id={selected} onClose={() => setSelected(null)} /> : null}
+      {selected ? (
+        <NetDetailDrawer id={selected} onClose={() => setSelected(null)} onOpen={setSelected} />
+      ) : null}
     </div>
   );
 }

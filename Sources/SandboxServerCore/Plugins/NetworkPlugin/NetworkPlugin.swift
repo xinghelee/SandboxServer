@@ -5,7 +5,8 @@ import SandboxServerAPI
 
 /// LIVE in v1. Captures URLSession traffic into an actor-guarded ring buffer and streams it
 /// over the `net` WebSocket channel, so the whole transport → plugin → console → MCP stack is
-/// exercised end-to-end on day one. Replay is stubbed for v2.
+/// exercised end-to-end on day one. Replay is live too: `POST requests/{id}/replay` re-issues a
+/// captured request (optionally overriding headers/body) through the non-capturing internal session.
 final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
     let id = PluginID.net
     private let store = TransactionStore()
@@ -94,10 +95,21 @@ final class NetworkPlugin: SandboxPlugin, @unchecked Sendable {
                     return .error("bad_request", "Captured request has no replayable URL.", status: 400)
                 }
                 // Optional overrides: { "headers": {…}, "body": "<base64>" }. Omitted fields keep
-                // the original; headers fully replace (not merge) so auth can be swapped cleanly.
+                // the original. Header overrides MERGE onto the captured (unredacted) headers — the
+                // override value wins per key — so a console/agent only has to send the headers it
+                // wants to change while the original auth is preserved automatically (the wire-facing
+                // detail redacts auth, so a full-replace would force re-sending "<redacted>"). To
+                // swap auth, override that one key; removing a header isn't supported (rare for replay).
                 struct Overrides: Decodable { let headers: [String: String]?; let body: String? }
                 let overrides = try? await req.decodeJSON(Overrides.self)
-                let headers = overrides?.headers ?? payload.headers
+                // Case-insensitive merge: HTTP header names are case-insensitive, so an override for
+                // "authorization" must WIN over a captured "Authorization" rather than producing two
+                // keys (which URLRequest would then coalesce in an undefined order). Drop any original
+                // key whose lowercased name collides with an override, then apply the overrides.
+                let overrideHeaders = overrides?.headers ?? [:]
+                let overridden = Set(overrideHeaders.keys.map { $0.lowercased() })
+                var headers = payload.headers.filter { !overridden.contains($0.key.lowercased()) }
+                for (key, value) in overrideHeaders { headers[key] = value }
                 let body = overrides?.body.flatMap { Data(base64Encoded: $0) } ?? payload.body
 
                 var urlReq = URLRequest(url: url)

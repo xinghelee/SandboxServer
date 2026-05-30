@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DeviceClient } from "../src/deviceClient.js";
-import { fillPath, pickQuery } from "../src/registerTools.js";
+import { buildReplayBody, fillPath, pickQuery } from "../src/registerTools.js";
 
 const ENDPOINT = { host: "127.0.0.1", port: 8080, token: "t" } as const;
 
@@ -27,4 +27,18 @@ test("pickQuery keeps only present, non-empty keys", () => {
     pickQuery({ a: 1, b: "", c: null, d: "x", e: undefined, f: false }, ["a", "b", "c", "d", "e", "f"]),
     { a: 1, d: "x", f: false },
   );
+});
+
+test("buildReplayBody base64-encodes a UTF-8 body, passes headers through, and omits absent fields", () => {
+  // id-only → faithful replay (empty override body): no headers, no body.
+  assert.deepEqual(buildReplayBody({ id: "x" }), {});
+  // headers pass straight through (the device merges them); body is base64 of the UTF-8 text.
+  assert.deepEqual(buildReplayBody({ id: "x", headers: { "X-Tag": "1" }, body: "héllo" }), {
+    headers: { "X-Tag": "1" },
+    body: Buffer.from("héllo", "utf8").toString("base64"),
+  });
+  // a string[] or non-object headers value is ignored (not forwarded as headers).
+  assert.deepEqual(buildReplayBody({ id: "x", headers: ["bad"] }), {});
+  // an empty-string body still overrides (sends an empty body), distinct from omitting it.
+  assert.deepEqual(buildReplayBody({ id: "x", body: "" }), { body: "" });
 });

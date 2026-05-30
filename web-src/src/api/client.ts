@@ -181,6 +181,25 @@ export const api = {
     return request<{ cleared: number }>('/net/requests', { method: 'DELETE', signal });
   },
 
+  /**
+   * Re-issue a captured request, recording the result as a NEW transaction (returned as the detail).
+   * Overrides are optional: `headers` MERGE onto the original (only changed keys; original auth is
+   * kept unless overridden), and `body` is a base64 string that fully replaces the body. Send no
+   * overrides (`{}`) to replay faithfully — the device keeps the full original body even though the
+   * console only ever saw a (possibly truncated) preview.
+   */
+  netReplay(
+    id: string,
+    overrides: { headers?: Record<string, string>; body?: string } = {},
+    signal?: AbortSignal,
+  ): Promise<NetRequestDetail> {
+    return request<NetRequestDetail>(`/net/requests/${encodeURIComponent(id)}/replay`, {
+      method: 'POST',
+      body: overrides,
+      signal,
+    });
+  },
+
   databases(signal?: AbortSignal): Promise<ListPayload<DbDescriptor>> {
     return request<ListPayload<DbDescriptor>>('/db', { signal });
   },
