@@ -110,7 +110,14 @@ function Header({ health }: { health: Health | null }) {
   return (
     <header class="header">
       <div class="brand">
-        <span class="logo">SBX</span>
+        <span class="logo" aria-hidden="true">
+          <svg class="logo-icon" viewBox="0 0 24 24" focusable="false">
+            <path d="M6.2 7.4 2.8 12l3.4 4.6" />
+            <path d="M17.8 7.4 21.2 12l-3.4 4.6" />
+            <path d="M9.2 17.2 14.8 6.8" />
+            <circle cx="12" cy="12" r="2.3" />
+          </svg>
+        </span>
         <span class="brand-copy">
           <span class="sub">{t('brand.sub')}</span>
           {health ? (
@@ -238,7 +245,7 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
       </div>
       <div class="nav-foot">
         <div>
-          SBX <span class="v">v0.1.0</span>
+          SI <span class="v">v0.1.0</span>
         </div>
         <div>{t('nav.foot')}</div>
       </div>

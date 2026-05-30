@@ -245,7 +245,15 @@ export interface DbSchema {
   foreignKeys: DbForeignKey[];
 }
 
-export type DbCell = string | number | boolean | null;
+export interface DbBlobCell {
+  kind: 'blob';
+  bytes: number;
+  previewBytes: number;
+  truncated: boolean;
+  base64: string;
+}
+
+export type DbCell = string | number | boolean | null | DbBlobCell;
 
 export interface DbQueryResult {
   columns: string[];

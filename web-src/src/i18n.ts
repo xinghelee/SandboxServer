@@ -261,6 +261,11 @@ const EN: Dict = {
   'db.loadmore': 'load more',
   'db.rowcap': 'showing the first {n} rows — refine with SQL to see more',
   'db.readonlyNote': 'read-only · writes are blocked',
+  'db.blob.preview': 'BLOB preview',
+  'db.blob.truncated': 'previewing first {n}',
+  'db.row.preview': 'row details',
+  'db.row.number': 'row {n}',
+  'db.row.value': 'value',
 
   'logs.title': 'logs',
   'logs.count': '{n} lines',
@@ -593,6 +598,11 @@ const ZH: Dict = {
   'db.loadmore': '加载更多',
   'db.rowcap': '仅显示前 {n} 行 —— 用 SQL 进一步筛选可查看更多',
   'db.readonlyNote': '只读 · 写入被拦截',
+  'db.blob.preview': 'BLOB 预览',
+  'db.blob.truncated': '仅预览前 {n}',
+  'db.row.preview': '行详情',
+  'db.row.number': '第 {n} 行',
+  'db.row.value': '值',
 
   'logs.title': '日志',
   'logs.count': '{n} 行',

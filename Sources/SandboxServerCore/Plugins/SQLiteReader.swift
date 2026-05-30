@@ -27,6 +27,8 @@ enum SQLiteError: Error, CustomStringConvertible {
 /// `SQLITE_OPEN_READONLY` connection, so the host app's database is never mutated and a
 /// separate connection sees committed WAL pages without checkpointing.
 enum SQLiteReader {
+    private static let maxBlobPreviewBytes = 16 * 1024
+
     struct TableInfo: Encodable, Sendable { let name: String; let rowCount: Int? }
     struct ColumnInfo: Encodable, Sendable { let name: String; let type: String; let pk: Bool; let notnull: Bool }
     struct ForeignKey: Encodable, Sendable { let from: String; let table: String; let to: String }
@@ -172,7 +174,7 @@ enum SQLiteReader {
         case SQLITE_NULL: return .null
         case SQLITE_INTEGER: return .int(Int(sqlite3_column_int64(stmt, i)))
         case SQLITE_FLOAT: return .double(sqlite3_column_double(stmt, i))
-        case SQLITE_BLOB: return .string("⟨blob \(Int(sqlite3_column_bytes(stmt, i))) bytes⟩")
+        case SQLITE_BLOB: return blobCell(stmt, i)
         default:
             if let c = sqlite3_column_text(stmt, i) {
                 let n = Int(sqlite3_column_bytes(stmt, i))
@@ -180,6 +182,24 @@ enum SQLiteReader {
             }
             return .string("")
         }
+    }
+
+    private static func blobCell(_ stmt: OpaquePointer, _ i: Int32) -> JSONValue {
+        let bytes = Int(sqlite3_column_bytes(stmt, i))
+        let previewBytes = min(bytes, maxBlobPreviewBytes)
+        let preview: String
+        if previewBytes > 0, let raw = sqlite3_column_blob(stmt, i) {
+            preview = Data(bytes: raw, count: previewBytes).base64EncodedString()
+        } else {
+            preview = ""
+        }
+        return .object([
+            "kind": .string("blob"),
+            "bytes": .int(bytes),
+            "previewBytes": .int(previewBytes),
+            "truncated": .bool(previewBytes < bytes),
+            "base64": .string(preview),
+        ])
     }
 
     // MARK: - Helpers

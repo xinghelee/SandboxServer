@@ -130,13 +130,19 @@ body {
   width: 46px;
   height: 34px;
   flex: 0 0 auto;
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: 0.5px;
   color: var(--accent-ink);
   background: var(--accent);
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 10px 20px -16px var(--accent);
+}
+.logo-icon {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .brand-copy {
   display: flex;
@@ -655,7 +661,7 @@ pre.body {
 /* ----- Bundle / IPA payload inspector ------------------------------------- */
 .bundle-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   align-items: start;
 }
@@ -664,6 +670,7 @@ pre.body {
   background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: 12px;
+  min-width: 0;
 }
 .bundle-card .section-title { margin-top: 0; }
 .bundle-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
@@ -709,28 +716,6 @@ pre.body {
 .sec-dot.fail { background: var(--s5); }
 .sec-dot.info { background: var(--s3); }
 .sec-dot.unknown { background: var(--ink-dim); }
-
-/* IPA upload / drop zone (browser-side analysis) */
-.ipa-drop {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  margin-bottom: 16px; padding: 28px 18px;
-  text-align: center; cursor: pointer;
-  color: var(--ink-2);
-  background: var(--bg-1);
-  border: 1.5px dashed var(--line-2); border-radius: 12px;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-.ipa-drop:hover, .ipa-drop.over {
-  color: var(--ink);
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, var(--bg-1));
-}
-.ipa-drop-ic { font-size: 22px; opacity: 0.7; }
-.ipa-banner {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-  margin-bottom: 14px; padding: 10px 14px;
-  background: var(--bg-1); border: 1px solid var(--line); border-radius: 10px;
-}
 
 /* ----- DB list ------------------------------------------------------------ */
 .db-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
@@ -1160,6 +1145,99 @@ pre.body {
 .col-pill .flag.pk { color: var(--accent-ink); background: var(--accent); }
 .col-pill .flag.nn { color: var(--s4); border: 1px solid color-mix(in srgb, var(--s4) 45%, var(--line)); }
 .cell-null { color: var(--ink-dim); font-style: italic; }
+.db-blob-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 2px 8px;
+  color: var(--link);
+  background: color-mix(in srgb, var(--link) 9%, var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--link) 32%, var(--line));
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+.db-blob-cell:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--link) 58%, var(--line));
+}
+.db-blob-kind {
+  color: var(--accent-ink);
+  background: var(--link);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.db-blob-preview {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  background: var(--bg-1);
+  border: 1px solid color-mix(in srgb, var(--link) 35%, var(--line));
+  border-radius: 10px;
+}
+.db-blob-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.db-blob-mode {
+  display: inline-flex;
+  margin-bottom: 8px;
+  color: var(--link);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.db-blob-body {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+}
+.db-row-drawer {
+  width: min(960px, 94vw);
+}
+.db-row-drawer-body {
+  padding: 16px;
+}
+.db-row-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.db-row-field {
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.db-row-field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.db-row-col {
+  color: var(--ink);
+  font: 700 12.5px/1.3 var(--mono);
+  word-break: break-word;
+}
+.db-row-value {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.db-row-value.scalar {
+  max-height: 160px;
+}
 table.grid td { font-family: var(--mono); font-size: 12.5px; }
 
 /* ----- Logs stream -------------------------------------------------------- */

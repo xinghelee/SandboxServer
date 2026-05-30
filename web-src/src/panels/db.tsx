@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
-import type { DbDescriptor, DbTable, DbSchema, DbQueryResult, DbCell } from '../api/types';
+import type { DbDescriptor, DbTable, DbSchema, DbQueryResult, DbCell, DbBlobCell } from '../api/types';
 import { useI18n } from '../i18n';
 import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { navigate } from '../router';
+import { formatBytes } from '../util/format';
+import { isBinaryPlist, parseBinaryPlist } from '../util/ipa/bplist';
 
 const DB_MAX_ROWS = 5000; // cap on accumulated loadMore rows so the grid can't grow unbounded
 type DbViewMode = 'list' | 'grid';
 const DB_VIEW_KEY = 'sbx.db.view';
+type BlobSelection = { column: string; rowNumber: number; cell: DbBlobCell };
+type RowSelection = { rowNumber: number; columns: string[]; row: DbCell[] };
 
 function loadDbViewMode(): DbViewMode {
   try {
@@ -22,6 +26,10 @@ function loadDbViewMode(): DbViewMode {
 function requestedDbPath() {
   const query = window.location.hash.split('?')[1] || '';
   return new URLSearchParams(query).get('path');
+}
+
+function isBlobCell(cell: DbCell): cell is DbBlobCell {
+  return !!cell && typeof cell === 'object' && (cell as DbBlobCell).kind === 'blob';
 }
 
 export function DbPanel() {
@@ -130,6 +138,8 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
   const [sql, setSql] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [blob, setBlob] = useState<BlobSelection | null>(null);
+  const [rowDetail, setRowDetail] = useState<RowSelection | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rowH, setRowH] = useState(38);
 
@@ -162,6 +172,8 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
     (name: string) => {
       setTable(name);
       setError(null);
+      setBlob(null);
+      setRowDetail(null);
       setBusy(true);
       setSql('');
       Promise.all([api.dbQuery(db.id, { table: name, limit: 100 }), api.dbSchema(db.id, name)])
@@ -180,6 +192,8 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
     setTable(null);
     setSchema(null);
     setError(null);
+    setBlob(null);
+    setRowDetail(null);
     setBusy(true);
     api
       .dbQuery(db.id, { sql, limit: 200 })
@@ -263,6 +277,7 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
       ) : null}
 
       {error ? <div class="error-banner">{error}</div> : null}
+      {blob ? <BlobPreview selection={blob} onClose={() => setBlob(null)} /> : null}
 
       {busy && !result ? (
         <Loading labelKey="db.loading" />
@@ -283,13 +298,34 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
                     <td colSpan={result.columns.length} style={`height:${win.padTop}px`} />
                   </tr>
                 ) : null}
-                {result.rows.slice(win.start, win.end).map((row, i) => (
-                  <tr key={win.start + i} class="v-row">
-                    {row.map((cell, j) => (
-                      <td key={j}>{renderCell(cell)}</td>
-                    ))}
-                  </tr>
-                ))}
+                {result.rows.slice(win.start, win.end).map((row, i) => {
+                  const rowNumber = win.start + i + 1;
+                  const selectedRow = rowDetail?.rowNumber === rowNumber;
+                  return (
+                    <tr
+                      key={win.start + i}
+                      class={`v-row ${selectedRow ? 'selected' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={t('db.row.number', { n: rowNumber })}
+                      onClick={() => {
+                        setBlob(null);
+                        setRowDetail({ rowNumber, columns: result.columns, row });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setBlob(null);
+                          setRowDetail({ rowNumber, columns: result.columns, row });
+                        }
+                      }}
+                    >
+                      {row.map((cell, j) => (
+                        <td key={j}>{renderCell(cell, result.columns[j] ?? String(j + 1), rowNumber, setBlob)}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
                 {win.padBottom > 0 ? (
                   <tr class="v-pad" aria-hidden="true">
                     <td colSpan={result.columns.length} style={`height:${win.padBottom}px`} />
@@ -311,11 +347,230 @@ function DbExplorer({ db, onBack }: { db: DbDescriptor; onBack: () => void }) {
           ) : null}
         </>
       ) : null}
+
+      {rowDetail ? <RowDetailPanel selection={rowDetail} onClose={() => setRowDetail(null)} /> : null}
     </div>
   );
 }
 
-function renderCell(cell: DbCell) {
+function renderCell(
+  cell: DbCell,
+  column: string,
+  rowNumber: number,
+  onBlob: (selection: BlobSelection) => void,
+) {
   if (cell === null) return <span class="cell-null">NULL</span>;
+  if (isBlobCell(cell)) {
+    return (
+      <button
+        class="db-blob-cell"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onBlob({ column, rowNumber, cell });
+        }}
+      >
+        <span class="db-blob-kind">BLOB</span>
+        <span>{formatBytes(cell.bytes)}</span>
+      </button>
+    );
+  }
   return String(cell);
+}
+
+function RowDetailPanel({ selection, onClose }: { selection: RowSelection; onClose: () => void }) {
+  const { t } = useI18n();
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      previous?.focus?.();
+    };
+  }, [onClose]);
+
+  return (
+    <>
+      <div class="drawer-scrim" onClick={onClose} aria-hidden="true" />
+      <aside
+        class="drawer db-row-drawer"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${t('db.row.preview')} ${t('db.row.number', { n: selection.rowNumber })}`}
+        tabIndex={-1}
+      >
+        <div class="drawer-head">
+          <span class="d-method">{t('db.row.number', { n: selection.rowNumber })}</span>
+          <span class="d-url">{t('db.row.preview')}</span>
+          <button class="x" onClick={onClose} aria-label={t('d.close')}>
+            ×
+          </button>
+        </div>
+        <div class="drawer-body db-row-drawer-body">
+          <div class="db-row-grid">
+            {selection.columns.map((column, index) => (
+              <RowField
+                key={`${column || index}-${index}`}
+                column={column || String(index + 1)}
+                cell={selection.row[index] ?? null}
+              />
+            ))}
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function RowField({ column, cell }: { column: string; cell: DbCell }) {
+  const { t } = useI18n();
+  if (cell === null) {
+    return (
+      <div class="db-row-field">
+        <div class="db-row-col">{column}</div>
+        <div class="cell-null">NULL</div>
+      </div>
+    );
+  }
+
+  if (isBlobCell(cell)) {
+    const preview = decodeBlob(cell);
+    return (
+      <div class="db-row-field blob">
+        <div class="db-row-field-head">
+          <div class="db-row-col">{column}</div>
+          <div class="muted">
+            BLOB · {formatBytes(cell.bytes)}
+            {cell.truncated ? ` · ${t('db.blob.truncated', { n: formatBytes(cell.previewBytes) })}` : ''}
+          </div>
+        </div>
+        <div class="db-blob-mode">{preview.label}</div>
+        <pre class="body db-row-value">{preview.text}</pre>
+      </div>
+    );
+  }
+
+  const preview = decodeScalar(cell);
+  return (
+    <div class="db-row-field">
+      <div class="db-row-col">{column}</div>
+      <div class="db-blob-mode">{preview.label || t('db.row.value')}</div>
+      <pre class="body db-row-value scalar">{preview.text}</pre>
+    </div>
+  );
+}
+
+function BlobPreview({ selection, onClose }: { selection: BlobSelection; onClose: () => void }) {
+  const { t } = useI18n();
+  const preview = decodeBlob(selection.cell);
+  return (
+    <section class="db-blob-preview">
+      <div class="db-blob-head">
+        <div>
+          <div class="section-title">{t('db.blob.preview')}</div>
+          <div class="muted">
+            {selection.column} · {t('db.row.number', { n: selection.rowNumber })} · {formatBytes(selection.cell.bytes)}
+            {selection.cell.truncated ? ` · ${t('db.blob.truncated', { n: formatBytes(selection.cell.previewBytes) })}` : ''}
+          </div>
+        </div>
+        <button class="btn" onClick={onClose}>
+          {t('d.close')}
+        </button>
+      </div>
+      <div class="db-blob-mode">{preview.label}</div>
+      <pre class="body db-blob-body">{preview.text}</pre>
+    </section>
+  );
+}
+
+function decodeScalar(cell: Exclude<DbCell, DbBlobCell | null>): { label: string; text: string } {
+  if (typeof cell === 'string') {
+    const trimmed = cell.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        return { label: 'JSON text', text: JSON.stringify(JSON.parse(trimmed), null, 2) };
+      } catch {
+        return { label: 'text', text: cell };
+      }
+    }
+    return { label: 'text', text: cell };
+  }
+  return { label: typeof cell, text: String(cell) };
+}
+
+function decodeBlob(cell: DbBlobCell): { label: string; text: string } {
+  const bytes = base64ToBytes(cell.base64);
+  if (!bytes.length) return { label: 'empty blob', text: '' };
+
+  if (isBinaryPlist(bytes)) {
+    try {
+      return {
+        label: 'binary plist',
+        text: JSON.stringify(parseBinaryPlist(bytes), null, 2),
+      };
+    } catch {
+      // Fall through to hex if the plist is an NSKeyedArchiver variant outside our parser subset.
+    }
+  }
+
+  const text = decodeUtf8(bytes);
+  if (text != null && isReadableText(text)) {
+    const trimmed = text.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        return { label: 'JSON text', text: JSON.stringify(JSON.parse(trimmed), null, 2) };
+      } catch {
+        return { label: 'text', text };
+      }
+    }
+    return { label: 'text', text };
+  }
+
+  return { label: 'hex', text: hexDump(bytes) };
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  if (!base64) return new Uint8Array();
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function decodeUtf8(bytes: Uint8Array): string | null {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function isReadableText(text: string): boolean {
+  if (!text) return true;
+  let control = 0;
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if ((code < 32 && !'\n\r\t'.includes(ch)) || code === 127) control++;
+  }
+  return control / text.length < 0.02;
+}
+
+function hexDump(bytes: Uint8Array): string {
+  const max = Math.min(bytes.length, 4096);
+  const lines: string[] = [];
+  for (let offset = 0; offset < max; offset += 16) {
+    const slice = bytes.subarray(offset, Math.min(offset + 16, max));
+    const hex = Array.from(slice, (b) => b.toString(16).padStart(2, '0')).join(' ').padEnd(47, ' ');
+    const ascii = Array.from(slice, (b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : '.')).join('');
+    lines.push(`${offset.toString(16).padStart(8, '0')}  ${hex}  ${ascii}`);
+  }
+  if (bytes.length > max) lines.push(`... ${formatBytes(bytes.length - max)} more in preview`);
+  return lines.join('\n');
 }
