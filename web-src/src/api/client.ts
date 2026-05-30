@@ -1,6 +1,6 @@
 // Thin fetch wrapper around the REST API.
 // - prefixes /__sandbox/api/v1
-// - attaches the session token as Authorization and query auth
+// - attaches the optional session token as Authorization and query auth
 // - unwraps the { data, meta } success envelope
 // - throws ApiRequestError carrying the { error } envelope on failure
 

@@ -32,7 +32,7 @@ function printUsage(): void {
       "  sandbox-mcp discover [--timeout ms]         list LAN devices and exit",
       "  sandbox-mcp doctor   [--host ...]           probe /healthz and exit",
       "",
-      "Env: SANDBOX_HOST, SANDBOX_PORT, SANDBOX_TOKEN, SANDBOX_MCP_LOG=debug|info|warn|error",
+      "Env: SANDBOX_HOST, SANDBOX_PORT, optional SANDBOX_TOKEN, SANDBOX_MCP_LOG=debug|info|warn|error",
     ].join("\n"),
   );
 }

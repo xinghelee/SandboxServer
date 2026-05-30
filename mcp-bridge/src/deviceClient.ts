@@ -2,7 +2,7 @@
  * deviceClient — thin fetch wrapper around the SandboxServer REST API.
  *
  * - Prefixes every path with /__sandbox/api/v1
- * - Adds `Authorization: Bearer <token>`
+ * - Adds `Authorization: Bearer <token>` when the endpoint has a token
  * - Unwraps the frozen REST envelope: success -> `data`, error -> throws
  * - Caps inline text bodies at ~256KB; larger payloads are surfaced as a
  *   note/resource reference rather than inlined into a tool result.
@@ -35,7 +35,7 @@ function baseUrl(ep: Endpoint): string {
 export interface Endpoint {
   host: string;
   port: number;
-  token: string;
+  token?: string;
   /** "http" — SandboxServer binds loopback/local network over plain HTTP. */
   scheme?: "http" | "https";
 }
@@ -297,10 +297,7 @@ export class DeviceClient {
   }
 
   private authHeaders(extra?: Record<string, string>): Record<string, string> {
-    return {
-      Authorization: `Bearer ${this.endpoint.token}`,
-      ...extra,
-    };
+    return this.endpoint.token ? { Authorization: `Bearer ${this.endpoint.token}`, ...extra } : { ...extra };
   }
 
   /**

@@ -10,7 +10,7 @@ struct MiddlewareChain: Sendable {
     let bindingPolicy: BindingPolicy
 
     /// Returns a rejection response, or `nil` to proceed. Static console assets pass
-    /// `requiresAuth: false` so the browser can bootstrap its token from `?token=`.
+    /// `requiresAuth: false` so the browser can load before optional `?token=` bootstrap happens.
     func reject(_ head: HTTPRequestHead, requiresAuth: Bool) -> SBResponse? {
         if let hostRejection = validateHost(head) { return hostRejection }
         if requiresAuth {

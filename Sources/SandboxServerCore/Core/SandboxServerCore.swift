@@ -11,8 +11,9 @@ import UIKit
 
 /// The concrete engine assembled when the SDK is enabled. It wires transport + router +
 /// middleware + WebSocket hub + plugin registry, runs the accept loop, enforces the
-/// `ReleaseGuard`, mints the session token, logs the safety banner, and (in `.localNetwork`)
-/// advertises Bonjour. It owns nothing feature-specific — files/db/network arrive as plugins.
+/// `ReleaseGuard`, optionally mints the session token, logs the safety banner, and (in
+/// `.localNetwork`) advertises Bonjour. It owns nothing feature-specific — files/db/network arrive
+/// as plugins.
 public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
     private let lock = NSLock()
     private var pendingPlugins: [any SandboxPlugin] = []
@@ -76,11 +77,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
             break
         }
 
-        var cfg = config
-        if cfg.auth == .none, cfg.bindingPolicy == .localNetwork {
-            logger("⚠️ auth=.none is not allowed on .localNetwork; forcing a session token.")
-            cfg.auth = .token
-        }
+        let cfg = config
 
         let (plugins, snapshotRoots, snapshotValues) = lock.withLock {
             (pendingPlugins, roots, hostValues)
@@ -361,7 +358,11 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         ]
         if let token = info.token { lines.append("token:    \(token)") }
         if config.bindingPolicy == .localNetwork {
-            lines.append("⚠️ reachable by ANY device on this network — use the token and a trusted Wi-Fi.")
+            if info.token == nil {
+                lines.append("⚠️ reachable by ANY device on this network — no token required; use only on trusted Wi-Fi.")
+            } else {
+                lines.append("⚠️ reachable by ANY device on this network — use the token and a trusted Wi-Fi.")
+            }
         }
         lines.append("───────────────────────────────────────")
         logger("\n" + lines.joined(separator: "\n"))

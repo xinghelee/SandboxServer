@@ -1,5 +1,5 @@
 // Single multiplexed WebSocket client.
-// Connects to /__sandbox/ws?token=..., supports subscribe/unsubscribe per
+// Connects to /__sandbox/ws (with ?token=... only when auth is enabled), supports subscribe/unsubscribe per
 // channel, dispatches typed messages to listeners, auto-reconnects with
 // exponential backoff, and resumes by replaying the last-seen seq per channel.
 

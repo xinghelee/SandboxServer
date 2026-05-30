@@ -31,7 +31,7 @@ xcrun simctl launch --console-pty "$SIM_ID" com.sandboxserver.demo >"$LOG" 2>&1 
 LP=$!
 
 for _ in $(seq 1 25); do grep -q "console:" "$LOG" 2>/dev/null && break; sleep 1; done
-URL=$(grep -oE 'http://[0-9.]+:[0-9]+/\?token=[A-Z0-9]+' "$LOG" | tail -1 || true)
+URL=$(grep -oE 'http://[0-9.]+:[0-9]+/(\?token=[A-Z0-9]+)?' "$LOG" | tail -1 || true)
 
 echo
 if [ -n "${URL:-}" ]; then

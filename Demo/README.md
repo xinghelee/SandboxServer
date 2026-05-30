@@ -1,8 +1,8 @@
 # SandboxServerDemo
 
 一个最小 iOS demo,用来在模拟器上验证 SandboxServer：启动时拉起内嵌调试服务、打几条网络请求,
-界面直接显示**控制台 URL + token**。Demo 使用 `localNetwork` 绑定,所以同一可信 LAN 上的浏览器
-也可以打开显示的 `http://<device-ip>:8080/?token=…` 来查看 Web 控制台和实时抓包。
+界面直接显示**控制台 URL**。Demo 使用 `localNetwork` 绑定且默认不校验 token,所以同一可信 LAN
+上的浏览器也可以打开显示的 `http://<device-ip>:8080/` 来查看 Web 控制台和实时抓包。
 
 ## 一键运行
 
@@ -20,7 +20,7 @@ SIM=$(xcrun simctl list devices booted | grep -oE '\([0-9A-F-]{36}\)' | tr -d '(
 xcodebuild -project SandboxServerDemo.xcodeproj -scheme SandboxServerDemo \
   -destination "id=$SIM" -derivedDataPath .build build
 xcrun simctl install "$SIM" .build/Build/Products/Debug-iphonesimulator/SandboxServerDemo.app
-xcrun simctl launch --console-pty "$SIM" com.sandboxserver.demo   # 控制台会打印带 token 的 URL
+xcrun simctl launch --console-pty "$SIM" com.sandboxserver.demo   # 控制台会打印 URL
 ```
 
 ## 集成说明

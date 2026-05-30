@@ -17,9 +17,9 @@
 
 它在宿主进程内、基于 Apple 的 Network.framework 跑一个内嵌 HTTP + WebSocket 服务,**零第三方运行时依赖**。
 
-> ⚠️ 本 SDK 会把宿主 App 沙盒的完整读写权限,通过局域网开放给持有会话 token 的人。它 **默认关闭**,
-> 必须显式 `start()` 并校验每会话 token,默认只绑定 loopback,且在 Release/App Store 构建里 **物理上
-> 不存在**。请用非生产账号、在可信网络下使用。
+> ⚠️ 本 SDK 会开放宿主 App 沙盒的完整读写权限。它 **默认关闭**,必须显式 `start()`,默认只绑定
+> loopback,且在 Release/App Store 构建里 **物理上不存在**。Token 鉴权是可选项；如果用
+> `.localNetwork` 且不启用 token,同一可信 LAN 上的设备都能访问控制台。请用非生产账号、在可信网络下使用。
 
 ---
 
@@ -99,7 +99,7 @@ Task {
     // 内置插件(网络/文件/数据库)由配置自动注册。
     let result = await SandboxServer.shared.start()        // 默认 .loopback、全部内置插件
     if case .started(let info) = result {
-        print("打开 \(info.consoleURL)")                    // 已带 bootstrap ?token=
+        print("打开 \(info.consoleURL)")                    // 需要 ?token= 时显式设置 auth: .token
     }
 }
 
@@ -109,9 +109,8 @@ Task {
 #endif
 ```
 
-控制台 URL 会连同会话 token 一起打印到 Xcode 控制台。在 **模拟器** 上直接打开
-(`http://127.0.0.1:<port>/?token=…`)。在 **真机** 上,用 `.localNetwork` 启动,再用同一 Wi-Fi
-下的浏览器打开打印出的局域网 URL:
+控制台 URL 会打印到 Xcode 控制台。在 **模拟器** 上直接打开
+(`http://127.0.0.1:<port>/`)。在 **真机** 上,用 `.localNetwork` 启动,再用同一 Wi-Fi 下的浏览器打开打印出的局域网 URL:
 
 ```swift
 await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
@@ -132,7 +131,7 @@ await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
     "sandbox": {
       "command": "npx",
       "args": ["-y", "sandbox-mcp"],
-      "env": { "SANDBOX_HOST": "127.0.0.1", "SANDBOX_PORT": "8080", "SANDBOX_TOKEN": "<token>" }
+      "env": { "SANDBOX_HOST": "127.0.0.1", "SANDBOX_PORT": "8080" }
     }
   }
 }

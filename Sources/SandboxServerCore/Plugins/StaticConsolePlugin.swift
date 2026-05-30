@@ -5,7 +5,8 @@ import SandboxServerAPI
 
 /// Serves the bundled Preact console from the resource bundle. Not a `SandboxPlugin` — it
 /// handles the non-`/__sandbox` paths (`/`, `/assets/*`) directly, without requiring a token
-/// so the browser can bootstrap from `?token=`. Path-traversal guarded; correct MIME + caching.
+/// so the browser can load even before optional `?token=` bootstrap. Path-traversal guarded;
+/// correct MIME + caching.
 struct StaticConsole: Sendable {
     let webRoot: URL?
 

@@ -2,8 +2,8 @@
  * discovery — resolve the SandboxServer device endpoint.
  *
  * Precedence:
- *   1. Explicit config: env SANDBOX_HOST / SANDBOX_PORT / SANDBOX_TOKEN or
- *      CLI flags --host / --port / --token.
+ *   1. Explicit config: env SANDBOX_HOST / SANDBOX_PORT, with optional
+ *      SANDBOX_TOKEN or CLI flags --host / --port / --token.
  *   2. Single Bonjour match: browse _sandboxserver._tcp; if exactly one peer
  *      resolves, auto-connect using its host:port + TXT record.
  *   3. Multiple peers: throw with a helpful "pin one of these" message.
@@ -160,20 +160,14 @@ export interface ResolveResult {
 
 /**
  * Resolve the device endpoint following the documented precedence.
- * Throws with a helpful message when ambiguous or when a token is required
- * but missing.
+ * Throws with a helpful message when ambiguous or when a discovered device
+ * reports that a token is required but none is available.
  */
 export async function resolveEndpoint(flags: CliFlags): Promise<ResolveResult> {
   const cfg = explicitConfig(flags);
 
   // (1) Fully explicit host+port -> no discovery needed.
   if (cfg.host && cfg.port !== undefined) {
-    if (!cfg.token) {
-      throw new Error(
-        "Host and port were provided but no token. Set SANDBOX_TOKEN (or --token). " +
-          "The device's console shows the bearer token.",
-      );
-    }
     return {
       source: "explicit",
       endpoint: { host: cfg.host, port: cfg.port, token: cfg.token },
@@ -187,7 +181,7 @@ export async function resolveEndpoint(flags: CliFlags): Promise<ResolveResult> {
   if (peers.length === 0) {
     throw new Error(
       "No SandboxServer device found via Bonjour and no explicit endpoint configured.\n" +
-        "Set SANDBOX_HOST + SANDBOX_PORT + SANDBOX_TOKEN (or pass --host/--port/--token), " +
+        "Set SANDBOX_HOST + SANDBOX_PORT (and SANDBOX_TOKEN only if auth is enabled), " +
         "or ensure the device app is running and on the same network.",
     );
   }
@@ -195,7 +189,7 @@ export async function resolveEndpoint(flags: CliFlags): Promise<ResolveResult> {
   if (peers.length > 1) {
     throw new Error(
       `Multiple SandboxServer devices found (${peers.length}). Pin one explicitly via ` +
-        `SANDBOX_HOST/SANDBOX_PORT (and SANDBOX_TOKEN), e.g. --host ${peers[0]!.host} --port ${peers[0]!.port}.\n` +
+        `SANDBOX_HOST/SANDBOX_PORT (and SANDBOX_TOKEN if required), e.g. --host ${peers[0]!.host} --port ${peers[0]!.port}.\n` +
         `Discovered peers:\n${formatPeers(peers)}`,
     );
   }
@@ -203,7 +197,7 @@ export async function resolveEndpoint(flags: CliFlags): Promise<ResolveResult> {
   // Exactly one peer -> auto-connect.
   const peer = peers[0]!;
   const token = cfg.token ?? peer.txt.token;
-  const requiresAuth = peer.txt.requiresAuth !== false;
+  const requiresAuth = peer.txt.requiresAuth === true;
   if (requiresAuth && !token) {
     throw new Error(
       `Found device${peer.txt.deviceName ? ` "${peer.txt.deviceName}"` : ""} at ${peer.host}:${peer.port}, ` +
@@ -214,6 +208,6 @@ export async function resolveEndpoint(flags: CliFlags): Promise<ResolveResult> {
   return {
     source: "bonjour",
     peer,
-    endpoint: { host: peer.host, port: peer.port, token: token ?? "" },
+    endpoint: { host: peer.host, port: peer.port, token },
   };
 }

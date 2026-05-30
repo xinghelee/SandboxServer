@@ -312,14 +312,16 @@ function McpPanel({ health, plugins }: { health: Health | null; plugins: Plugin[
   const token = getToken();
   const host = window.location.hostname;
   const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
-  const tokenValue = token || '<token from app screen>';
   const tools = plugins.flatMap((p) => (p.mcpTools ?? []).map((tool) => ({ plugin: p, tool })));
   const env = {
     SANDBOX_HOST: host,
     SANDBOX_PORT: port,
-    SANDBOX_TOKEN: tokenValue,
+    ...(token ? { SANDBOX_TOKEN: token } : {}),
   };
-  const doctorCommand = `SANDBOX_HOST=${host} SANDBOX_PORT=${port} SANDBOX_TOKEN=${tokenValue} npx -y sandbox-mcp doctor`;
+  const doctorCommand =
+    `SANDBOX_HOST=${host} SANDBOX_PORT=${port}` +
+    (token ? ` SANDBOX_TOKEN=${token}` : '') +
+    ' npx -y sandbox-mcp doctor';
   const config = JSON.stringify(
     {
       mcpServers: {

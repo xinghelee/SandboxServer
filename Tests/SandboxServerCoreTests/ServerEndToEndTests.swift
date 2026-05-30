@@ -116,6 +116,35 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(status, 401)
     }
 
+    func testDefaultAuthIsOpenIncludingLocalNetwork() async throws {
+        let openServer = SandboxServerCore()
+        let result = await openServer.start(SandboxConfig(
+            bindingPolicy: .localNetwork, auth: .none, builtInPlugins: .none, preferredPort: 0
+        ))
+        guard case .started(let info) = result else {
+            return XCTFail("open localNetwork server failed to start: \(result)")
+        }
+        XCTAssertNil(info.token)
+        XCTAssertEqual(info.bindingPolicy, .localNetwork)
+
+        let json: [String: Any]
+        let status: Int
+        do {
+            let response = try await getJSON("http://127.0.0.1:\(info.port)/__sandbox/api/v1/healthz", token: nil)
+            json = response.0
+            status = response.1
+            await openServer.stop()
+        } catch {
+            await openServer.stop()
+            throw error
+        }
+
+        XCTAssertEqual(status, 200)
+        let data = json["data"] as? [String: Any]
+        XCTAssertEqual(data?["bindingPolicy"] as? String, "localNetwork")
+        XCTAssertEqual(data?["requiresAuth"] as? Bool, false)
+    }
+
     func testFilesListingIsLive() async throws {
         let (json, status) = try await getJSON("\(apiBase!)/fs/list", token: token)
         XCTAssertEqual(status, 200)

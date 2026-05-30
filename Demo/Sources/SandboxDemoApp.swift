@@ -42,9 +42,10 @@ final class ServerModel: ObservableObject {
     func start() async {
         #if DEBUG
         // LAN mode lets another browser/MCP client on the same trusted Wi-Fi reach the demo.
-        // A token is required whenever the server is exposed beyond this device.
+        // Token validation is off by default, including local-network binding; opt into
+        // auth: .token if you need credentials on the LAN.
         // captureConsole mirrors print/NSLog into the Logs panel; SandboxServer.log adds structured lines.
-        let result = await server.start(SandboxConfig(bindingPolicy: .localNetwork, auth: .token, captureConsole: true))
+        let result = await server.start(SandboxConfig(bindingPolicy: .localNetwork, captureConsole: true))
         switch result {
         case .started(let info):
             consoleURL = info.consoleURL.absoluteString

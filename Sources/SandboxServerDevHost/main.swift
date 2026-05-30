@@ -2,7 +2,7 @@
 // during development:
 //
 //   swift run --traits SandboxServerEnabled SandboxServerDevHost
-//   # then open the http://127.0.0.1:8080/?token=… URL it prints
+//   # then open the http://127.0.0.1:8080/ URL it prints
 //
 // Env: PORT (default 8080), TOKEN=1 to require a session token (off by default, matching the SDK).
 #if SandboxServerEnabled

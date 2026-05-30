@@ -28,21 +28,21 @@ No global install needed.
 npx -y sandbox-mcp discover
 
 # health check (warns if buildConfig != debug)
-npx -y sandbox-mcp doctor --host 127.0.0.1 --port 8765 --token <TOKEN>
+npx -y sandbox-mcp doctor --host 127.0.0.1 --port 8765
 ```
 
 ## Endpoint resolution
 
 The endpoint is resolved with this precedence:
 
-1. **Explicit config** — `SANDBOX_HOST` / `SANDBOX_PORT` / `SANDBOX_TOKEN`
-   (env), or `--host` / `--port` / `--token` (flags).
+1. **Explicit config** — `SANDBOX_HOST` / `SANDBOX_PORT` (env), with optional
+   `SANDBOX_TOKEN`, or `--host` / `--port` / `--token` (flags).
 2. **Single Bonjour match** — browses `_sandboxserver._tcp`; if exactly one
    device resolves, it auto-connects using its host:port + TXT record.
 3. **Multiple devices** — the bridge lists the peers and asks you to pin one
    explicitly (set `SANDBOX_HOST`/`SANDBOX_PORT`).
 
-A bearer token is required whenever the device reports `requiresAuth`.
+A bearer token is only required when the device reports `requiresAuth`.
 
 ## Claude Code / Claude Desktop config
 
@@ -57,8 +57,7 @@ Add to your MCP client config (e.g. `claude_desktop_config.json`, or
       "args": ["-y", "sandbox-mcp"],
       "env": {
         "SANDBOX_HOST": "127.0.0.1",
-        "SANDBOX_PORT": "8765",
-        "SANDBOX_TOKEN": "your-device-token"
+        "SANDBOX_PORT": "8765"
       }
     }
   }

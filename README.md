@@ -18,10 +18,11 @@ A **DEBUG-only iOS SDK** that turns any app into a browsable debug target. Integ
 It runs an embedded HTTP + WebSocket server **inside the host process** on Apple's
 Network.framework, with **zero third-party runtime dependencies**.
 
-> ⚠️ This SDK exposes full read/write access to the host app's sandbox over the local network to
-> anyone holding the session token. It is **off by default**, requires an explicit `start()` and a
-> per-session token, binds loopback by default, and is **physically absent from Release/App Store
-> builds**. Use non-production accounts on a trusted network.
+> ⚠️ This SDK exposes full read/write access to the host app's sandbox. It is **off by default**,
+> requires an explicit `start()`, binds loopback by default, and is **physically absent from
+> Release/App Store builds**. Token auth is opt-in; if you bind to `.localNetwork` without enabling
+> it, every device on the trusted LAN can reach the console. Use non-production accounts on a
+> trusted network.
 
 ---
 
@@ -103,7 +104,7 @@ Task {
     // Built-in plugins (network/files/db) are auto-registered from the config.
     let result = await SandboxServer.shared.start()        // .loopback, all built-ins, by default
     if case .started(let info) = result {
-        print("Open \(info.consoleURL)")                   // includes the bootstrap ?token=
+        print("Open \(info.consoleURL)")                   // add auth: .token if you want ?token=
     }
 }
 
@@ -113,9 +114,9 @@ Task {
 #endif
 ```
 
-The console URL is printed to the Xcode console with the session token baked in. On the
-**Simulator** open it directly (`http://127.0.0.1:<port>/?token=…`). On a **device**, start with
-`.localNetwork` and open the printed LAN URL from a browser on the same Wi-Fi:
+The console URL is printed to the Xcode console. On the **Simulator** open it directly
+(`http://127.0.0.1:<port>/`). On a **device**, start with `.localNetwork` and open the printed LAN
+URL from a browser on the same Wi-Fi:
 
 ```swift
 await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
@@ -137,7 +138,7 @@ client at it:
     "sandbox": {
       "command": "npx",
       "args": ["-y", "sandbox-mcp"],
-      "env": { "SANDBOX_HOST": "127.0.0.1", "SANDBOX_PORT": "8080", "SANDBOX_TOKEN": "<token>" }
+      "env": { "SANDBOX_HOST": "127.0.0.1", "SANDBOX_PORT": "8080" }
     }
   }
 }

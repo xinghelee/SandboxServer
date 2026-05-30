@@ -15,12 +15,11 @@ public enum BindingPolicy: Sendable, Equatable {
 /// Authentication enforced by the transport middleware *before* any plugin runs.
 public enum AuthMode: Sendable, Equatable {
     /// A fresh per-session bearer token is required on every request and WS upgrade.
-    /// Recommended whenever the server is reachable by anything other than this device;
-    /// automatically forced under `.localNetwork`.
+    /// Recommended whenever the server is reachable by anything other than this device.
     case token
     /// No token — the default. Under `.loopback` (the default binding) the server is only
-    /// reachable from this device, so requiring a per-launch token just forces you to
-    /// re-open the console on every restart. Auto-upgraded to `.token` under `.localNetwork`.
+    /// reachable from this device. Under `.localNetwork`, every device on the trusted LAN can
+    /// reach it without credentials; opt into `.token` if that is not acceptable.
     case none
 }
 
@@ -105,7 +104,7 @@ public struct SandboxConfig: Sendable {
 
 /// What the host gets back from `start(...)`.
 public enum StartResult: Sendable {
-    /// The server is live. `StartInfo` carries the console URL (with bootstrap token) to open.
+    /// The server is live. `StartInfo` carries the console URL to open.
     case started(StartInfo)
     /// This build links the no-op product (Release / SandboxServer disabled). Nothing happened.
     case disabled
@@ -114,7 +113,8 @@ public enum StartResult: Sendable {
 }
 
 public struct StartInfo: Sendable {
-    /// The base URL of the console, e.g. `http://127.0.0.1:8080/?token=…`. Open this in a browser.
+    /// The base URL of the console, e.g. `http://127.0.0.1:8080/` or
+    /// `http://127.0.0.1:8080/?token=…` when token auth is enabled.
     public let consoleURL: URL
     /// The base URL of the REST API root (`…/__sandbox/api/v1`).
     public let apiBaseURL: URL

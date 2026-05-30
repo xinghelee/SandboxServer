@@ -23,13 +23,15 @@ test("resolveEndpoint returns an explicit endpoint when host+port+token are give
   }
 });
 
-test("resolveEndpoint rejects an explicit host+port with no token", async () => {
+test("resolveEndpoint returns an explicit host+port with no token", async () => {
   const saved = { ...process.env };
   delete process.env.SANDBOX_HOST;
   delete process.env.SANDBOX_PORT;
   delete process.env.SANDBOX_TOKEN;
   try {
-    await assert.rejects(resolveEndpoint({ host: "1.2.3.4", port: 8080 }), /no token/i);
+    const r = await resolveEndpoint({ host: "1.2.3.4", port: 8080 });
+    assert.equal(r.source, "explicit");
+    assert.deepEqual(r.endpoint, { host: "1.2.3.4", port: 8080, token: undefined });
   } finally {
     process.env = saved;
   }
