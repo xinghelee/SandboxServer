@@ -41,9 +41,10 @@ final class ServerModel: ObservableObject {
 
     func start() async {
         #if DEBUG
-        // Loopback is reachable from the Mac's browser because the Simulator shares localhost.
+        // LAN mode lets another browser/MCP client on the same trusted Wi-Fi reach the demo.
+        // A token is required whenever the server is exposed beyond this device.
         // captureConsole mirrors print/NSLog into the Logs panel; SandboxServer.log adds structured lines.
-        let result = await server.start(SandboxConfig(bindingPolicy: .loopback, captureConsole: true))
+        let result = await server.start(SandboxConfig(bindingPolicy: .localNetwork, auth: .token, captureConsole: true))
         switch result {
         case .started(let info):
             consoleURL = info.consoleURL.absoluteString

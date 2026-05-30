@@ -4,13 +4,19 @@
 // in history or gets copy-pasted around.
 
 const STORAGE_KEY = 'sbx_token';
+let memoryToken: string | null = null;
 
 export function bootstrapToken(): void {
   try {
     const url = new URL(window.location.href);
     const fromQuery = url.searchParams.get('token');
     if (fromQuery) {
-      sessionStorage.setItem(STORAGE_KEY, fromQuery);
+      memoryToken = fromQuery;
+      try {
+        window.sessionStorage?.setItem(STORAGE_KEY, fromQuery);
+      } catch {
+        /* memory fallback below keeps this page session connected */
+      }
       url.searchParams.delete('token');
       const cleaned =
         url.pathname + (url.searchParams.toString() ? `?${url.searchParams}` : '') + url.hash;
@@ -23,23 +29,25 @@ export function bootstrapToken(): void {
 
 export function getToken(): string | null {
   try {
-    return sessionStorage.getItem(STORAGE_KEY);
+    return window.sessionStorage?.getItem(STORAGE_KEY) ?? memoryToken;
   } catch {
-    return null;
+    return memoryToken;
   }
 }
 
 export function setToken(token: string): void {
+  memoryToken = token;
   try {
-    sessionStorage.setItem(STORAGE_KEY, token);
+    window.sessionStorage?.setItem(STORAGE_KEY, token);
   } catch {
     /* ignore */
   }
 }
 
 export function clearToken(): void {
+  memoryToken = null;
   try {
-    sessionStorage.removeItem(STORAGE_KEY);
+    window.sessionStorage?.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
   }

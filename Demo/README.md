@@ -1,8 +1,8 @@
 # SandboxServerDemo
 
 一个最小 iOS demo,用来在模拟器上验证 SandboxServer：启动时拉起内嵌调试服务、打几条网络请求,
-界面直接显示**控制台 URL + token**。因为 **iOS 模拟器与 Mac 共享 localhost**,在 Mac 浏览器里打开
-那个 `http://127.0.0.1:8080/?token=…` 就能看到 Web 控制台和实时抓包。
+界面直接显示**控制台 URL + token**。Demo 使用 `localNetwork` 绑定,所以同一可信 LAN 上的浏览器
+也可以打开显示的 `http://<device-ip>:8080/?token=…` 来查看 Web 控制台和实时抓包。
 
 ## 一键运行
 

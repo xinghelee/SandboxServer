@@ -6,6 +6,11 @@ import { navigate } from '../router';
 
 const THUMB_POLL_MS = 700; // gentle live thumbnail (~1.4 fps)
 
+function shortcutSubtitle(id: string, t: (key: string) => string): string {
+  if (id === 'bundle') return 'playload';
+  return hasKey(`home.stat.${id}`) ? t(`home.stat.${id}`) : id;
+}
+
 /** Per-module stat: how to fetch a quick count for a plugin id. */
 const STAT_LOADERS: Record<string, (signal: AbortSignal) => Promise<string>> = {
   net: async (s) => {
@@ -189,7 +194,7 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
                   <span class="ov-shortcut-name">{moduleName(p.id, p.title)}</span>
                   <span class="ov-shortcut-count">{stats[p.id] ?? ''}</span>
                 </span>
-                <span class="ov-shortcut-sub">{hasKey(`home.stat.${p.id}`) ? t(`home.stat.${p.id}`) : p.id}</span>
+                <span class="ov-shortcut-sub">{shortcutSubtitle(p.id, t)}</span>
               </button>
             ))}
           </div>

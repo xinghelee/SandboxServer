@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build, install, and launch the demo on a booted iOS Simulator, then open the debug
-# console in your Mac browser (the Simulator shares localhost with the host).
+# console URL printed by the app. The demo binds localNetwork, so the URL uses a LAN IP.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -31,7 +31,7 @@ xcrun simctl launch --console-pty "$SIM_ID" com.sandboxserver.demo >"$LOG" 2>&1 
 LP=$!
 
 for _ in $(seq 1 25); do grep -q "console:" "$LOG" 2>/dev/null && break; sleep 1; done
-URL=$(grep -oE 'http://127\.0\.0\.1:[0-9]+/\?token=[A-Z0-9]+' "$LOG" | tail -1 || true)
+URL=$(grep -oE 'http://[0-9.]+:[0-9]+/\?token=[A-Z0-9]+' "$LOG" | tail -1 || true)
 
 echo
 if [ -n "${URL:-}" ]; then

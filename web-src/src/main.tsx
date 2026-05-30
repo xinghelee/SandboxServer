@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { bootstrapToken, setToken, extractToken } from './api/auth';
+import { bootstrapToken, setToken, extractToken, getToken, clearToken } from './api/auth';
 import { api, ApiRequestError } from './api/client';
 import { socket } from './api/ws';
 import type { WsStatus } from './api/ws';
@@ -9,6 +9,7 @@ import type { Health, Plugin } from './api/types';
 import { useRoute, navigate } from './router';
 import { useI18n, moduleName } from './i18n';
 import { useTheme } from './theme';
+import { CopyButton } from './components/CopyButton';
 import { Loading } from './components/Spinner';
 import { EmptyState } from './components/EmptyState';
 import { OverviewPanel } from './panels/overview';
@@ -107,6 +108,7 @@ function Controls() {
 function Header({ health }: { health: Health | null }) {
   const { t } = useI18n();
   const debug = health?.buildConfig === 'debug';
+  const endpoint = typeof window !== 'undefined' ? window.location.host : health?.bindingPolicy;
   return (
     <header class="header">
       <div class="brand">
@@ -135,9 +137,9 @@ function Header({ health }: { health: Health | null }) {
               <span class="k">{t('hdr.build')}</span>
               <span class="v">{health.buildConfig}</span>
             </span>
-            <span class="chip">
+            <span class="chip" title={`${health.bindingPolicy} · ${endpoint}`}>
               <span class="k">{t('hdr.binding')}</span>
-              <span class="v">{health.bindingPolicy}</span>
+              <span class="v">{endpoint}</span>
             </span>
           </>
         ) : null}
@@ -171,10 +173,15 @@ const NAV_VISUALS: Record<string, NavVisual> = {
   ws: { icon: '⇄', accent: 'var(--link)' },
   websocket: { icon: '⇄', accent: 'var(--link)' },
   bundle: { icon: '⬡', accent: '#d29922' },
+  mcp: { icon: '⌘', accent: '#39c5bb' },
 };
 
 function navVisual(id: string, key?: string): NavVisual {
   return NAV_VISUALS[key || ''] ?? NAV_VISUALS[id] ?? DEFAULT_NAV_VISUAL;
+}
+
+function moduleSubtitle(id: string): string {
+  return id === 'bundle' ? 'playload' : id;
 }
 
 function NavLink({
@@ -237,17 +244,20 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
               target={target}
               active={route === target}
               title={moduleName(p.id, p.title)}
-              code={p.id}
+              code={moduleSubtitle(p.id)}
               visual={navVisual(p.id, key)}
             />
           );
         })}
       </div>
-      <div class="nav-foot">
-        <div>
-          SI <span class="v">v0.1.0</span>
-        </div>
-        <div>{t('nav.foot')}</div>
+      <div class="nav-section">
+        <NavLink
+          target="/mcp"
+          active={route === '/mcp'}
+          title={t('mcp.title')}
+          code="mcp"
+          visual={navVisual('mcp')}
+        />
       </div>
     </nav>
   );
@@ -291,6 +301,95 @@ function ConnectForm({ onConnect }: { onConnect: () => void }) {
   );
 }
 
+function McpPanel({ health, plugins }: { health: Health | null; plugins: Plugin[] }) {
+  const { t } = useI18n();
+  const token = getToken();
+  const host = window.location.hostname;
+  const port = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+  const tokenValue = token || '<token from app screen>';
+  const tools = plugins.flatMap((p) => (p.mcpTools ?? []).map((tool) => ({ plugin: p, tool })));
+  const env = {
+    SANDBOX_HOST: host,
+    SANDBOX_PORT: port,
+    SANDBOX_TOKEN: tokenValue,
+  };
+  const doctorCommand = `SANDBOX_HOST=${host} SANDBOX_PORT=${port} SANDBOX_TOKEN=${tokenValue} npx -y sandbox-mcp doctor`;
+  const config = JSON.stringify(
+    {
+      mcpServers: {
+        sandbox: {
+          command: 'npx',
+          args: ['-y', 'sandbox-mcp'],
+          env,
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  return (
+    <div class="panel mcp-panel">
+      <div class="panel-toolbar">
+        <h2>{t('mcp.title')}</h2>
+        <span class="count-chip">{t('mcp.tools', { n: tools.length + 1 })}</span>
+      </div>
+
+      <section class="mcp-hero">
+        <div>
+          <div class="mcp-eyebrow">{t('mcp.bridge')}</div>
+          <h3>{t('mcp.hero')}</h3>
+          <p>{t('mcp.sub')}</p>
+        </div>
+        <div class="mcp-endpoint" aria-label={t('mcp.endpoint')}>
+          <span>{t('mcp.endpoint')}</span>
+          <strong>{host}:{port}</strong>
+          <em>{health?.requiresAuth ?? true ? t('mcp.auth.token') : t('mcp.auth.open')}</em>
+        </div>
+      </section>
+
+      <div class="mcp-grid">
+        <section class="mcp-card">
+          <div class="mcp-card-head">
+            <h3>{t('mcp.step1')}</h3>
+            <CopyButton text={doctorCommand} />
+          </div>
+          <p>{t('mcp.step1.sub')}</p>
+          <pre class="mcp-code">{doctorCommand}</pre>
+        </section>
+
+        <section class="mcp-card wide">
+          <div class="mcp-card-head">
+            <h3>{t('mcp.step2')}</h3>
+            <CopyButton text={config} />
+          </div>
+          <p>{t('mcp.step2.sub')}</p>
+          <pre class="mcp-code">{config}</pre>
+        </section>
+
+        <section class="mcp-card wide">
+          <div class="mcp-card-head">
+            <h3>{t('mcp.step3')}</h3>
+          </div>
+          <p>{t('mcp.step3.sub')}</p>
+          <div class="mcp-tool-list">
+            <div class="mcp-tool">
+              <span class="mcp-tool-name">sandbox_status</span>
+              <span class="mcp-tool-meta">{t('mcp.statusTool')}</span>
+            </div>
+            {tools.map(({ plugin, tool }) => (
+              <div class="mcp-tool" key={`${plugin.id}:${tool.name}`}>
+                <span class="mcp-tool-name">{tool.name}</span>
+                <span class="mcp-tool-meta">{moduleName(plugin.id, plugin.title)} · {tool.readOnlyHint ? t('mcp.readonly') : t('mcp.write')}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const route = useRoute();
   const { t } = useI18n();
@@ -299,6 +398,7 @@ function App() {
   const [fatal, setFatal] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const isMcp = route === '/mcp';
   const reconnect = () => setNonce((n) => n + 1);
 
   useEffect(() => {
@@ -326,18 +426,36 @@ function App() {
       })
       .catch((e: unknown) => {
         if (ctrl.signal.aborted) return;
-        if (e instanceof ApiRequestError && e.isUnauthorized) setUnauthorized(true);
+        if (e instanceof ApiRequestError && e.isUnauthorized) {
+          if (isMcp) {
+            clearToken();
+            setPlugins([]);
+          }
+          else setUnauthorized(true);
+        }
         else if (e instanceof ApiRequestError) setFatal(e.message);
         else setFatal(String(e));
       });
     return () => ctrl.abort();
-  }, [nonce]);
+  }, [nonce, isMcp]);
 
   const activePlugin = useMemo(() => {
     if (!plugins) return null;
     const key = route.replace(/^\//, '');
     return plugins.find((p) => (p.panelKey || p.id) === key) ?? plugins[0] ?? null;
   }, [plugins, route]);
+
+  if (isMcp && (unauthorized || fatal || !plugins)) {
+    return (
+      <div class="app">
+        <Header health={health} />
+        <Nav plugins={plugins ?? []} route={route} />
+        <main class="main">
+          <McpPanel health={health} plugins={plugins ?? []} />
+        </main>
+      </div>
+    );
+  }
 
   if (unauthorized) {
     return (
@@ -388,6 +506,8 @@ function App() {
         {debugWarn ? <div class="warn-banner">{t('warn.nondebug', { build: health!.buildConfig })}</div> : null}
         {isOverview ? (
           <OverviewPanel health={health} plugins={plugins} />
+        ) : isMcp ? (
+          <McpPanel health={health} plugins={plugins} />
         ) : activePlugin ? (
           panelFor(activePlugin)
         ) : (

@@ -1,6 +1,6 @@
 // Thin fetch wrapper around the REST API.
 // - prefixes /__sandbox/api/v1
-// - attaches Authorization: Bearer <token>
+// - attaches the session token as Authorization and query auth
 // - unwraps the { data, meta } success envelope
 // - throws ApiRequestError carrying the { error } envelope on failure
 
@@ -77,6 +77,10 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   return qs ? `${base}?${qs}` : base;
 }
 
+function authQuery(query: RequestOptions['query'], token: string | null): RequestOptions['query'] {
+  return token ? { ...query, token } : query;
+}
+
 export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -90,7 +94,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     body = JSON.stringify(opts.body);
   }
 
-  const res = await fetch(buildUrl(path, opts.query), {
+  const res = await fetch(buildUrl(path, authQuery(opts.query, token)), {
     method: opts.method || 'GET',
     headers,
     body,
@@ -134,7 +138,7 @@ export async function rawRequest(
   const token = getToken();
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(buildUrl(path, query), { headers, signal });
+  const res = await fetch(buildUrl(path, authQuery(query, token)), { headers, signal });
   if (!res.ok) {
     let apiError: ApiError = {
       code: `http_${res.status}`,

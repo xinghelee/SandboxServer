@@ -16,7 +16,7 @@ struct ContentView: View {
                     if case .running = model.state {
                         labeled("Console URL", model.consoleURL, mono: true)
                         labeled("Token", model.token, mono: true)
-                        Text("Open the Console URL in a browser on this Mac (the Simulator shares localhost).")
+                        Text("Open the Console URL from this Mac or another device on the same trusted LAN. The token is required.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if case .disabled = model.state {
