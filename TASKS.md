@@ -141,13 +141,13 @@
 
 ## E. 顺手的健壮性(受信任网络 → 不急,改到附近时顺带做)
 
-### [ ] E1 · WS 帧体积上限(对齐 HTTP body cap)
+### [x] E1 · WS 帧体积上限(对齐 HTTP body cap)  ✅ (447fa5d)
 **工作量** S · 〔原 P0-4,已降级〕 `WebSocket.swift:92` 缓冲攻击者可控 payloadLen 无上限。受信任网络下风险低、但极便宜:加 `maxFramePayloadBytes`(如 1 MiB),超限发 close 1009 并关闭。**涉及** `WebSocket.swift` · `WSHub.swift`。
 
-### [ ] E2 · DB `ATTACH`/多语句守卫(SQLite authorizer)
+### [x] E2 · DB `ATTACH`/多语句守卫(SQLite authorizer)  ✅ (00c2dbe)
 **工作量** M · 〔原 P0-3,已降级〕 只读连接仍可 `ATTACH` 读 App 沙盒内其它 SQLite(`SQLiteReader.swift:104,116` 用户 SQL 直进 prepare_v2)。受信任 + 沙盒内,严重度低;cheap guard:装 `sqlite3_set_authorizer` 拒 ATTACH/写、单语句检查。**涉及** `SQLiteReader.swift` · `DBPlugin.swift`。
 
-### [ ] E3 · WS upgrade 校验 Sec-WebSocket-Version(426),可选 Origin 限制
+### [x] E3 · WS upgrade 校验 Sec-WebSocket-Version(426),可选 Origin 限制  ✅ (1db4bd7)
 **工作量** S · 〔原 P2-10〕 `handleWebSocketUpgrade` 不校验版本/Origin。低优先,Origin 限制有破坏 bridge/HMR 风险,做就保持配置门控。**涉及** `SandboxServerCore.swift` · `WebSocket.swift`。
 
 > **不做(默认):body 脱敏**〔原 P1-2〕——对调试是**反效果**(测试常常就想看到完整 token/body),且仅在不可信网络才有价值;header 脱敏已默认开启。若将来确需,可经 `SandboxConfig.redactBodyKeys` 做成**默认关闭**的可选项。
