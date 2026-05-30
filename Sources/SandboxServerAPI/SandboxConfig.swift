@@ -40,8 +40,12 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     public static let hierarchy = BuiltInPlugins(rawValue: 1 << 5)
     /// Live capture of the app's URLSessionWebSocketTask traffic.
     public static let websocket = BuiltInPlugins(rawValue: 1 << 6)
+    /// App bundle / IPA payload inspector. Also auto-registers the `.app` bundle as a READ-ONLY
+    /// browsable root (so the `files` plugin can list the whole Payload tree). iOS-focused but
+    /// safe everywhere — degrades to `supported: false` on a non-app host.
+    public static let appBundle = BuiltInPlugins(rawValue: 1 << 7)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle]
     public static let none: BuiltInPlugins = []
 }
 

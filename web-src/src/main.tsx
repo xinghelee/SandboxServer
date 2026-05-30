@@ -19,6 +19,7 @@ import { LogsPanel } from './panels/logs';
 import { ScreenPanel } from './panels/screen';
 import { HierarchyPanel } from './panels/hierarchy';
 import { WSPanel } from './panels/ws';
+import { BundlePanel } from './panels/bundle';
 import './styles.css';
 
 // Consume any bootstrap ?token= before anything reads sessionStorage.
@@ -48,6 +49,8 @@ function panelFor(plugin: Plugin) {
     case 'ws':
     case 'websocket':
       return <WSPanel />;
+    case 'bundle':
+      return <BundlePanel />;
     default:
       return <EmptyState icon="?" title={plugin.panelKey} subKey="err.unknownpanel" />;
   }

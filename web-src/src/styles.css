@@ -466,6 +466,38 @@ pre.body {
 .replay-result { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12.5px; }
 .replay-ok { font-weight: 700; color: var(--accent); }
 
+/* ----- Bundle / IPA payload inspector ------------------------------------- */
+.bundle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.bundle-card {
+  padding: 16px 18px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.bundle-card .section-title { margin-top: 0; }
+.bundle-card-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.bundle-icon { width: 52px; height: 52px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.18); }
+.bundle-name { font-size: 16px; font-weight: 700; color: var(--ink); }
+.bundle-dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin: 0; font-size: 13px; }
+.bundle-dl dt { color: var(--ink-dim); font-weight: 600; }
+.bundle-dl dd { margin: 0; color: var(--ink); }
+.bundle-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 2px; font-size: 12.5px; }
+.break { word-break: break-all; }
+.chip-sm {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 6px;
+  color: var(--ink-2); background: var(--bg-3);
+  border: 1px solid var(--line);
+}
+.chip-sm.ok { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.chip-sm.danger { color: var(--s5); border-color: color-mix(in srgb, var(--s5) 45%, var(--line)); }
+
 /* ----- DB list ------------------------------------------------------------ */
 .db-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 .db-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--bg-1); border: 1px solid var(--line); border-radius: 10px; transition: border-color 0.15s; }

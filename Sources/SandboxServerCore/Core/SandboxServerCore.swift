@@ -86,13 +86,24 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
             (pendingPlugins, roots, hostValues)
         }
 
+        // The app bundle (IPA payload) is exposed as a READ-ONLY browsable root when opted in, so
+        // the files plugin can list the whole Payload tree while writes into it return a clean 403.
+        var effectiveRoots = snapshotRoots
+        var readOnlyRoots: [URL] = []
+        if cfg.builtInPlugins.contains(.appBundle) {
+            let bundleURL = Bundle.main.bundleURL
+            effectiveRoots.append(bundleURL)
+            readOnlyRoots.append(bundleURL)
+        }
+
         let auth = AuthGate(mode: cfg.auth)
         let registry = PluginRegistry()
         let hub = WSHub(log: logger)
         let transport = NetworkFrameworkTransport(readTimeout: cfg.requestReadTimeout)
         let staticConsole = StaticConsole(webRoot: ResourceBundle.webRoot)
         let context = CorePluginContext(
-            config: cfg, hub: hub, roots: snapshotRoots, hostValues: snapshotValues, logger: logger
+            config: cfg, hub: hub, roots: effectiveRoots, readOnlyRoots: readOnlyRoots,
+            hostValues: snapshotValues, logger: logger
         )
 
         var allPlugins: [any SandboxPlugin] = []
@@ -103,6 +114,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.screen) { allPlugins.append(ScreenPlugin()) }
         if cfg.builtInPlugins.contains(.hierarchy) { allPlugins.append(HierarchyPlugin()) }
         if cfg.builtInPlugins.contains(.websocket) { allPlugins.append(WSPlugin()) }
+        if cfg.builtInPlugins.contains(.appBundle) { allPlugins.append(BundlePlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {
@@ -413,19 +425,8 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
     }
 
     /// The app's primary icon as a base64 PNG (iOS only; the icon lives in the app bundle).
-    private func appIconBase64() -> String? {
-        #if canImport(UIKit)
-        guard let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
-              let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
-              let files = primary["CFBundleIconFiles"] as? [String],
-              let name = files.last,
-              let image = UIImage(named: name),
-              let png = image.pngData() else { return nil }
-        return png.base64EncodedString()
-        #else
-        return nil
-        #endif
-    }
+    /// Shared with the bundle inspector so the two never drift.
+    private func appIconBase64() -> String? { BundleInspector.iconBase64() }
 
     private func defaultServiceName() -> String { "SandboxServer @ \(deviceName())" }
 
@@ -454,14 +455,16 @@ final class CorePluginContext: PluginContext, @unchecked Sendable {
     let config: SandboxConfig
     private let hub: WSHub
     private let roots: [URL]
+    private let readOnlyRootList: [URL]
     private let hostValues: [String: Any]
     private let logger: @Sendable (String) -> Void
 
-    init(config: SandboxConfig, hub: WSHub, roots: [URL], hostValues: [String: Any],
-         logger: @escaping @Sendable (String) -> Void) {
+    init(config: SandboxConfig, hub: WSHub, roots: [URL], readOnlyRoots: [URL] = [],
+         hostValues: [String: Any], logger: @escaping @Sendable (String) -> Void) {
         self.config = config
         self.hub = hub
         self.roots = roots
+        self.readOnlyRootList = readOnlyRoots
         self.hostValues = hostValues
         self.logger = logger
     }
@@ -471,6 +474,8 @@ final class CorePluginContext: PluginContext, @unchecked Sendable {
     }
 
     func extraRoots() -> [URL] { roots }
+
+    func readOnlyRoots() -> [URL] { readOnlyRootList }
 
     func hostValue<Value>(_ key: HostValueKey<Value>) -> Value? { hostValues[key.name] as? Value }
 

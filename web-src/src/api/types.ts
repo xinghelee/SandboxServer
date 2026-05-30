@@ -91,6 +91,79 @@ export interface NetRequestDetail extends NetRequestSummary {
   respBody?: string | null;
 }
 
+// --- Bundle plugin (App Bundle / IPA payload inspector) ---
+
+export interface BundleSummary {
+  supported: boolean;
+  bundleId?: string;
+  bundlePath?: string;
+  displayName?: string;
+  shortVersion?: string;
+  build?: string;
+  minimumOSVersion?: string;
+  platform?: string;
+  deviceFamilies: string[];
+  sdkName?: string;
+  icon?: string; // base64 PNG
+}
+
+export interface MachOSlice {
+  cpuType: string;
+  cpuSubtype: string;
+  is64: boolean;
+  magic: string;
+  encrypted: boolean;
+  cryptId?: number | null;
+  fileType?: string | null;
+}
+
+export interface MachOInfo {
+  supported: boolean;
+  executablePath?: string;
+  fileSize: number;
+  fat: boolean;
+  slices: MachOSlice[];
+}
+
+export interface Provisioning {
+  present: boolean;
+  name?: string;
+  teamIdentifier?: string;
+  teamName?: string;
+  appIdName?: string;
+  appId?: string;
+  creationDate?: number; // unix seconds
+  expirationDate?: number;
+  expired?: boolean;
+  provisionedDeviceCount?: number;
+  isDistribution?: boolean;
+  entitlements?: unknown;
+  parseError?: string;
+}
+
+export interface UsageDescription {
+  key: string;
+  purpose: string;
+}
+
+export interface ATSInfo {
+  allowsArbitraryLoads: boolean;
+  exceptionDomains: string[];
+}
+
+export interface BundlePrivacy {
+  usageDescriptions: UsageDescription[];
+  urlSchemes: string[];
+  backgroundModes: string[];
+  ats?: ATSInfo | null;
+}
+
+export interface PlistDecode {
+  path: string;
+  format: string; // binary | xml | openstep
+  json: unknown;
+}
+
 // --- Files plugin ---
 
 export interface FileEntry {

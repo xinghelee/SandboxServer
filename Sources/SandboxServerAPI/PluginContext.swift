@@ -33,6 +33,11 @@ public protocol PluginContext: Sendable {
     /// roots (App Group / shared containers) the host registered.
     func extraRoots() -> [URL]
 
+    /// Roots that are present in `extraRoots()` but must be treated as read-only — writes/moves/
+    /// deletes into them are refused with a clean 403 (e.g. the OS-mounted `.app` bundle). Defaults
+    /// to empty so existing contexts and plugins are unaffected.
+    func readOnlyRoots() -> [URL]
+
     /// A value the host registered under `key`, if any.
     func hostValue<Value>(_ key: HostValueKey<Value>) -> Value?
 
@@ -41,4 +46,9 @@ public protocol PluginContext: Sendable {
 
     /// Debug log routed through the SDK's logger (also surfaced on the `log` WS channel).
     func log(_ message: @autoclosure () -> String)
+}
+
+public extension PluginContext {
+    /// Default: no read-only roots. The real core overrides this when the app bundle is exposed.
+    func readOnlyRoots() -> [URL] { [] }
 }

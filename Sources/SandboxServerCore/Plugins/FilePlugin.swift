@@ -84,6 +84,14 @@ struct FilePlugin: SandboxPlugin {
         return nil
     }
 
+    /// Whether `url` lies within a root the host marked read-only (e.g. the OS-mounted `.app`
+    /// bundle). Symlinks are resolved on both sides, mirroring `resolve`.
+    static func isReadOnly(_ url: URL, _ ctx: any PluginContext) -> Bool {
+        let readOnly = ctx.readOnlyRoots().map { $0.resolvingSymlinksInPath().standardizedFileURL.path }
+        let p = url.resolvingSymlinksInPath().standardizedFileURL.path
+        return readOnly.contains { p == $0 || p.hasPrefix($0 + "/") }
+    }
+
     // MARK: - DTOs
 
     struct FileEntry: Encodable, Sendable {
@@ -173,6 +181,7 @@ struct FilePlugin: SandboxPlugin {
 
     static func write(_ req: SBRequest, _ ctx: any PluginContext) async throws -> SBResponse {
         guard let url = resolve(req.query["path"], ctx) else { return forbidden() }
+        if isReadOnly(url, ctx) { return readOnly() }
         struct Payload: Decodable { let content: String; let encoding: String? }
         let data: Data
         if let payload = try? await req.decodeJSON(Payload.self) {
@@ -203,6 +212,8 @@ struct FilePlugin: SandboxPlugin {
               let from = resolve(payload.from, ctx), let to = resolve(payload.to, ctx) else {
             return forbidden()
         }
+        // A move mutates both endpoints (writes `to`, removes `from`), so neither may be read-only.
+        if isReadOnly(from, ctx) || isReadOnly(to, ctx) { return readOnly() }
         let fm = FileManager.default
         do {
             if payload.overwrite == true, fm.fileExists(atPath: to.path) { try fm.removeItem(at: to) }
@@ -215,6 +226,7 @@ struct FilePlugin: SandboxPlugin {
 
     static func delete(_ req: SBRequest, _ ctx: any PluginContext) -> SBResponse {
         guard let url = resolve(req.query["path"], ctx) else { return forbidden() }
+        if isReadOnly(url, ctx) { return readOnly() }
         let fm = FileManager.default
         var isDir: ObjCBool = false
         guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else {
@@ -237,6 +249,10 @@ struct FilePlugin: SandboxPlugin {
 
     private static func forbidden() -> SBResponse {
         .error("forbidden", "Path is outside the allowed sandbox roots.", status: 403)
+    }
+
+    private static func readOnly() -> SBResponse {
+        .error("forbidden", "This root is mounted read-only (e.g. the app bundle); writes are not allowed.", status: 403)
     }
 
     private static func entry(for url: URL) -> FileEntry {

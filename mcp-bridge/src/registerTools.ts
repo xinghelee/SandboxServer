@@ -256,6 +256,28 @@ const BINDINGS: Record<string, ToolBinding> = {
     invoke: (device, _d, args) => device.post("/screen/paste", { text: args.text }),
   },
 
+  // ---- app bundle / IPA payload inspector --------------------------------
+  bundle_summary: {
+    shape: {},
+    invoke: (device) => device.get("/bundle"),
+  },
+  bundle_macho: {
+    shape: {},
+    invoke: (device) => device.get("/bundle/macho"),
+  },
+  bundle_provisioning: {
+    shape: {},
+    invoke: (device) => device.get("/bundle/provisioning"),
+  },
+  bundle_privacy: {
+    shape: {},
+    invoke: (device) => device.get("/bundle/privacy"),
+  },
+  bundle_decode_plist: {
+    shape: { path: str.describe("absolute path to a .plist/.strings file inside an allowed root") },
+    invoke: (device, _d, args) => device.get("/bundle/plist", pickQuery(args, ["path"])),
+  },
+
   // ---- view hierarchy -----------------------------------------------------
   ui_hierarchy: {
     shape: {

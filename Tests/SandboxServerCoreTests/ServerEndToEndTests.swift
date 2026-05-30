@@ -44,7 +44,12 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(status, 200)
         let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
         let ids = Set(items.compactMap { $0["id"] as? String })
-        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen", "hierarchy", "ws"])
+        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen", "hierarchy", "ws", "bundle"])
+        // The bundle plugin advertises its inspector tools.
+        let bundle = items.first { $0["id"] as? String == "bundle" }
+        let bundleTools = (bundle?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+        XCTAssertTrue(bundleTools.contains("bundle_macho"))
+        XCTAssertTrue(bundleTools.contains("bundle_decode_plist"))
         // The network plugin must advertise its MCP tools so the bridge can register them.
         let net = items.first { $0["id"] as? String == "net" }
         let netTools = (net?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
@@ -291,6 +296,41 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(ov?["reqBytes"] as? Int, overrideBody.utf8.count,
                        "the overridden body's byte count should be recorded on the new transaction")
         XCTAssertNotEqual(ov?["id"] as? String, id, "replay must create a NEW transaction")
+    }
+
+    func testBundleEndpoints() async throws {
+        // Summary + Mach-O + provisioning + privacy all answer with well-formed envelopes on the
+        // macOS test host (graceful degradation), and the Mach-O parser works against the real
+        // test-runner binary.
+        let (summary, s1) = try await getJSON("\(apiBase!)/bundle", token: token)
+        XCTAssertEqual(s1, 200)
+        let sdata = summary["data"] as? [String: Any]
+        XCTAssertNotNil(sdata?["bundlePath"], "summary should report the bundle path")
+
+        let (macho, s2) = try await getJSON("\(apiBase!)/bundle/macho", token: token)
+        XCTAssertEqual(s2, 200)
+        let mdata = macho["data"] as? [String: Any]
+        XCTAssertEqual(mdata?["supported"] as? Bool, true, "the test runner is itself a real Mach-O")
+        XCTAssertGreaterThanOrEqual((mdata?["slices"] as? [[String: Any]])?.count ?? 0, 1)
+
+        let (prov, s3) = try await getJSON("\(apiBase!)/bundle/provisioning", token: token)
+        XCTAssertEqual(s3, 200)
+        XCTAssertEqual((prov["data"] as? [String: Any])?["present"] as? Bool, false,
+                       "the macOS test runner has no embedded.mobileprovision")
+
+        let (_, s4) = try await getJSON("\(apiBase!)/bundle/privacy", token: token)
+        XCTAssertEqual(s4, 200)
+
+        // The app bundle is auto-registered as a READ-ONLY root: a write into it is a clean 403,
+        // not an opaque OS io_error.
+        if let bundlePath = sdata?["bundlePath"] as? String {
+            let target = "\(bundlePath)/sbx-readonly-probe.txt"
+            let enc = target.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? target
+            let (err, s5) = try await getJSON("\(apiBase!)/fs/file?path=\(enc)", token: token,
+                                              method: "PUT", jsonBody: ["content": "x"])
+            XCTAssertEqual(s5, 403, "writing into the read-only app-bundle root must be refused")
+            XCTAssertEqual((err["error"] as? [String: Any])?["code"] as? String, "forbidden")
+        }
     }
 
     func testOversizeRequestBodyReturns413() throws {

@@ -27,6 +27,11 @@ import type {
   WsConnSummary,
   WsConnDetail,
   WsMsgSummary,
+  BundleSummary,
+  MachOInfo,
+  Provisioning,
+  BundlePrivacy,
+  PlistDecode,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -320,6 +325,29 @@ export const api = {
 
   screenPaste(text: string): Promise<ScreenAction> {
     return request<ScreenAction>('/screen/paste', { method: 'POST', body: { text } });
+  },
+
+  // --- App bundle / IPA payload inspector ---
+
+  bundleSummary(signal?: AbortSignal): Promise<BundleSummary> {
+    return request<BundleSummary>('/bundle', { signal });
+  },
+
+  bundleMacho(signal?: AbortSignal): Promise<MachOInfo> {
+    return request<MachOInfo>('/bundle/macho', { signal });
+  },
+
+  bundleProvisioning(signal?: AbortSignal): Promise<Provisioning> {
+    return request<Provisioning>('/bundle/provisioning', { signal });
+  },
+
+  bundlePrivacy(signal?: AbortSignal): Promise<BundlePrivacy> {
+    return request<BundlePrivacy>('/bundle/privacy', { signal });
+  },
+
+  /** Decode a binary/XML plist (or .strings) at `path` into readable JSON. */
+  bundlePlist(path: string, signal?: AbortSignal): Promise<PlistDecode> {
+    return request<PlistDecode>('/bundle/plist', { query: { path }, signal });
   },
 
   // --- View hierarchy (3D layers) ---

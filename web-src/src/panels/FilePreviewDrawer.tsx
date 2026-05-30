@@ -28,8 +28,12 @@ export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [plistFormat, setPlistFormat] = useState<string | null>(null);
   const objectUrl = useRef<string | null>(null);
 
+  // Plists and .strings in a built bundle are usually BINARY — decode them to readable JSON via the
+  // bundle plugin instead of showing the raw (garbled) bytes. Editing is disabled for these.
+  const isPlist = /\.(plist|strings)$/i.test(entry.name);
   const textual = isTextual(entry.mime);
   const image = entry.mime.startsWith('image/');
 
@@ -41,10 +45,29 @@ export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
     setImgUrl(null);
     setEditing(false);
     setSaved(false);
+    setPlistFormat(null);
 
     (async () => {
       try {
-        if (textual) {
+        if (isPlist) {
+          try {
+            const decoded = await api.bundlePlist(entry.path, ctrl.signal);
+            if (!ctrl.signal.aborted) {
+              const json = JSON.stringify(decoded.json, null, 2);
+              setText(json);
+              setDraft(json);
+              setPlistFormat(decoded.format);
+            }
+          } catch {
+            // Not a decodable plist after all — fall back to the raw bytes as text.
+            const res = await api.fsRead(entry.path, ctrl.signal);
+            const body = await res.text();
+            if (!ctrl.signal.aborted) {
+              setText(body);
+              setDraft(body);
+            }
+          }
+        } else if (textual) {
           const res = await api.fsRead(entry.path, ctrl.signal);
           const body = await res.text();
           if (!ctrl.signal.aborted) {
@@ -148,7 +171,8 @@ export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
           </span>
           <div class="spacer" />
           {saved ? <span class="saved-flag">✓ {t('fs.saved')}</span> : null}
-          {textual && !editing ? (
+          {plistFormat ? <span class="chip-sm">plist · {plistFormat}</span> : null}
+          {textual && !editing && !isPlist ? (
             <button class="btn" onClick={() => { setDraft(text ?? ''); setEditing(true); }}>
               {t('fs.edit')}
             </button>
@@ -177,7 +201,7 @@ export function FilePreviewDrawer({ entry, onClose, onChanged }: Props) {
             <Loading labelKey="fs.loading" />
           ) : editing ? (
             <textarea class="fs-editor" value={draft} onInput={(e) => setDraft((e.target as HTMLTextAreaElement).value)} spellcheck={false} />
-          ) : textual ? (
+          ) : text !== null ? (
             <pre class="body">{text}</pre>
           ) : image && imgUrl ? (
             <div class="fs-image">
