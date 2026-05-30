@@ -250,6 +250,27 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertTrue(statusLine.contains("Payload Too Large"), "expected RFC reason phrase, got: \(statusLine)")
     }
 
+    func testWebSocketUpgradeRejectsUnsupportedVersion() throws {
+        let comps = try XCTUnwrap(URLComponents(string: apiBase))
+        let port = UInt16(try XCTUnwrap(comps.port))
+        func upgrade(version: String) -> String {
+            "GET /__sandbox/ws HTTP/1.1\r\n"
+                + "Host: 127.0.0.1:\(port)\r\n"
+                + "Authorization: Bearer \(token!)\r\n"
+                + "Upgrade: websocket\r\n"
+                + "Connection: Upgrade\r\n"
+                + "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                + "Sec-WebSocket-Version: \(version)\r\n\r\n"
+        }
+        // Unsupported version → 426 advertising the version we speak.
+        let bad = try XCTUnwrap(rawHTTP(upgrade(version: "8"), host: "127.0.0.1", port: port))
+        XCTAssertTrue(bad.hasPrefix("HTTP/1.1 426"), "expected 426, got: \(bad.prefix(40))")
+        XCTAssertTrue(bad.contains("Sec-WebSocket-Version: 13"), "426 must advertise the supported version")
+        // Version 13 → the handshake completes (101).
+        let ok = try XCTUnwrap(rawHTTP(upgrade(version: "13"), host: "127.0.0.1", port: port))
+        XCTAssertTrue(ok.contains("101 Switching Protocols"), "v13 upgrade should succeed, got: \(ok.prefix(40))")
+    }
+
     // MARK: helpers
 
     /// Sends a raw HTTP request over a fresh loopback TCP socket and returns the response text

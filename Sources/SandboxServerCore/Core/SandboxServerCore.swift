@@ -191,6 +191,15 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
             try? await HTTPResponseWriter.write(rejection, to: connection, closeAfter: true)
             connection.close(); return
         }
+        // RFC 6455 §4.2.2: only version 13 is supported; reject others with 426 + the supported version.
+        guard head.header("sec-websocket-version") == "13" else {
+            var resp = SBResponse.error("upgrade_required",
+                                        "Unsupported or missing Sec-WebSocket-Version (this server speaks 13).",
+                                        status: 426)
+            resp.headers["Sec-WebSocket-Version"] = "13"
+            try? await HTTPResponseWriter.write(resp, to: connection, closeAfter: true)
+            connection.close(); return
+        }
         guard let key = head.header("sec-websocket-key") else {
             try? await HTTPResponseWriter.write(.error("bad_request", "Missing Sec-WebSocket-Key.", status: 400),
                                                 to: connection, closeAfter: true)
