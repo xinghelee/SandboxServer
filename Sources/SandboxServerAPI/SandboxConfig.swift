@@ -66,6 +66,10 @@ public struct SandboxConfig: Sendable {
     /// mirror raw console output; the SDK's own logs and `SandboxServer.log(_:)` are
     /// always captured regardless.
     public var captureConsole: Bool
+    /// Idle read timeout (seconds) for the HTTP request phase: a peer that connects (or promises a
+    /// body) then sends nothing is dropped after this long, so a slow-loris can't pin a read task.
+    /// The WS frame loop is exempt (legitimately idle between events). Default 30s.
+    public var requestReadTimeout: TimeInterval
 
     public init(
         bindingPolicy: BindingPolicy = .loopback,
@@ -75,7 +79,8 @@ public struct SandboxConfig: Sendable {
         fallbackPorts: [Int] = [8081, 8082, 8090, 9090],
         serviceName: String? = nil,
         extraRedactedHeaders: [String] = [],
-        captureConsole: Bool = false
+        captureConsole: Bool = false,
+        requestReadTimeout: TimeInterval = 30
     ) {
         self.bindingPolicy = bindingPolicy
         self.auth = auth
@@ -85,6 +90,7 @@ public struct SandboxConfig: Sendable {
         self.serviceName = serviceName
         self.extraRedactedHeaders = extraRedactedHeaders
         self.captureConsole = captureConsole
+        self.requestReadTimeout = requestReadTimeout
     }
 
     public static var `default`: SandboxConfig { SandboxConfig() }

@@ -89,7 +89,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         let auth = AuthGate(mode: cfg.auth)
         let registry = PluginRegistry()
         let hub = WSHub(log: logger)
-        let transport = NetworkFrameworkTransport()
+        let transport = NetworkFrameworkTransport(readTimeout: cfg.requestReadTimeout)
         let staticConsole = StaticConsole(webRoot: ResourceBundle.webRoot)
         let context = CorePluginContext(
             config: cfg, hub: hub, roots: snapshotRoots, hostValues: snapshotValues, logger: logger

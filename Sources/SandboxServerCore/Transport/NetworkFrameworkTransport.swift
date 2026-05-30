@@ -17,8 +17,10 @@ final class NetworkFrameworkTransport: SocketTransport, @unchecked Sendable {
     private var listener: NWListener?
     private var counter: UInt64 = 0
     private var policy: BindingPolicy = .loopback
+    private let readTimeout: TimeInterval
 
-    init() {
+    init(readTimeout: TimeInterval = NWServerConnection.defaultReadTimeout) {
+        self.readTimeout = readTimeout
         var continuation: AsyncStream<any ServerConnection>.Continuation!
         self.connections = AsyncStream(bufferingPolicy: .unbounded) { continuation = $0 }
         self.yield = continuation
@@ -89,7 +91,7 @@ final class NetworkFrameworkTransport: SocketTransport, @unchecked Sendable {
             return
         }
         let id: UInt64 = lock.withLock { counter += 1; return counter }
-        let wrapped = NWServerConnection(connection: connection, id: id, queue: queue)
+        let wrapped = NWServerConnection(connection: connection, id: id, queue: queue, readTimeout: readTimeout)
         connection.start(queue: queue)
         yield.yield(wrapped)
     }
@@ -121,11 +123,11 @@ final class NWServerConnection: ServerConnection, @unchecked Sendable {
     private let timeoutLock = NSLock()
     private var readTimeout: TimeInterval?
 
-    init(connection: NWConnection, id: UInt64, queue: DispatchQueue) {
+    init(connection: NWConnection, id: UInt64, queue: DispatchQueue, readTimeout: TimeInterval = NWServerConnection.defaultReadTimeout) {
         self.connection = connection
         self.id = id
         self.queue = queue
-        self.readTimeout = Self.defaultReadTimeout
+        self.readTimeout = readTimeout
     }
 
     func setReadTimeout(_ seconds: TimeInterval?) {
