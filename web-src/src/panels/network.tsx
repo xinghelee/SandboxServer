@@ -38,9 +38,8 @@ function loadFilter(): PersistedFilter {
   }
 }
 
-export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
+export function NetworkPanel(_props: { plugin?: Plugin }) {
   const { t } = useI18n();
-  const limitations = plugin?.limitations;
   const [rows, setRows] = useState<NetRequestSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -258,15 +257,6 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
       {showHelp ? <div class="help-note">{t('net.filter.hint')}</div> : null}
       {showBuilder ? <FilterBuilder filter={filter} setFilter={setFilter} /> : null}
 
-      {limitations && limitations.length > 0 ? (
-        <div class="panel-note" title={limitations.join('\n')}>
-          <span class="panel-note-ic" aria-hidden="true">ⓘ</span>
-          <span>
-            <b>{t('net.limitations.label')}</b> {t('net.limitations.hint')}
-          </span>
-        </div>
-      ) : null}
-
       {error ? <div class="error-banner">{error}</div> : null}
 
       {loading && rows.length === 0 ? (
@@ -280,7 +270,7 @@ export function NetworkPanel({ plugin }: { plugin?: Plugin }) {
               <tr>
                 <th style="width:74px">{t('net.col.method')}</th>
                 <th>{t('net.col.url')}</th>
-                <th style="width:62px">{t('net.col.status')}</th>
+                <th style="width:84px">{t('net.col.status')}</th>
                 <th style="width:84px" class="col-num">
                   {t('net.col.dur')}
                 </th>

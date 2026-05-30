@@ -75,18 +75,28 @@ function Controls() {
   return (
     <div class="controls">
       <div class="seg-toggle" title={t('hdr.lang')}>
-        <button class={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')}>
+        <button class={lang === 'en' ? 'on' : ''} aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
           EN
         </button>
-        <button class={lang === 'zh' ? 'on' : ''} onClick={() => setLang('zh')}>
+        <button class={lang === 'zh' ? 'on' : ''} aria-pressed={lang === 'zh'} onClick={() => setLang('zh')}>
           中文
         </button>
       </div>
       <div class="seg-toggle" title={t('hdr.theme')}>
-        <button class={theme === 'light' ? 'on' : ''} onClick={() => setTheme('light')} aria-label="Light">
+        <button
+          class={theme === 'light' ? 'on' : ''}
+          aria-pressed={theme === 'light'}
+          onClick={() => setTheme('light')}
+          aria-label="Light"
+        >
           ☀
         </button>
-        <button class={theme === 'dark' ? 'on' : ''} onClick={() => setTheme('dark')} aria-label="Dark">
+        <button
+          class={theme === 'dark' ? 'on' : ''}
+          aria-pressed={theme === 'dark'}
+          onClick={() => setTheme('dark')}
+          aria-label="Dark"
+        >
           ☾
         </button>
       </div>
@@ -101,12 +111,14 @@ function Header({ health }: { health: Health | null }) {
     <header class="header">
       <div class="brand">
         <span class="logo">SBX</span>
-        <span class="sub">{t('brand.sub')}</span>
-        {health ? (
-          <span class="device">
-            {t('hdr.device')}: <b>{health.deviceName}</b>
-          </span>
-        ) : null}
+        <span class="brand-copy">
+          <span class="sub">{t('brand.sub')}</span>
+          {health ? (
+            <span class="device">
+              {t('hdr.device')}: <b>{health.deviceName}</b>
+            </span>
+          ) : null}
+        </span>
       </div>
       <div class="spacer" />
       <div class="badges">

@@ -29,7 +29,7 @@ const EN: Dict = {
   'nav.foot': 'served over localhost · debug-only',
 
   'home.title': 'overview',
-  'home.identity': 'identity',
+  'home.identity': 'app info',
   'home.id.app': 'bundle',
   'home.id.device': 'device',
   'home.id.binding': 'binding',
@@ -341,7 +341,7 @@ const ZH: Dict = {
   'nav.foot': '经 localhost 提供 · 仅调试',
 
   'home.title': '概览',
-  'home.identity': '身份信息',
+  'home.identity': '应用信息',
   'home.id.app': '应用 ID',
   'home.id.device': '设备',
   'home.id.binding': '绑定',

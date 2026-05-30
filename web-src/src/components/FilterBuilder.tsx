@@ -109,7 +109,7 @@ export function FilterBuilder({ filter, setFilter }: { filter: string; setFilter
             class="fb-del"
             title={t('fb.remove')}
             aria-label={t('fb.remove')}
-            onClick={() => apply(rows.length > 1 ? rows.filter((_, j) => j !== i) : [blankRow()], matchAny)}
+            onClick={() => apply(rows.filter((_, j) => j !== i), matchAny)}
           >
             ×
           </button>

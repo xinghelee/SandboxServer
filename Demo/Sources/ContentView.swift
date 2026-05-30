@@ -6,6 +6,11 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    showcaseCard
+                }
+                .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16))
+
                 Section("Server") {
                     statusRow
                     if case .running = model.state {
@@ -87,6 +92,27 @@ struct ContentView: View {
         }
     }
 
+    private var showcaseCard: some View {
+        HStack(spacing: 16) {
+            FunnyFaceView(isRunning: model.isRunning)
+                .frame(width: 78, height: 78)
+                .accessibilityLabel("Funny face mascot")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Sandbox Demo")
+                    .font(.title3.weight(.bold))
+                Text("This app integrates SandboxServer and serves the live inspector you are using now.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Label(model.isRunning ? "SDK is live" : "SDK is starting", systemImage: model.isRunning ? "bolt.fill" : "hourglass")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(model.isRunning ? .green : .secondary)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
     private var statusRow: some View {
         HStack {
             Text("Status")
@@ -103,6 +129,53 @@ struct ContentView: View {
             Text(value)
                 .font(mono ? .system(.footnote, design: .monospaced) : .footnote)
                 .textSelection(.enabled)
+        }
+    }
+}
+
+private struct FunnyFaceView: View {
+    let isRunning: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    LinearGradient(
+                        colors: isRunning ? [Color.green.opacity(0.95), Color.teal.opacity(0.8)] : [Color.gray.opacity(0.7), Color.gray.opacity(0.45)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(Circle().stroke(Color.white.opacity(0.55), lineWidth: 2))
+                .shadow(color: .green.opacity(isRunning ? 0.28 : 0), radius: 12, x: 0, y: 6)
+
+            HStack(spacing: 18) {
+                Circle()
+                    .fill(.white)
+                    .frame(width: 14, height: 20)
+                    .overlay(Circle().fill(.black).frame(width: 6, height: 8).offset(x: 2, y: 3))
+                Circle()
+                    .fill(.white)
+                    .frame(width: 14, height: 20)
+                    .overlay(Circle().fill(.black).frame(width: 6, height: 8).offset(x: -2, y: 3))
+            }
+            .offset(y: -10)
+
+            Capsule()
+                .fill(.black.opacity(0.82))
+                .frame(width: 36, height: 13)
+                .overlay(
+                    Capsule()
+                        .fill(.white.opacity(0.9))
+                        .frame(width: 18, height: 3)
+                        .offset(y: -3)
+                )
+                .offset(y: 19)
+
+            Text("S")
+                .font(.caption2.weight(.black))
+                .foregroundStyle(.white.opacity(0.9))
+                .offset(x: -24, y: 24)
         }
     }
 }
