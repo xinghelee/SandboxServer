@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import UserNotifications
 import SQLite3
 import SandboxServerCore
 import SandboxServerAPI
@@ -8,6 +10,9 @@ private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.sel
 
 @main
 struct SandboxDemoApp: App {
+    // A classic AppDelegate so the notify plugin's `notify_simulate_remote` has a real
+    // `didReceiveRemoteNotification` to call (a SwiftUI lifecycle app has none by default).
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var model = ServerModel()
 
     var body: some Scene {
@@ -16,6 +21,90 @@ struct SandboxDemoApp: App {
                 .environmentObject(model)
                 .task { await model.start() }
         }
+    }
+}
+
+/// Minimal app delegate that exists to demonstrate the `notify` plugin end-to-end:
+/// - `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` is the handler the
+///   plugin's `notify_simulate_remote` / `POST /notify/remote` invokes in-process. With it
+///   implemented, the console reports `delivered: true` instead of "no handler".
+/// - As `UNUserNotificationCenterDelegate`, `willPresent` lets local notifications fired via
+///   `notify_send_local` show as a banner even while the app is in the foreground.
+///
+/// The demo enables `captureConsole`, so the `print` lines below surface live in the Logs panel —
+/// that's the visible proof a simulated push was actually handled by the app.
+final class AppDelegate: NSObject, UIApplicationDelegate, @MainActor UNUserNotificationCenterDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        let aps = userInfo["aps"] as? [String: Any]
+        print("[Demo] 📩 didReceiveRemoteNotification handled — aps=\(aps ?? [:]), keys=\(Array(userInfo.keys))")
+        // A silent data push draws no system UI, so show a visible alert in the demo to prove the
+        // simulated push reached the app (also visible through the Screen mirror in the console).
+        Self.presentPushAlert(userInfo: userInfo, aps: aps)
+        completionHandler(.newData)
+    }
+
+    /// Pops a `UIAlertController` describing the received push, on the top-most view controller.
+    private static func presentPushAlert(userInfo: [AnyHashable: Any], aps: [String: Any]?) {
+        var title = "Remote push"
+        var message = ""
+        if let alert = aps?["alert"] as? String {
+            message = alert
+        } else if let alert = aps?["alert"] as? [String: Any] {
+            title = (alert["title"] as? String) ?? title
+            message = (alert["body"] as? String) ?? (alert["subtitle"] as? String) ?? ""
+        }
+        if message.isEmpty {
+            let keys = userInfo.keys.map { "\($0)" }.sorted().joined(separator: ", ")
+            message = "payload keys: \(keys)"
+        }
+        guard let top = topViewController() else { return }
+        let ac = UIAlertController(title: "📩 \(title)", message: message, preferredStyle: .alert)
+        ac.addAction(UIAlertAction(title: "OK", style: .default))
+        top.present(ac, animated: true)
+    }
+
+    /// The front-most view controller of the key window (so the alert is presented above whatever
+    /// SwiftUI content — or an already-presented sheet — is currently on screen).
+    private static func topViewController() -> UIViewController? {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        return top
+    }
+
+    // Show banners for foreground local notifications so `notify_send_local` is visibly delivered.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        print("[Demo] 🔔 willPresent local notification: \(notification.request.content.title)")
+        completionHandler([.banner, .list, .sound, .badge])
+    }
+
+    // Log taps on a delivered notification (so the full local-notification round-trip is observable).
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        print("[Demo] 👆 notification tapped: \(response.notification.request.identifier)")
+        completionHandler()
     }
 }
 
