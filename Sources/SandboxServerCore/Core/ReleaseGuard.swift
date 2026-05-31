@@ -25,12 +25,18 @@ enum ReleaseGuard {
     }
 
     /// The pure decision, split out so the production-refusal matrix is unit-testable without
-    /// touching `Bundle.main`. TestFlight is refused before the App-Store (missing-provisioning) case.
+    /// touching `Bundle.main`.
+    ///
+    /// Embedded provisioning is the authoritative signal: development & ad-hoc builds ship
+    /// `embedded.mobileprovision`; App Store / TestFlight distribution strips it. The `sandboxReceipt`
+    /// name is NOT TestFlight-exclusive — a development build run from Xcode on a device carries one
+    /// too — so it can only distinguish TestFlight from App Store *after* provisioning has ruled out
+    /// a dev build. Checking the receipt first would false-positive every real-device debug session.
     static func evaluate(isRealAppleDevice: Bool, isTestFlight: Bool, hasProvisioning: Bool) -> Verdict {
         guard isRealAppleDevice else { return .allowed } // Simulator / macOS / other → dev context
+        if hasProvisioning { return .allowed }           // development / ad-hoc → dev context
         if isTestFlight { return .refused(reason: "refusing to start in a TestFlight build") }
-        if !hasProvisioning { return .refused(reason: "refusing to start in an App Store build") }
-        return .allowed
+        return .refused(reason: "refusing to start in an App Store build")
     }
 
     /// App Store distribution strips `embedded.mobileprovision`; development/ad-hoc builds keep it.

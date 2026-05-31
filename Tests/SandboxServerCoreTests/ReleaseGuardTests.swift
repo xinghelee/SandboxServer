@@ -17,17 +17,18 @@ final class ReleaseGuardTests: XCTestCase {
     }
 
     func testRealDeviceMatrix() {
-        // dev / ad-hoc (provisioning present, not TestFlight) → allowed
+        // dev / ad-hoc (provisioning present) → allowed, regardless of the receipt name
         XCTAssertTrue(allowed(ReleaseGuard.evaluate(isRealAppleDevice: true, isTestFlight: false, hasProvisioning: true)))
-        // App Store (provisioning stripped) → refused
+        // Xcode debug build on a device carries a `sandboxReceipt` AND provisioning — must still be
+        // allowed (the regression that previously misfired as "TestFlight").
+        XCTAssertTrue(allowed(ReleaseGuard.evaluate(isRealAppleDevice: true, isTestFlight: true, hasProvisioning: true)))
+        // App Store (provisioning stripped, production receipt) → refused
         XCTAssertFalse(allowed(ReleaseGuard.evaluate(isRealAppleDevice: true, isTestFlight: false, hasProvisioning: false)))
-        // TestFlight → refused
-        XCTAssertFalse(allowed(ReleaseGuard.evaluate(isRealAppleDevice: true, isTestFlight: true, hasProvisioning: true)))
-        // TestFlight is checked before the App-Store case
+        // TestFlight (provisioning stripped, sandboxReceipt) → refused with the TestFlight reason
         guard case .refused(let reason) = ReleaseGuard.evaluate(isRealAppleDevice: true, isTestFlight: true, hasProvisioning: false) else {
             return XCTFail("must refuse")
         }
-        XCTAssertTrue(reason.contains("TestFlight"), "TestFlight takes precedence over the App-Store reason")
+        XCTAssertTrue(reason.contains("TestFlight"), "stripped provisioning + sandboxReceipt is TestFlight")
     }
 
     func testVerifyAllowsOnTheTestHost() {
