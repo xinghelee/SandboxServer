@@ -206,6 +206,32 @@ function moduleSubtitle(id: string): string {
   return id === 'bundle' ? 'playload' : id;
 }
 
+// Sidebar grouping (ordered). A group renders only if it has present plugins; the nav is
+// manifest-driven, so any plugin NOT listed here falls into a trailing "other" group and is
+// never dropped. Group titles come from i18n keys `nav.group.<key>`.
+const NAV_GROUPS: { key: string; ids: string[] }[] = [
+  { key: 'observe', ids: ['net', 'ws', 'logs', 'perf'] },
+  { key: 'data', ids: ['fs', 'db', 'defaults'] },
+  { key: 'ui', ids: ['screen', 'hierarchy'] },
+  { key: 'app', ids: ['bundle', 'device', 'deeplink', 'notify'] },
+];
+
+/** Bucket plugins into ordered nav groups, hiding empty groups and sweeping any unmatched
+ *  (unknown/custom) plugins into a trailing "other" group so nothing disappears. */
+function groupPlugins(plugins: Plugin[]): { key: string; items: Plugin[] }[] {
+  const byId = new Map(plugins.map((p) => [p.id, p]));
+  const used = new Set<string>();
+  const groups: { key: string; items: Plugin[] }[] = [];
+  for (const g of NAV_GROUPS) {
+    const items = g.ids.map((id) => byId.get(id)).filter((p): p is Plugin => Boolean(p));
+    items.forEach((p) => used.add(p.id));
+    if (items.length) groups.push({ key: g.key, items });
+  }
+  const other = plugins.filter((p) => !used.has(p.id));
+  if (other.length) groups.push({ key: 'other', items: other });
+  return groups;
+}
+
 function NavLink({
   target,
   active,
@@ -255,23 +281,25 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
           visual={navVisual('home')}
         />
       </div>
-      <div class="nav-section">
-        <div class="nav-label">{t('nav.modules')}</div>
-        {plugins.map((p) => {
-          const key = p.panelKey || p.id;
-          const target = `/${key}`;
-          return (
-            <NavLink
-              key={key}
-              target={target}
-              active={route === target}
-              title={moduleName(p.id, p.title)}
-              code={moduleSubtitle(p.id)}
-              visual={navVisual(p.id, key)}
-            />
-          );
-        })}
-      </div>
+      {groupPlugins(plugins).map((group) => (
+        <div class="nav-section" key={group.key}>
+          <div class="nav-label">{t(`nav.group.${group.key}`)}</div>
+          {group.items.map((p) => {
+            const key = p.panelKey || p.id;
+            const target = `/${key}`;
+            return (
+              <NavLink
+                key={key}
+                target={target}
+                active={route === target}
+                title={moduleName(p.id, p.title)}
+                code={moduleSubtitle(p.id)}
+                visual={navVisual(p.id, key)}
+              />
+            );
+          })}
+        </div>
+      ))}
       <div class="nav-section">
         <NavLink
           target="/mcp"
