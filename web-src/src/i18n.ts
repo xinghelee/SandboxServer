@@ -26,6 +26,11 @@ const EN: Dict = {
   'ws.offline': 'OFFLINE',
 
   'nav.modules': 'modules',
+  'nav.group.observe': 'observe',
+  'nav.group.data': 'data',
+  'nav.group.ui': 'interface',
+  'nav.group.app': 'app',
+  'nav.group.other': 'other',
   'nav.foot': 'served over localhost · debug-only',
 
   'home.title': 'overview',
@@ -510,6 +515,11 @@ const ZH: Dict = {
   'ws.offline': '离线',
 
   'nav.modules': '模块',
+  'nav.group.observe': '观测',
+  'nav.group.data': '数据',
+  'nav.group.ui': '界面',
+  'nav.group.app': '应用',
+  'nav.group.other': '其它',
   'nav.foot': '经 localhost 提供 · 仅调试',
 
   'home.title': '概览',
