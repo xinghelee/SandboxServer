@@ -309,6 +309,13 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
           code="home"
           visual={navVisual('home')}
         />
+        <NavLink
+          target="/mcp"
+          active={route === '/mcp'}
+          title={t('mcp.title')}
+          code="mcp"
+          visual={navVisual('mcp')}
+        />
       </div>
       {groupPlugins(plugins).map((group) => {
         const isCollapsed = collapsed.has(group.key);
@@ -344,16 +351,6 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
           </div>
         );
       })}
-      <div class="nav-section nav-section-mcp">
-        <div class="nav-label nav-label-static">{t('nav.group.ai')}</div>
-        <NavLink
-          target="/mcp"
-          active={route === '/mcp'}
-          title={t('mcp.title')}
-          code="mcp"
-          visual={navVisual('mcp')}
-        />
-      </div>
     </nav>
   );
 }
