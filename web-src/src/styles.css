@@ -281,7 +281,7 @@ body {
   gap: 10px;
   padding: 14px 10px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 84%, var(--accent) 8%), var(--bg) 78%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 94%, var(--accent) 3%), var(--bg) 78%),
     var(--bg);
   border-right: 1px solid var(--line);
   box-shadow: inset -1px 0 0 color-mix(in srgb, var(--line) 70%, transparent);
@@ -296,16 +296,57 @@ body {
   padding-top: 10px;
   border-top: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
 }
+.nav-section-mcp {
+  margin-top: auto;
+}
 .nav-section-primary {
   padding-bottom: 1px;
 }
 .nav-label {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--ink-dim);
   padding: 0 10px 6px;
+}
+/* Collapsible group header — a button that reuses .nav-label typography. */
+.nav-label-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  justify-content: space-between;
+  border-radius: 7px;
+  padding: 0 8px 6px;
+  transition: color 0.12s, background 0.12s;
+}
+.nav-label-toggle:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--bg-3) 48%, transparent);
+}
+.nav-label-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.nav-label-static {
+  padding: 0 10px 6px;
+}
+.nav-chevron {
+  display: inline-block;
+  font-size: 9px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.nav-chevron.collapsed {
+  transform: rotate(-90deg);
 }
 .nav-item {
   position: relative;
@@ -343,9 +384,9 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  color: color-mix(in srgb, var(--item-accent, var(--accent)) 86%, var(--ink));
-  background: color-mix(in srgb, var(--item-accent, var(--accent)) 12%, var(--bg-1));
-  border: 1px solid color-mix(in srgb, var(--item-accent, var(--accent)) 22%, var(--line));
+  color: color-mix(in srgb, var(--item-accent, var(--accent)) 72%, var(--ink-2));
+  background: color-mix(in srgb, var(--item-accent, var(--accent)) 8%, var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--item-accent, var(--accent)) 16%, var(--line));
   font-size: 15px;
   font-weight: 800;
   line-height: 1;
@@ -377,12 +418,12 @@ body {
   white-space: nowrap;
   font-size: 10.5px;
   line-height: 1.35;
-  color: var(--ink-dim);
+  color: color-mix(in srgb, var(--ink-dim) 82%, var(--bg-1));
   font-family: var(--mono);
 }
 .nav-item:hover {
-  background: color-mix(in srgb, var(--bg-3) 82%, var(--item-accent, var(--accent)) 8%);
-  border-color: color-mix(in srgb, var(--item-accent, var(--accent)) 20%, var(--line));
+  background: color-mix(in srgb, var(--bg-3) 88%, var(--item-accent, var(--accent)) 5%);
+  border-color: color-mix(in srgb, var(--item-accent, var(--accent)) 16%, var(--line));
   color: var(--ink);
   transform: translateX(2px);
 }
@@ -393,24 +434,24 @@ body {
 .nav-item.active {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--item-accent, var(--accent)) 18%, var(--bg-3)),
-    color-mix(in srgb, var(--item-accent, var(--accent)) 8%, var(--bg-2))
+    color-mix(in srgb, var(--item-accent, var(--accent)) 12%, var(--bg-3)),
+    color-mix(in srgb, var(--item-accent, var(--accent)) 5%, var(--bg-2))
   );
-  border-color: color-mix(in srgb, var(--item-accent, var(--accent)) 42%, var(--line));
+  border-color: color-mix(in srgb, var(--item-accent, var(--accent)) 30%, var(--line));
   color: var(--ink);
-  box-shadow: 0 8px 18px -16px var(--item-accent, var(--accent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--item-accent, var(--accent)) 8%, transparent);
 }
 .nav-item.active::before {
   opacity: 1;
   transform: scaleY(1);
 }
 .nav-item.active .nav-icon {
-  color: var(--item-accent, var(--accent));
-  background: color-mix(in srgb, var(--item-accent, var(--accent)) 18%, var(--bg-1));
-  border-color: color-mix(in srgb, var(--item-accent, var(--accent)) 52%, var(--line));
+  color: color-mix(in srgb, var(--item-accent, var(--accent)) 88%, var(--ink));
+  background: color-mix(in srgb, var(--item-accent, var(--accent)) 14%, var(--bg-1));
+  border-color: color-mix(in srgb, var(--item-accent, var(--accent)) 38%, var(--line));
 }
 .nav-item.active .title { color: var(--ink); font-weight: 750; }
-.nav-item.active .id { color: color-mix(in srgb, var(--item-accent, var(--accent)) 80%, var(--ink-2)); }
+.nav-item.active .id { color: color-mix(in srgb, var(--item-accent, var(--accent)) 68%, var(--ink-2)); }
 
 /* ----- Main / panels ------------------------------------------------------ */
 .main { grid-area: main; overflow: auto; padding: 22px 24px; }
@@ -1813,6 +1854,7 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
     padding: 0;
     border-top: 0;
   }
+  .nav-section-mcp { margin-top: 0; }
   .nav-item {
     min-width: 108px;
     min-height: 42px;
