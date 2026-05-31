@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sandbox": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "mcp-bridge/dist/index.js"
+      ],
+      "env": {}
+    }
+  }
+}
