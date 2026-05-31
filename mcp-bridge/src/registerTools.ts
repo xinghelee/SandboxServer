@@ -49,6 +49,9 @@ const str = z.string();
 const optStr = z.string().optional();
 const optInt = z.number().int().optional();
 const optNum = z.number().optional();
+const fsPath = z
+  .string()
+  .describe('absolute path within an allowed root (see fs_roots), or relative to the app container, e.g. "Documents/app.sqlite"');
 
 /** Substitute {placeholders} in a path suffix from args, consuming used keys. */
 export function fillPath(suffix: string, args: Record<string, unknown>, consumed: Set<string>): string {
@@ -141,22 +144,22 @@ const BINDINGS: Record<string, ToolBinding> = {
 
   // ---- files (v1: mostly 501, shapes still wired) ------------------------
   fs_list_dir: {
-    shape: { path: str, cursor: optStr, limit: optInt },
+    shape: { path: fsPath, cursor: optStr, limit: optInt },
     invoke: (device, _d, args) => device.get("/fs/list", pickQuery(args, ["path", "cursor", "limit"])),
   },
   fs_stat: {
-    shape: { path: str },
+    shape: { path: fsPath },
     invoke: (device, _d, args) => device.get("/fs/stat", pickQuery(args, ["path"])),
   },
   fs_read_file: {
-    shape: { path: str },
+    shape: { path: fsPath },
     invoke: async (device, _d, args) => {
       const body = await device.fetchBody("/fs/file", pickQuery(args, ["path"]));
       return body;
     },
   },
   fs_write_file: {
-    shape: { path: str, content: str.describe("file content to write (utf8)") },
+    shape: { path: fsPath, content: str.describe("file content to write (utf8)") },
     invoke: (device, _d, args) =>
       device.put("/fs/file", { content: args.content }, { query: pickQuery(args, ["path"]) }),
   },

@@ -19,16 +19,16 @@ struct FilePlugin: SandboxPlugin {
                       description: "List the sandbox roots available for browsing.",
                       backingMethod: "GET", backingPathSuffix: "roots", readOnlyHint: true, destructiveHint: false),
                 .init(name: "fs_list_dir", title: "List directory",
-                      description: "List entries under a sandbox directory path.",
+                      description: "List entries under a sandbox directory. `path` may be absolute (within an allowed root from fs_roots) or relative to the app container (e.g. \"Documents\"). Omit/\"\"/\"/\" lists the container root.",
                       backingMethod: "GET", backingPathSuffix: "list", readOnlyHint: true, destructiveHint: false),
                 .init(name: "fs_stat", title: "Stat path",
-                      description: "Metadata for a sandbox file or directory.",
+                      description: "Metadata for a sandbox file or directory. `path` is absolute or relative to the app container (e.g. \"Documents/app.sqlite\").",
                       backingMethod: "GET", backingPathSuffix: "stat", readOnlyHint: true, destructiveHint: false),
                 .init(name: "fs_read_file", title: "Read file",
-                      description: "Read a sandbox file's bytes (text or base64).",
+                      description: "Read a sandbox file's bytes (text or base64). `path` is absolute or relative to the app container.",
                       backingMethod: "GET", backingPathSuffix: "file", readOnlyHint: true, destructiveHint: false),
                 .init(name: "fs_write_file", title: "Write file",
-                      description: "Create or overwrite a sandbox file.",
+                      description: "Create or overwrite a sandbox file. `path` is absolute or relative to the app container.",
                       backingMethod: "PUT", backingPathSuffix: "file", readOnlyHint: false, destructiveHint: true),
                 .init(name: "fs_move", title: "Move path",
                       description: "Move or rename a sandbox file or directory.",
@@ -69,7 +69,18 @@ struct FilePlugin: SandboxPlugin {
         let roots = roots(ctx).map { $0.resolvingSymlinksInPath().standardizedFileURL }
         guard let path, !path.isEmpty, path != "/" else { return roots.first }
 
-        let raw = URL(fileURLWithPath: path)
+        // A relative path (no leading "/") is interpreted against the primary root (the app
+        // container) — `URL(fileURLWithPath:)` would otherwise resolve it against the process cwd
+        // ("/" on-device), so e.g. "Documents" always escaped the sandbox. Absolute paths are
+        // unchanged. Either way the root-prefix confinement below still rejects `../` traversal.
+        let raw: URL
+        if path.hasPrefix("/") {
+            raw = URL(fileURLWithPath: path)
+        } else if let base = roots.first {
+            raw = base.appendingPathComponent(path)
+        } else {
+            raw = URL(fileURLWithPath: path)
+        }
         let resolved: URL
         if FileManager.default.fileExists(atPath: raw.path) {
             resolved = raw.resolvingSymlinksInPath().standardizedFileURL
