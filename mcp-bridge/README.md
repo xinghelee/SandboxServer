@@ -82,6 +82,11 @@ plugins, their tools appear automatically. The full v1 tool set:
 | **screen** | `ui_info`, `ui_screenshot`, `ui_tap`, `ui_swipe`, `ui_type`, `ui_paste` | Live on iOS (UIKit). `ui_screenshot` returns an **image content block**. Non-UIKit hosts report `supported:false` and 503 the capture/control routes. |
 | **hierarchy** | `ui_hierarchy` | Live on iOS (UIKit). Snapshots the live view tree (frames, classes, labels, optional thumbnails). |
 | **ws** | `ws_list_connections`, `ws_get_connection`, `ws_list_messages`, `ws_clear`† | Live. Captures `URLSessionWebSocketTask` connections + sent/received frames. Not captured: raw-socket WS libraries or ping/pong/close control frames. |
+| **perf** | `perf_snapshot` | Live. One-shot FPS / CPU % / memory footprint / frame hitch / thermal state. FPS/hitch need UIKit (null otherwise). |
+| **bundle** | `bundle_summary`, `bundle_macho`, `bundle_security`, `bundle_provisioning`, `bundle_privacy`, `bundle_decode_plist` | Live. App bundle / IPA payload inspector: Info.plist, Mach-O archs + hardening score, provisioning, privacy, plist→JSON. |
+| **defaults** | `defaults_list`, `defaults_get`, `defaults_set`, `defaults_delete`†, `defaults_reset`† | Live (read/write). Browse/edit `UserDefaults`; `scope=app\|all`, optional `suite`. Values are JSON; a `null` value removes a key. |
+| **device** | `device_info` | Live. One-shot device + runtime snapshot: model, OS, locale, screen + safe-area, battery, memory, free disk, thermal. |
+| **deeplink** | `deeplink_list_schemes`, `deeplink_open` | Live on iOS. Lists declared `CFBundleURLTypes`; `deeplink_open` opens a scheme / universal link via `UIApplication.open`. 503 on a non-UIKit host. |
 
 `†` = **destructive** (`destructiveHint:true` — mutates or discards data). The
 `ui_*` tap/swipe/type/paste tools drive the UI but are not flagged destructive.

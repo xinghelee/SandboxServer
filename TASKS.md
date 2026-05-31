@@ -154,6 +154,42 @@
 
 ---
 
+## G. 新增能力(本轮已完成 ✅)
+
+> 调研"还有什么有价值的功能"后,先落地三个 S 级、零新基建、开发/测试天天用的插件。
+> 都按 `SandboxPlugin` 模式实现:Swift 插件 + `BuiltInPlugins` 选项 + `start()` 注册 +
+> web 控制台面板(`panelFor` 路由 + NAV 图标)+ MCP bridge 显式绑定 + Swift 单测。
+> 三条构建路径(trait 开/关、web、bridge)与全部 108 个 Swift 测试 + 38 个 bridge 测试均绿。
+
+### [x] G1 · `defaults` 插件 —— UserDefaults 查看 + 编辑 ✅
+**影响** 高 · `BuiltInPlugins.userDefaults`
+列出 App 自身持久化域(`?scope=app`)或完整解析字典(`?scope=all`),支持 App Group `?suite=` 与
+`?prefix=` 过滤;按键读 / 设(值为 JSON,`type` 可把字符串强转 int/double/bool,`null` 即删除)/ 删 /
+重置整个域(destructive)。NSNumber 的 bool 与 int/double 用 `CFBooleanGetTypeID` 区分。
+MCP:`defaults_list/get/set/delete/reset`。面板支持内联 JSON 编辑 + 新增 + 重置。
+**涉及** `Plugins/DefaultsPlugin/` · `web-src/src/panels/defaults.tsx` · `registerTools.ts` · `DefaultsPluginTests`
+
+### [x] G2 · `device` 插件 —— 设备 / 运行环境信息 ✅
+**影响** 中高 · `BuiltInPlugins.device`
+`GET /device` 一次性快照:App 标识 / OS / 硬件(`uname` + `UIDevice`)/ 语言区域 / 屏幕 + 安全区 /
+电量 / 内存 / 剩余磁盘 / 处理器 / 温度。UIKit 字段在 `@MainActor` 上取,非 UIKit host 为 null。
+MCP:`device_info`。面板按分组卡片展示。
+**涉及** `Plugins/DevicePlugin/` · `web-src/src/panels/device.tsx` · `DeviceAndDeepLinkPluginTests`
+
+### [x] G3 · `deeplink` 插件 —— URL scheme 触发器 ✅
+**影响** 中高 · `BuiltInPlugins.deepLink`
+`GET /deeplink` 列出 App 声明的 `CFBundleURLTypes` + `supported`;`POST /deeplink/open {url}` 经
+`UIApplication.open` 打开 scheme / universal link(始终尝试 open,不被受 `LSApplicationQueriesSchemes`
+限制的 `canOpenURL` 卡住)。非 UIKit host 503 + `supported=false`。MCP:`deeplink_list_schemes` / `deeplink_open`。
+面板:scheme 一键填充 + URL 输入 + 打开结果回显。
+**涉及** `Plugins/DeepLinkPlugin/` · `web-src/src/panels/deeplink.tsx`
+
+> **下一批候选(调研排序,未做):** 一键诊断快照 / Bug 报告导出(聚合 device+logs+net+screenshot+perf,M)·
+> 网络 Mock / 改写 / 限速(扩展 `SandboxURLProtocol`,L,护城河功能)· Keychain 查看器(S–M)·
+> Cookie / URLCache 查看(扩展 net,S)· 崩溃 / 异常捕获(M)。
+
+---
+
 ## F. 仅当将来要"公开发布"时(当前内部使用 → 搁置)
 
 > 你确认是团队/组织内部使用,以下都不阻塞当前工作;若哪天要发到公共 SPM/CocoaPods/npm 再做。

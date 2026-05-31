@@ -113,6 +113,9 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.websocket) { allPlugins.append(WSPlugin()) }
         if cfg.builtInPlugins.contains(.appBundle) { allPlugins.append(BundlePlugin()) }
         if cfg.builtInPlugins.contains(.performance) { allPlugins.append(PerfPlugin()) }
+        if cfg.builtInPlugins.contains(.userDefaults) { allPlugins.append(DefaultsPlugin()) }
+        if cfg.builtInPlugins.contains(.device) { allPlugins.append(DevicePlugin()) }
+        if cfg.builtInPlugins.contains(.deepLink) { allPlugins.append(DeepLinkPlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {

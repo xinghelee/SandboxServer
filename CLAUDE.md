@@ -111,7 +111,21 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
   (summed `thread_info`), memory `phys_footprint` (the Jetsam-relevant figure) with % of device RAM, and
   `ProcessInfo.thermalState`. All read-only mach/UIKit introspection (no private API); FPS/hitch need a
   display link so they are null on a non-UIKit host (CPU/memory/thermal still report). Gated by
-  `BuiltInPlugins.performance`.
+  `BuiltInPlugins.performance`. Defaults plugin is **live** (read/write): `GET /defaults` lists `UserDefaults`
+  entries (`?scope=app` = the bundle-id persistent domain, the default; `?scope=all` = full
+  `dictionaryRepresentation()`; `?suite=` an App Group / custom suite; `?prefix=` filter), `GET /defaults/value?key=`
+  reads one, `PUT /defaults/value` sets one (`{key,value,type?,suite?}`; a JSON `null` value removes the key; `type`
+  coerces a string into int/double/bool), `DELETE /defaults/value?key=` removes one, `POST /defaults/reset` wipes a
+  whole persistent domain (destructive). NSNumber-bool vs int/double is disambiguated via `CFBooleanGetTypeID`; Date→
+  ISO-8601, Data→base64. MCP: `defaults_list/get/set/delete/reset`. Gated by `BuiltInPlugins.userDefaults`. Device
+  plugin is **live**: `GET /device` (the `device_info` MCP tool) returns a one-shot snapshot — app identity, OS,
+  hardware (`uname` machine + `UIDevice`), locale/languages/time-zone, screen size + scale + safe-area, battery,
+  memory (`ProcessInfo.physicalMemory`), free disk (volume resource values), processor count, thermal state. UIKit
+  fields (screen/battery) run on `@MainActor` and are null on a non-UIKit host. Gated by `BuiltInPlugins.device`.
+  DeepLink plugin is **live (iOS)**: `GET /deeplink` (`deeplink_list_schemes`) lists the app's declared
+  `CFBundleURLTypes` + `supported`, `POST /deeplink/open {url}` (`deeplink_open`) opens a scheme / universal link via
+  `UIApplication.open` (public API; we always attempt the open rather than gating on `canOpenURL`, which is restricted
+  by `LSApplicationQueriesSchemes`). 503 + `supported=false` on a non-UIKit host. Gated by `BuiltInPlugins.deepLink`.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

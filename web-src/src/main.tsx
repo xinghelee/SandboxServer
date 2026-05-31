@@ -22,6 +22,9 @@ import { HierarchyPanel } from './panels/hierarchy';
 import { WSPanel } from './panels/ws';
 import { BundlePanel } from './panels/bundle';
 import { PerfPanel } from './panels/perf';
+import { DefaultsPanel } from './panels/defaults';
+import { DevicePanel } from './panels/device';
+import { DeepLinkPanel } from './panels/deeplink';
 import './styles.css';
 
 // Consume any bootstrap ?token= before anything reads sessionStorage.
@@ -56,6 +59,12 @@ function panelFor(plugin: Plugin) {
     case 'perf':
     case 'performance':
       return <PerfPanel />;
+    case 'defaults':
+      return <DefaultsPanel />;
+    case 'device':
+      return <DevicePanel />;
+    case 'deeplink':
+      return <DeepLinkPanel />;
     default:
       return <EmptyState icon="?" title={plugin.panelKey} subKey="err.unknownpanel" />;
   }
@@ -179,6 +188,9 @@ const NAV_VISUALS: Record<string, NavVisual> = {
   bundle: { icon: '⬡', accent: '#d29922' },
   perf: { icon: '◴', accent: '#3fb950' },
   performance: { icon: '◴', accent: '#3fb950' },
+  defaults: { icon: '⚙', accent: '#e3b341' },
+  device: { icon: '▢', accent: '#58a6ff' },
+  deeplink: { icon: '⛓', accent: '#a371f7' },
   mcp: { icon: '⌘', accent: '#39c5bb' },
 };
 

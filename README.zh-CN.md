@@ -12,6 +12,11 @@
 - 📱 **屏幕镜像 + 操作** —— 在浏览器里实时看到 App 界面并操作:点按(UIControl / SwiftUI 按钮)、**滑动/滚动与拖拽**(真实合成触摸)、输入、粘贴(**已上线,iOS**)
 - 🌳 **视图层级** —— 在浏览器里以列表或 **3D 图层浏览器** 查看实时视图树(尺寸、类名、标签、缩略图)(**已上线,iOS**)
 - 🔌 **WebSocket 抓取** —— 每个 `URLSessionWebSocketTask` 连接及其收发帧,实时(**已上线**)
+- 📈 **性能 HUD** —— 实时 FPS / CPU / 内存占用 / 温度状态,推流并绘制图表(**已上线**)
+- 📦 **App Bundle 检查器** —— Info.plist、Mach-O 架构与加固、描述文件、隐私、plist 解码(**已上线**)
+- ⚙️ **UserDefaults 编辑** —— 浏览、编辑、删除、重置 App 的持久化偏好与 App Group suite(**已上线**)
+- 📲 **设备信息** —— 一眼看全机型 / 系统 / 语言区域 / 屏幕与安全区 / 电量 / 内存 / 剩余磁盘(**已上线**)
+- ⛓️ **Deep Link 触发** —— 列出 App 的 URL scheme,并在 App 内打开任意 scheme / universal link(**已上线,iOS**)
 - 🖥 **内置 Web 控制台** —— 由 SDK 自己提供,无需安装任何 App,打开一个 URL 即可
 - 🤖 **MCP 工具** —— 把同一套设备端 API 暴露给 AI 客户端(Claude Code / Desktop)
 
@@ -35,7 +40,8 @@
 │   ├ HTTP/1.1 + RFC 6455 WebSocket(手写)             │
 │   ├ AuthGate + DNS-rebinding 防护(中间件)          │
 │   ├ Router → PluginRegistry → WSHub                  │
-│   └ 插件:net·fs·db·logs·screen·hierarchy·ws          │
+│   └ 插件:net·fs·db·logs·screen·hierarchy·ws·         │
+│          perf·bundle·defaults·device·deeplink         │
 │  对外提供:                                          │
 │   • Web 控制台 (/, /assets/*)                        │
 │   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │
