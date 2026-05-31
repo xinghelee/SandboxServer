@@ -304,6 +304,54 @@ const BINDINGS: Record<string, ToolBinding> = {
     shape: {},
     invoke: (device) => device.get("/perf"),
   },
+
+  // ---- UserDefaults inspector/editor -------------------------------------
+  defaults_list: {
+    shape: {
+      scope: optStr.describe("app (default; the app's own persisted keys) or all (full resolved dictionary)"),
+      suite: optStr.describe("App Group / custom UserDefaults suite name"),
+      prefix: optStr.describe("only keys starting with this prefix"),
+    },
+    invoke: (device, _d, args) => device.get("/defaults", pickQuery(args, ["scope", "suite", "prefix"])),
+  },
+  defaults_get: {
+    shape: { key: str, suite: optStr.describe("App Group / custom suite name") },
+    invoke: (device, _d, args) => device.get("/defaults/value", pickQuery(args, ["key", "suite"])),
+  },
+  defaults_set: {
+    shape: {
+      key: str,
+      value: z.unknown().describe("JSON value to store (string/number/bool/array/object); null removes the key"),
+      type: optStr.describe("coerce a string value: int | double | bool | string"),
+      suite: optStr.describe("App Group / custom suite name"),
+    },
+    invoke: (device, _d, args) =>
+      device.put("/defaults/value", { key: args.key, value: args.value ?? null, type: args.type, suite: args.suite }),
+  },
+  defaults_delete: {
+    shape: { key: str, suite: optStr.describe("App Group / custom suite name") },
+    invoke: (device, _d, args) => device.del("/defaults/value", pickQuery(args, ["key", "suite"])),
+  },
+  defaults_reset: {
+    shape: { suite: optStr.describe("App Group / custom suite name; omit to reset the app's own domain") },
+    invoke: (device, _d, args) => device.post("/defaults/reset", { suite: args.suite }),
+  },
+
+  // ---- device / runtime info ---------------------------------------------
+  device_info: {
+    shape: {},
+    invoke: (device) => device.get("/device"),
+  },
+
+  // ---- deep links / URL schemes ------------------------------------------
+  deeplink_list_schemes: {
+    shape: {},
+    invoke: (device) => device.get("/deeplink"),
+  },
+  deeplink_open: {
+    shape: { url: str.describe("URL to open: a custom scheme (myapp://path) or universal/https link") },
+    invoke: (device, _d, args) => device.post("/deeplink/open", { url: args.url }),
+  },
 };
 
 /**

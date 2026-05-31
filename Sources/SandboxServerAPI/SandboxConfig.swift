@@ -46,8 +46,17 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     /// Live performance HUD — FPS, CPU, memory footprint, and thermal state, streamed over the
     /// `perf` channel. Safe everywhere; FPS/hitch need UIKit (null on a non-UIKit host).
     public static let performance = BuiltInPlugins(rawValue: 1 << 8)
+    /// UserDefaults inspector + editor — browse the app's persisted defaults (and App Group
+    /// suites), edit/delete individual keys, or reset a whole domain. Safe everywhere.
+    public static let userDefaults = BuiltInPlugins(rawValue: 1 << 9)
+    /// Device / runtime info snapshot — model, OS, locale, screen + safe-area, battery, disk,
+    /// memory, launch arguments. Safe everywhere; UIKit-only fields degrade on a non-UIKit host.
+    public static let device = BuiltInPlugins(rawValue: 1 << 10)
+    /// Deep-link / URL-scheme trigger — list the app's declared URL schemes and open a URL
+    /// (scheme or universal link) in the host app. iOS only; a no-op on other platforms.
+    public static let deepLink = BuiltInPlugins(rawValue: 1 << 11)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle, .performance]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle, .performance, .userDefaults, .device, .deepLink]
     public static let none: BuiltInPlugins = []
 }
 

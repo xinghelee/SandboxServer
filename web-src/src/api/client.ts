@@ -34,6 +34,10 @@ import type {
   PlistDecode,
   SecurityReport,
   PerfSample,
+  DefaultsListing,
+  DefaultsEntry,
+  DeviceInfo,
+  DeepLinkInfo,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -376,5 +380,62 @@ export const api = {
 
   perfSnapshot(signal?: AbortSignal): Promise<PerfSample> {
     return request<PerfSample>('/perf', { signal });
+  },
+
+  // --- UserDefaults inspector/editor ---
+
+  defaultsList(
+    opts: { suite?: string; scope?: 'app' | 'all'; prefix?: string } = {},
+    signal?: AbortSignal,
+  ): Promise<DefaultsListing> {
+    return request<DefaultsListing>('/defaults', {
+      query: { suite: opts.suite, scope: opts.scope, prefix: opts.prefix },
+      signal,
+    });
+  },
+
+  /** Set a key. `value` is sent as JSON; `type` optionally coerces a string into int/double/bool. */
+  defaultsSet(
+    key: string,
+    value: unknown,
+    opts: { suite?: string; type?: string } = {},
+  ): Promise<DefaultsEntry> {
+    return request<DefaultsEntry>('/defaults/value', {
+      method: 'PUT',
+      body: { key, value, suite: opts.suite, type: opts.type },
+    });
+  },
+
+  defaultsDelete(key: string, suite?: string): Promise<{ key: string; deleted: boolean }> {
+    return request<{ key: string; deleted: boolean }>('/defaults/value', {
+      method: 'DELETE',
+      query: { key, suite },
+    });
+  },
+
+  defaultsReset(suite?: string): Promise<{ domain: string; reset: boolean }> {
+    return request<{ domain: string; reset: boolean }>('/defaults/reset', {
+      method: 'POST',
+      body: { suite },
+    });
+  },
+
+  // --- Device / runtime info ---
+
+  deviceInfo(signal?: AbortSignal): Promise<DeviceInfo> {
+    return request<DeviceInfo>('/device', { signal });
+  },
+
+  // --- Deep links / URL schemes ---
+
+  deepLinks(signal?: AbortSignal): Promise<DeepLinkInfo> {
+    return request<DeepLinkInfo>('/deeplink', { signal });
+  },
+
+  deepLinkOpen(url: string): Promise<{ url: string; accepted: boolean }> {
+    return request<{ url: string; accepted: boolean }>('/deeplink/open', {
+      method: 'POST',
+      body: { url },
+    });
   },
 };

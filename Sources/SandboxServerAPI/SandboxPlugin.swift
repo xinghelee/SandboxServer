@@ -16,6 +16,9 @@ public struct PluginID: RawRepresentable, Hashable, Sendable, CustomStringConver
     public static let ws = PluginID("ws")
     public static let bundle = PluginID("bundle")
     public static let perf = PluginID("perf")
+    public static let defaults = PluginID("defaults")
+    public static let device = PluginID("device")
+    public static let deeplink = PluginID("deeplink")
 }
 
 /// THE extension point. A type conforming to `SandboxPlugin` *is* a feature module.

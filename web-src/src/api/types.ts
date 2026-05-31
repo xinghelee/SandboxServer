@@ -403,3 +403,60 @@ export interface NetCompletedPayload {
   reqBytes: number;
   respBytes: number;
 }
+
+// --- UserDefaults inspector/editor (the `defaults` plugin) ---
+
+export interface DefaultsEntry {
+  key: string;
+  type: string;
+  value: unknown;
+  preview: string;
+}
+
+export interface DefaultsListing {
+  suite: string | null;
+  scope: 'app' | 'all';
+  count: number;
+  items: DefaultsEntry[];
+}
+
+// --- Device / runtime info (the `device` plugin) ---
+
+export interface DeviceInfo {
+  app: { bundleId: string | null; name: string | null; version: string | null; build: string | null };
+  os: { name: string; version: string; platform: string };
+  hardware: { model: string | null; machine: string; name: string | null; idiom: string | null };
+  locale: {
+    identifier: string;
+    languages: string[];
+    region: string | null;
+    timeZone: string;
+    utcOffsetSeconds: number;
+    uses24Hour: boolean;
+  };
+  screen: { width: number; height: number; scale: number; nativeScale: number; safeArea: Record<string, number> | null } | null;
+  battery: { level: number; state: string; lowPowerMode: boolean } | null;
+  memory: { physicalMB: number };
+  disk: { totalMB: number | null; availableMB: number | null };
+  process: {
+    processorCount: number;
+    activeProcessorCount: number;
+    thermalState: string;
+    uptimeSeconds: number;
+    arguments: string[];
+  };
+}
+
+// --- Deep links / URL schemes (the `deeplink` plugin) ---
+
+export interface DeepLinkUrlType {
+  name: string | null;
+  role: string | null;
+  schemes: string[];
+}
+
+export interface DeepLinkInfo {
+  supported: boolean;
+  schemes: string[];
+  urlTypes: DeepLinkUrlType[];
+}
