@@ -408,19 +408,23 @@ function McpPanel({ health, plugins }: { health: Health | null; plugins: Plugin[
     `SANDBOX_HOST=${host} SANDBOX_PORT=${port}` +
     (token ? ` SANDBOX_TOKEN=${token}` : '') +
     ' npx -y sandbox-mcp doctor';
-  const config = JSON.stringify(
-    {
-      mcpServers: {
-        sandbox: {
-          command: 'npx',
-          args: ['-y', 'sandbox-mcp'],
-          env,
-        },
-      },
-    },
+  const [client, setClient] = useState<'claude' | 'codex' | 'cursor'>('claude');
+  // Claude Code & Cursor share the mcpServers JSON shape; Codex uses ~/.codex/config.toml (TOML).
+  const jsonConfig = JSON.stringify(
+    { mcpServers: { sandbox: { command: 'npx', args: ['-y', 'sandbox-mcp'], env } } },
     null,
     2,
   );
+  const tomlEnv = Object.entries(env)
+    .map(([k, v]) => `${k} = "${v}"`)
+    .join(', ');
+  const tomlConfig = `[mcp_servers.sandbox]\ncommand = "npx"\nargs = ["-y", "sandbox-mcp"]\nenv = { ${tomlEnv} }`;
+  const clients = {
+    claude: { label: 'Claude Code', loc: t('mcp.loc.claude'), code: jsonConfig },
+    codex: { label: 'Codex', loc: t('mcp.loc.codex'), code: tomlConfig },
+    cursor: { label: 'Cursor', loc: t('mcp.loc.cursor'), code: jsonConfig },
+  } as const;
+  const sel = clients[client];
 
   return (
     <div class="panel mcp-panel">
@@ -455,10 +459,23 @@ function McpPanel({ health, plugins }: { health: Health | null; plugins: Plugin[
         <section class="mcp-card wide">
           <div class="mcp-card-head">
             <h3>{t('mcp.step2')}</h3>
-            <CopyButton text={config} />
+            <CopyButton text={sel.code} />
           </div>
           <p>{t('mcp.step2.sub')}</p>
-          <pre class="mcp-code">{config}</pre>
+          <div class="seg-toggle" style="margin-bottom:10px">
+            {(['claude', 'codex', 'cursor'] as const).map((c) => (
+              <button
+                key={c}
+                class={client === c ? 'on' : ''}
+                aria-pressed={client === c}
+                onClick={() => setClient(c)}
+              >
+                {clients[c].label}
+              </button>
+            ))}
+          </div>
+          <div style="font-size:11px;opacity:0.6;margin-bottom:6px;font-family:var(--mono,monospace)">{sel.loc}</div>
+          <pre class="mcp-code">{sel.code}</pre>
         </section>
 
         <section class="mcp-card wide">
