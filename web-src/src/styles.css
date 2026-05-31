@@ -387,10 +387,25 @@ body {
   color: color-mix(in srgb, var(--item-accent, var(--accent)) 72%, var(--ink-2));
   background: color-mix(in srgb, var(--item-accent, var(--accent)) 8%, var(--bg-1));
   border: 1px solid color-mix(in srgb, var(--item-accent, var(--accent)) 16%, var(--line));
-  font-size: 15px;
-  font-weight: 800;
   line-height: 1;
   flex: none;
+}
+.nav-svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-svg * {
+  vector-effect: non-scaling-stroke;
+}
+.nav-svg .nav-dot {
+  fill: currentColor;
+  stroke: none;
 }
 .nav-text {
   min-width: 0;

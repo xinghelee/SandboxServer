@@ -167,39 +167,191 @@ function Header({ health }: { health: Health | null }) {
 }
 
 type NavVisual = {
-  icon: string;
+  icon: NavIconName;
   accent: string;
 };
 
-const DEFAULT_NAV_VISUAL: NavVisual = { icon: '·', accent: 'var(--ink-dim)' };
+type NavIconName =
+  | 'overview'
+  | 'network'
+  | 'files'
+  | 'database'
+  | 'logs'
+  | 'screen'
+  | 'layers'
+  | 'websocket'
+  | 'bundle'
+  | 'performance'
+  | 'defaults'
+  | 'device'
+  | 'deeplink'
+  | 'notify'
+  | 'mcp'
+  | 'plugin';
+
+const DEFAULT_NAV_VISUAL: NavVisual = { icon: 'plugin', accent: 'var(--ink-dim)' };
 
 const NAV_VISUALS: Record<string, NavVisual> = {
-  home: { icon: '⌂', accent: 'var(--accent)' },
-  net: { icon: '↗', accent: 'var(--s3)' },
-  network: { icon: '↗', accent: 'var(--s3)' },
-  fs: { icon: '▣', accent: 'var(--accent)' },
-  files: { icon: '▣', accent: 'var(--accent)' },
-  db: { icon: '◫', accent: '#a371f7' },
-  database: { icon: '◫', accent: '#a371f7' },
-  logs: { icon: '≡', accent: 'var(--s4)' },
-  log: { icon: '≡', accent: 'var(--s4)' },
-  screen: { icon: '▯', accent: '#39c5bb' },
-  hierarchy: { icon: '▱', accent: '#f778ba' },
-  layers: { icon: '▱', accent: '#f778ba' },
-  ws: { icon: '⇄', accent: 'var(--link)' },
-  websocket: { icon: '⇄', accent: 'var(--link)' },
-  bundle: { icon: '⬡', accent: '#d29922' },
-  perf: { icon: '◴', accent: '#3fb950' },
-  performance: { icon: '◴', accent: '#3fb950' },
-  defaults: { icon: '⚙', accent: '#e3b341' },
-  device: { icon: '▢', accent: '#58a6ff' },
-  deeplink: { icon: '⛓', accent: '#a371f7' },
-  notify: { icon: '◔', accent: '#db61a2' },
-  mcp: { icon: '⌘', accent: '#39c5bb' },
+  home: { icon: 'overview', accent: 'var(--accent)' },
+  net: { icon: 'network', accent: 'var(--s3)' },
+  network: { icon: 'network', accent: 'var(--s3)' },
+  fs: { icon: 'files', accent: 'var(--accent)' },
+  files: { icon: 'files', accent: 'var(--accent)' },
+  db: { icon: 'database', accent: '#a371f7' },
+  database: { icon: 'database', accent: '#a371f7' },
+  logs: { icon: 'logs', accent: 'var(--s4)' },
+  log: { icon: 'logs', accent: 'var(--s4)' },
+  screen: { icon: 'screen', accent: '#39c5bb' },
+  hierarchy: { icon: 'layers', accent: '#f778ba' },
+  layers: { icon: 'layers', accent: '#f778ba' },
+  ws: { icon: 'websocket', accent: 'var(--link)' },
+  websocket: { icon: 'websocket', accent: 'var(--link)' },
+  bundle: { icon: 'bundle', accent: '#d29922' },
+  perf: { icon: 'performance', accent: '#3fb950' },
+  performance: { icon: 'performance', accent: '#3fb950' },
+  defaults: { icon: 'defaults', accent: '#e3b341' },
+  device: { icon: 'device', accent: '#58a6ff' },
+  deeplink: { icon: 'deeplink', accent: '#a371f7' },
+  notify: { icon: 'notify', accent: '#db61a2' },
+  mcp: { icon: 'mcp', accent: '#39c5bb' },
 };
 
 function navVisual(id: string, key?: string): NavVisual {
   return NAV_VISUALS[key || ''] ?? NAV_VISUALS[id] ?? DEFAULT_NAV_VISUAL;
+}
+
+function NavIcon({ name }: { name: NavIconName }) {
+  switch (name) {
+    case 'overview':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <rect x="5" y="5" width="5.5" height="5.5" rx="1.4" />
+          <rect x="13.5" y="5" width="5.5" height="5.5" rx="1.4" />
+          <rect x="5" y="13.5" width="5.5" height="5.5" rx="1.4" />
+          <rect x="13.5" y="13.5" width="5.5" height="5.5" rx="1.4" />
+        </svg>
+      );
+    case 'network':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <circle class="nav-dot" cx="6" cy="12" r="2" />
+          <circle class="nav-dot" cx="13.5" cy="7" r="2" />
+          <circle class="nav-dot" cx="18" cy="16" r="2" />
+          <path d="M7.8 10.8 11.8 8.2M7.9 13l8.1 2.2M14.6 8.8l2.3 5.4" />
+        </svg>
+      );
+    case 'websocket':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M6 8.5h8l-2.3-2.3M18 15.5h-8l2.3 2.3" />
+          <path d="M5 6v12M19 6v12" />
+          <circle class="nav-dot" cx="5" cy="6" r="1.5" />
+          <circle class="nav-dot" cx="19" cy="18" r="1.5" />
+        </svg>
+      );
+    case 'logs':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M7 4.5h7.2L17.5 8v11.5H7z" />
+          <path d="M14 4.8V8h3.2" />
+          <path d="M9.5 11.5h5M9.5 14.8h5M9.5 18h3.5" />
+        </svg>
+      );
+    case 'performance':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M4.5 18.5h15" />
+          <path d="m5.5 15 3.2-4.2 3 2.8 4.1-6.2 2.7 4.2" />
+          <circle class="nav-dot" cx="15.8" cy="7.4" r="1.5" />
+        </svg>
+      );
+    case 'files':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M4.5 8.2h5l1.7 2h8.3V18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2z" />
+          <path d="M4.5 8.2V7a2 2 0 0 1 2-2h3.2l1.6 2h5.2a2 2 0 0 1 2 2v1.2" />
+        </svg>
+      );
+    case 'database':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <ellipse cx="12" cy="6.5" rx="6" ry="2.8" />
+          <path d="M6 6.5v8.8c0 1.5 2.7 2.7 6 2.7s6-1.2 6-2.7V6.5" />
+          <path d="M6 11c0 1.5 2.7 2.7 6 2.7s6-1.2 6-2.7" />
+        </svg>
+      );
+    case 'defaults':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M5 7h6M15 7h4M5 12h10M19 12h0M5 17h3M12 17h7" />
+          <circle cx="13" cy="7" r="2" />
+          <circle cx="17" cy="12" r="2" />
+          <circle cx="10" cy="17" r="2" />
+        </svg>
+      );
+    case 'screen':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <rect x="7" y="3.5" width="10" height="17" rx="2.5" />
+          <path d="M10.5 17.5h3" />
+          <circle class="nav-dot" cx="12" cy="6.5" r=".75" />
+        </svg>
+      );
+    case 'layers':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="m12 5 7 3.7-7 3.7-7-3.7z" />
+          <path d="m5 12 7 3.7 7-3.7M5 15.8l7 3.7 7-3.7" />
+        </svg>
+      );
+    case 'bundle':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="m12 4.3 6.6 3.8v7.8L12 19.7l-6.6-3.8V8.1z" />
+          <path d="m5.7 8.4 6.3 3.5 6.3-3.5M12 12v7.2" />
+        </svg>
+      );
+    case 'device':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <rect x="6" y="4" width="12" height="16" rx="2.5" />
+          <path d="M9.5 8h5M9.5 12h5M9.5 16h2.5" />
+          <path d="M18 9.5h2M18 14.5h2M4 9.5h2M4 14.5h2" />
+        </svg>
+      );
+    case 'deeplink':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M9.5 14.5 14.5 9.5" />
+          <path d="M10.3 7.8 12 6.1a3.8 3.8 0 0 1 5.4 5.4l-1.7 1.7" />
+          <path d="M13.7 16.2 12 17.9a3.8 3.8 0 0 1-5.4-5.4l1.7-1.7" />
+        </svg>
+      );
+    case 'notify':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <path d="M18 15.5V11a6 6 0 0 0-12 0v4.5L4.5 18h15z" />
+          <path d="M10 20h4" />
+          <circle class="nav-dot" cx="17.5" cy="6.2" r="1.4" />
+        </svg>
+      );
+    case 'mcp':
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <circle class="nav-dot" cx="6.5" cy="7" r="2" />
+          <circle class="nav-dot" cx="17.5" cy="7" r="2" />
+          <circle class="nav-dot" cx="12" cy="17" r="2" />
+          <path d="M8.4 7h7.2M7.4 8.8l3.7 6.5M16.6 8.8l-3.7 6.5" />
+        </svg>
+      );
+    default:
+      return (
+        <svg class="nav-svg" viewBox="0 0 24 24" focusable="false">
+          <rect x="5" y="5" width="14" height="14" rx="3" />
+          <path d="M9 9h6v6H9z" />
+        </svg>
+      );
+  }
 }
 
 function moduleSubtitle(id: string): string {
@@ -277,7 +429,7 @@ function NavLink({
       }}
     >
       <span class="nav-icon" aria-hidden="true">
-        {visual.icon}
+        <NavIcon name={visual.icon} />
       </span>
       <span class="nav-text">
         <span class="title">{title}</span>
