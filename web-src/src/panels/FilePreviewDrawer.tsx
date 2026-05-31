@@ -3,6 +3,7 @@ import { api, ApiRequestError } from '../api/client';
 import type { FileEntry } from '../api/types';
 import { useI18n } from '../i18n';
 import { Loading } from '../components/Spinner';
+import { isJsonText, JsonSyntax } from '../components/JsonSyntax';
 import { formatBytes, formatClock } from '../util/format';
 
 interface Props {
@@ -206,7 +207,7 @@ export function FilePreviewDrawer({ entry, onClose, onChanged, readOnly = false 
           ) : editing ? (
             <textarea class="fs-editor" value={draft} onInput={(e) => setDraft((e.target as HTMLTextAreaElement).value)} spellcheck={false} />
           ) : text !== null ? (
-            <pre class="body">{text}</pre>
+            <pre class="body">{isJsonText(text) ? <JsonSyntax text={text} /> : text}</pre>
           ) : image && imgUrl ? (
             <div class="fs-image">
               <img src={imgUrl} alt={entry.name} />

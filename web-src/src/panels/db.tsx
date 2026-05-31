@@ -6,6 +6,7 @@ import { useVirtualWindow } from '../hooks/useVirtualWindow';
 import { Loading } from '../components/Spinner';
 import { EmptyState } from '../components/EmptyState';
 import { CopyButton } from '../components/CopyButton';
+import { JsonSyntax } from '../components/JsonSyntax';
 import { navigate } from '../router';
 import { formatBytes } from '../util/format';
 import { isBinaryPlist, parseBinaryPlist } from '../util/ipa/bplist';
@@ -595,18 +596,6 @@ function containerLabel(value: JsonValue[] | { [key: string]: JsonValue }, count
   return `${type}(${count} ${count === 1 ? 'item' : 'items'})`;
 }
 
-function JsonSyntax({ text }: { text: string }) {
-  return (
-    <>
-      {tokenizeJson(text).map((token, index) => (
-        <span key={index} class={token.kind === 'plain' ? undefined : `json-token-${token.kind}`}>
-          {token.text}
-        </span>
-      ))}
-    </>
-  );
-}
-
 function decodeScalar(cell: Exclude<DbCell, DbBlobCell | null>): DecodedPreview {
   if (typeof cell === 'string') {
     const trimmed = cell.trim();
@@ -673,28 +662,6 @@ function normalizeJsonValue(value: unknown): JsonValue {
 
 function isJsonObject(value: JsonValue): value is { [key: string]: JsonValue } {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function tokenizeJson(text: string): Array<{ kind: 'plain' | 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct'; text: string }> {
-  const tokens: Array<{ kind: 'plain' | 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct'; text: string }> = [];
-  const re = /("(?:\\.|[^"\\])*"(?=\s*:))|("(?:\\.|[^"\\])*")|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}\[\],:]/g;
-  let last = 0;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(text))) {
-    if (match.index > last) tokens.push({ kind: 'plain', text: text.slice(last, match.index) });
-    const raw = match[0];
-    let kind: 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punct';
-    if (match[1]) kind = 'key';
-    else if (match[2]) kind = 'string';
-    else if (raw === 'true' || raw === 'false') kind = 'boolean';
-    else if (raw === 'null') kind = 'null';
-    else if (/^[{}\[\],:]$/.test(raw)) kind = 'punct';
-    else kind = 'number';
-    tokens.push({ kind, text: raw });
-    last = re.lastIndex;
-  }
-  if (last < text.length) tokens.push({ kind: 'plain', text: text.slice(last) });
-  return tokens;
 }
 
 function base64ToBytes(base64: string): Uint8Array {

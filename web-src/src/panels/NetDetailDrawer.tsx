@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { Loading } from '../components/Spinner';
 import { CopyButton } from '../components/CopyButton';
+import { isJsonText, JsonSyntax } from '../components/JsonSyntax';
 import { formatBytes, formatDuration, formatClock, prettyBody, statusClassNum } from '../util/format';
 import { toCurl, toHar, harFilename } from '../util/net-export';
 import { downloadText } from '../util/clipboard';
@@ -67,7 +68,7 @@ function Headers({ headers, empty }: { headers?: Record<string, string>; empty: 
 function Body({ body, empty }: { body?: string | null; empty: string }) {
   const pretty = prettyBody(body);
   if (!pretty) return <div class="muted">{empty}</div>;
-  return <pre class="body">{pretty}</pre>;
+  return <pre class="body">{isJsonText(pretty) ? <JsonSyntax text={pretty} /> : pretty}</pre>;
 }
 
 export function NetDetailDrawer({ id, onClose, onOpen }: Props) {
