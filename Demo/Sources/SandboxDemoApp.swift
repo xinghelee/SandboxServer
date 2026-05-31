@@ -144,6 +144,7 @@ final class ServerModel: ObservableObject {
             state = .running
             Self.seedSandbox()   // files of varied sizes (incl. a large one for Range testing)
             Self.seedDatabase()  // a multi-table DB with one big table (cheap-counts + grid virtualization)
+            Self.seedDefaults()  // varied, typed UserDefaults so the Defaults panel/MCP has content
             seedLogs(250)        // a few hundred log lines + a live heartbeat
             fireLocalBatch(150)  // a few hundred captured requests (net virtualization + replay)
             fireSampleRequest()  // a few real external requests too, best-effort
@@ -235,6 +236,25 @@ final class ServerModel: ObservableObject {
         }
         sqlite3_exec(db, "COMMIT", nil, nil, nil)
         // `audit` is left empty on purpose, so the table list shows a 0-count table too.
+    }
+
+    // MARK: - UserDefaults
+
+    /// Seeds a varied, typed set of UserDefaults so the Defaults panel (and the `defaults_*` MCP
+    /// tools) have realistic content to browse and edit — string / bool / int / double / array /
+    /// dict / date. Prefixed `demo.` so they're easy to spot among the app's own keys.
+    private static func seedDefaults() {
+        let d = UserDefaults.standard
+        d.set("Ada Lovelace", forKey: "demo.username")
+        d.set(true, forKey: "demo.onboarded")
+        d.set(false, forKey: "demo.crashReportsOptIn")
+        d.set(42, forKey: "demo.launchCount")
+        d.set(0.8, forKey: "demo.volume")
+        d.set("dark", forKey: "demo.theme")
+        d.set(["alpha", "beta", "gamma"], forKey: "demo.featureFlags")
+        d.set(["plan": "pro", "seats": 3] as [String: Any], forKey: "demo.profile")
+        d.set(Date(), forKey: "demo.lastSync")
+        d.set("tok_demo_4f3a9b2c8e", forKey: "demo.apiToken")
     }
 
     /// Prepares `sql` once and steps it `count` times, calling `bind` to fill the placeholders.
