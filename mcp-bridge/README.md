@@ -87,6 +87,7 @@ plugins, their tools appear automatically. The full v1 tool set:
 | **defaults** | `defaults_list`, `defaults_get`, `defaults_set`, `defaults_delete`†, `defaults_reset`† | Live (read/write). Browse/edit `UserDefaults`; `scope=app\|all`, optional `suite`. Values are JSON; a `null` value removes a key. |
 | **device** | `device_info` | Live. One-shot device + runtime snapshot: model, OS, locale, screen + safe-area, battery, memory, free disk, thermal. |
 | **deeplink** | `deeplink_list_schemes`, `deeplink_open` | Live on iOS. Lists declared `CFBundleURLTypes`; `deeplink_open` opens a scheme / universal link via `UIApplication.open`. 503 on a non-UIKit host. |
+| **notify** | `notify_settings`, `notify_request_auth`, `notify_send_local`, `notify_list_pending`, `notify_list_delivered`, `notify_simulate_remote`, `notify_clear`† | Live on iOS. Inspect/request authorization, fire a local notification, list pending/delivered, and simulate a remote push by invoking the app delegate's `didReceiveRemoteNotification` (best-effort, not APNs). 503 on a non-UIKit host. |
 
 `†` = **destructive** (`destructiveHint:true` — mutates or discards data). The
 `ui_*` tap/swipe/type/paste tools drive the UI but are not flagged destructive.

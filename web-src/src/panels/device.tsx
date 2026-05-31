@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import type { DeviceInfo } from '../api/types';
+import { useI18n } from '../i18n';
 
 const CARD =
   'border:1px solid rgba(128,128,128,0.22);border-radius:10px;padding:12px 14px;' +
@@ -32,6 +33,7 @@ function Card({ title, children }: { title: string; children: ComponentChildren 
 
 /** One-shot device + runtime info snapshot. Read-only; refreshes on demand. */
 export function DevicePanel() {
+  const { t } = useI18n();
   const [info, setInfo] = useState<DeviceInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,56 +58,56 @@ export function DevicePanel() {
   return (
     <div class="panel">
       <div class="panel-toolbar">
-        <h2>Device</h2>
+        <h2>{t('device.title')}</h2>
         <div class="spacer" />
         <button
           onClick={() => load()}
           style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid rgba(128,128,128,0.3);background:transparent;color:inherit;cursor:pointer"
         >
-          refresh
+          {t('act.refresh')}
         </button>
       </div>
 
       {error ? <div class="error-banner">{error}</div> : null}
 
       {!info ? (
-        <div style="padding:24px;opacity:0.6">Loading…</div>
+        <div style="padding:24px;opacity:0.6">{t('act.loading')}</div>
       ) : (
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding:12px">
-          <Card title="App">
-            <Field label="name" value={info.app.name ?? ''} />
-            <Field label="bundle id" value={info.app.bundleId ?? ''} />
-            <Field label="version" value={info.app.version ? `${info.app.version} (${info.app.build ?? '—'})` : ''} />
+          <Card title={t('device.card.app')}>
+            <Field label={t('device.f.name')} value={info.app.name ?? ''} />
+            <Field label={t('device.f.bundleId')} value={info.app.bundleId ?? ''} />
+            <Field label={t('device.f.version')} value={info.app.version ? `${info.app.version} (${info.app.build ?? '—'})` : ''} />
           </Card>
 
-          <Card title="OS">
-            <Field label="platform" value={info.os.platform} />
-            <Field label="name" value={info.os.name} />
-            <Field label="version" value={info.os.version} />
+          <Card title={t('device.card.os')}>
+            <Field label={t('device.f.platform')} value={info.os.platform} />
+            <Field label={t('device.f.name')} value={info.os.name} />
+            <Field label={t('device.f.version')} value={info.os.version} />
           </Card>
 
-          <Card title="Hardware">
-            <Field label="machine" value={info.hardware.machine} />
-            <Field label="model" value={info.hardware.model ?? ''} />
-            <Field label="name" value={info.hardware.name ?? ''} />
-            <Field label="idiom" value={info.hardware.idiom ?? ''} />
+          <Card title={t('device.card.hardware')}>
+            <Field label={t('device.f.machine')} value={info.hardware.machine} />
+            <Field label={t('device.f.model')} value={info.hardware.model ?? ''} />
+            <Field label={t('device.f.name')} value={info.hardware.name ?? ''} />
+            <Field label={t('device.f.idiom')} value={info.hardware.idiom ?? ''} />
           </Card>
 
-          <Card title="Locale">
-            <Field label="locale" value={info.locale.identifier} />
-            <Field label="region" value={info.locale.region ?? ''} />
-            <Field label="languages" value={info.locale.languages.slice(0, 3).join(', ')} />
-            <Field label="time zone" value={`${info.locale.timeZone} (${offset})`} />
-            <Field label="24-hour" value={info.locale.uses24Hour ? 'yes' : 'no'} />
+          <Card title={t('device.card.locale')}>
+            <Field label={t('device.f.locale')} value={info.locale.identifier} />
+            <Field label={t('device.f.region')} value={info.locale.region ?? ''} />
+            <Field label={t('device.f.languages')} value={info.locale.languages.slice(0, 3).join(', ')} />
+            <Field label={t('device.f.timezone')} value={`${info.locale.timeZone} (${offset})`} />
+            <Field label={t('device.f.h24')} value={info.locale.uses24Hour ? t('device.v.yes') : t('device.v.no')} />
           </Card>
 
           {info.screen ? (
-            <Card title="Screen">
-              <Field label="size" value={`${Math.round(info.screen.width)} × ${Math.round(info.screen.height)} pt`} />
-              <Field label="scale" value={`${info.screen.scale}× (native ${info.screen.nativeScale}×)`} />
+            <Card title={t('device.card.screen')}>
+              <Field label={t('device.f.size')} value={`${Math.round(info.screen.width)} × ${Math.round(info.screen.height)} pt`} />
+              <Field label={t('device.f.scale')} value={`${info.screen.scale}× (native ${info.screen.nativeScale}×)`} />
               {info.screen.safeArea ? (
                 <Field
-                  label="safe area"
+                  label={t('device.f.safearea')}
                   value={`T${Math.round(info.screen.safeArea.top)} B${Math.round(info.screen.safeArea.bottom)} L${Math.round(info.screen.safeArea.left)} R${Math.round(info.screen.safeArea.right)}`}
                 />
               ) : null}
@@ -113,23 +115,26 @@ export function DevicePanel() {
           ) : null}
 
           {info.battery ? (
-            <Card title="Battery">
-              <Field label="level" value={info.battery.level >= 0 ? `${Math.round(info.battery.level * 100)}%` : 'unknown'} />
-              <Field label="state" value={info.battery.state} />
-              <Field label="low power mode" value={info.battery.lowPowerMode ? 'on' : 'off'} />
+            <Card title={t('device.card.battery')}>
+              <Field label={t('device.f.level')} value={info.battery.level >= 0 ? `${Math.round(info.battery.level * 100)}%` : t('device.v.unknown')} />
+              <Field label={t('device.f.state')} value={info.battery.state} />
+              <Field label={t('device.f.lowpower')} value={info.battery.lowPowerMode ? t('device.v.on') : t('device.v.off')} />
             </Card>
           ) : null}
 
-          <Card title="Memory & Disk">
-            <Field label="physical RAM" value={fmtMB(info.memory.physicalMB)} />
-            <Field label="disk total" value={fmtMB(info.disk.totalMB)} />
-            <Field label="disk free" value={fmtMB(info.disk.availableMB)} />
+          <Card title={t('device.card.memdisk')}>
+            <Field label={t('device.f.ram')} value={fmtMB(info.memory.physicalMB)} />
+            <Field label={t('device.f.disktotal')} value={fmtMB(info.disk.totalMB)} />
+            <Field label={t('device.f.diskfree')} value={fmtMB(info.disk.availableMB)} />
           </Card>
 
-          <Card title="Process">
-            <Field label="processors" value={`${info.process.activeProcessorCount} / ${info.process.processorCount} active`} />
-            <Field label="thermal" value={info.process.thermalState} />
-            <Field label="uptime" value={`${Math.round(info.process.uptimeSeconds / 60)} min`} />
+          <Card title={t('device.card.process')}>
+            <Field
+              label={t('device.f.processors')}
+              value={t('device.v.active', { a: info.process.activeProcessorCount, t: info.process.processorCount })}
+            />
+            <Field label={t('device.f.thermal')} value={info.process.thermalState} />
+            <Field label={t('device.f.uptime')} value={t('device.v.min', { n: Math.round(info.process.uptimeSeconds / 60) })} />
           </Card>
         </div>
       )}

@@ -352,6 +352,64 @@ const BINDINGS: Record<string, ToolBinding> = {
     shape: { url: str.describe("URL to open: a custom scheme (myapp://path) or universal/https link") },
     invoke: (device, _d, args) => device.post("/deeplink/open", { url: args.url }),
   },
+
+  // ---- notifications ------------------------------------------------------
+  notify_settings: {
+    shape: {},
+    invoke: (device) => device.get("/notify"),
+  },
+  notify_request_auth: {
+    shape: {
+      alert: z.boolean().optional().describe("request alert authorization (default true)"),
+      sound: z.boolean().optional().describe("request sound authorization (default true)"),
+      badge: z.boolean().optional().describe("request badge authorization (default true)"),
+    },
+    invoke: (device, _d, args) =>
+      device.post("/notify/auth", { alert: args.alert ?? true, sound: args.sound ?? true, badge: args.badge ?? true }),
+  },
+  notify_send_local: {
+    shape: {
+      title: optStr,
+      subtitle: optStr,
+      body: optStr,
+      badge: optInt.describe("app icon badge number"),
+      sound: z.boolean().optional().describe("play the default sound (default true)"),
+      delay: optNum.describe("seconds before firing (0 = immediate)"),
+      identifier: optStr.describe("request id; omit to auto-generate"),
+      userInfo: z.record(z.string(), z.unknown()).optional().describe("custom payload merged into the notification"),
+    },
+    invoke: (device, _d, args) =>
+      device.post("/notify/local", {
+        title: args.title,
+        subtitle: args.subtitle,
+        body: args.body,
+        badge: args.badge,
+        sound: args.sound,
+        delay: args.delay,
+        identifier: args.identifier,
+        userInfo: args.userInfo,
+      }),
+  },
+  notify_list_pending: {
+    shape: {},
+    invoke: (device) => device.get("/notify/pending"),
+  },
+  notify_list_delivered: {
+    shape: {},
+    invoke: (device) => device.get("/notify/delivered"),
+  },
+  notify_simulate_remote: {
+    shape: {
+      payload: z
+        .record(z.string(), z.unknown())
+        .describe("aps-style push payload, e.g. { aps: { alert: 'hi', badge: 1 }, customKey: '…' }"),
+    },
+    invoke: (device, _d, args) => device.post("/notify/remote", { payload: args.payload }),
+  },
+  notify_clear: {
+    shape: { scope: optStr.describe("pending | delivered | all (default all)") },
+    invoke: (device, _d, args) => device.del("/notify", pickQuery(args, ["scope"])),
+  },
 };
 
 /**

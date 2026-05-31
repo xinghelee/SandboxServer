@@ -17,6 +17,7 @@ A **DEBUG-only iOS SDK** that turns any app into a browsable debug target. Integ
 - ⚙️ **UserDefaults editor** — browse, edit, delete & reset the app's persisted defaults and App Group suites (**live**)
 - 📲 **Device info** — model / OS / locale / screen + safe-area / battery / memory / free disk at a glance (**live**)
 - ⛓️ **Deep-link trigger** — list the app's URL schemes and open any scheme / universal link in the app (**live, iOS**)
+- 🔔 **Notification tester** — inspect/request authorization, fire local notifications, simulate a remote push payload (**live, iOS**)
 - 🖥 **A web console** served by the SDK itself — no app to install, just open a URL
 - 🤖 **MCP tools** — the same on-device API re-exposed to AI clients (Claude Code / Desktop)
 
@@ -44,7 +45,8 @@ Network.framework, with **zero third-party runtime dependencies**.
 │   ├ AuthGate + DNS-rebinding guard  (middleware)     │
 │   ├ Router → PluginRegistry → WSHub                  │
 │   └ Plugins:  net·fs·db·logs·screen·hierarchy·ws·    │
-│              perf·bundle·defaults·device·deeplink     │
+│              perf·bundle·defaults·device·deeplink·    │
+│              notify                                   │
 │  serves:                                             │
 │   • web console  (/, /assets/*)                      │
 │   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │

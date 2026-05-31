@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import type { DeepLinkInfo } from '../api/types';
+import { useI18n } from '../i18n';
 
 const CHIP =
   'font-size:12px;font-family:var(--mono,monospace);border:1px solid rgba(128,128,128,0.3);' +
@@ -11,6 +12,7 @@ const CHIP =
  * one-tap chips, and opens any URL (custom scheme or universal/https link) in the host app.
  */
 export function DeepLinkPanel() {
+  const { t } = useI18n();
   const [info, setInfo] = useState<DeepLinkInfo | null>(null);
   const [url, setUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -46,9 +48,9 @@ export function DeepLinkPanel() {
   return (
     <div class="panel">
       <div class="panel-toolbar">
-        <h2>Deep Links</h2>
+        <h2>{t('deeplink.title')}</h2>
         <div class="spacer" />
-        {info && !info.supported ? <span class="count-chip" style="color:#d29922">unsupported on this host</span> : null}
+        {info && !info.supported ? <span class="count-chip" style="color:#d29922">{t('act.unsupported')}</span> : null}
       </div>
 
       {error ? <div class="error-banner">{error}</div> : null}
@@ -56,7 +58,7 @@ export function DeepLinkPanel() {
       <div style="padding:14px;display:flex;flex-direction:column;gap:14px;max-width:760px">
         <div style="display:flex;gap:8px">
           <input
-            placeholder="myapp://path  or  https://example.com/…"
+            placeholder={t('deeplink.url')}
             value={url}
             spellcheck={false}
             onInput={(e) => setUrl((e.target as HTMLInputElement).value)}
@@ -70,7 +72,7 @@ export function DeepLinkPanel() {
             disabled={busy || !url.trim() || (info ? !info.supported : false)}
             style="font-size:13px;padding:8px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#000;cursor:pointer"
           >
-            open
+            {t('act.open')}
           </button>
         </div>
 
@@ -79,13 +81,13 @@ export function DeepLinkPanel() {
             class="error-banner"
             style={`border-color:${result.accepted ? 'rgba(63,185,80,0.5)' : 'rgba(248,81,73,0.5)'};color:${result.accepted ? '#3fb950' : '#f85149'}`}
           >
-            {result.accepted ? '✓ system accepted' : '✗ system rejected'}: {result.url}
+            {result.accepted ? t('deeplink.accepted') : t('deeplink.rejected')}: {result.url}
           </div>
         ) : null}
 
         <div>
           <div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.7;margin-bottom:8px">
-            Declared schemes
+            {t('deeplink.schemes')}
           </div>
           {info && info.schemes.length > 0 ? (
             <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -96,16 +98,11 @@ export function DeepLinkPanel() {
               ))}
             </div>
           ) : (
-            <div style="opacity:0.6;font-size:13px">
-              The app declares no custom URL schemes (CFBundleURLTypes). You can still open universal/https links.
-            </div>
+            <div style="opacity:0.6;font-size:13px">{t('deeplink.schemes.none')}</div>
           )}
         </div>
 
-        <div style="font-size:11px;opacity:0.55">
-          “accepted” means the system could open the URL — not that the app finished handling it. Universal links may
-          bounce to Safari unless associated domains are configured.
-        </div>
+        <div style="font-size:11px;opacity:0.55">{t('deeplink.note')}</div>
       </div>
     </div>
   );

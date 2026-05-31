@@ -17,6 +17,7 @@
 - ⚙️ **UserDefaults 编辑** —— 浏览、编辑、删除、重置 App 的持久化偏好与 App Group suite(**已上线**)
 - 📲 **设备信息** —— 一眼看全机型 / 系统 / 语言区域 / 屏幕与安全区 / 电量 / 内存 / 剩余磁盘(**已上线**)
 - ⛓️ **Deep Link 触发** —— 列出 App 的 URL scheme,并在 App 内打开任意 scheme / universal link(**已上线,iOS**)
+- 🔔 **通知测试** —— 查看/请求通知授权、发本地通知、模拟远程 push 负载(**已上线,iOS**)
 - 🖥 **内置 Web 控制台** —— 由 SDK 自己提供,无需安装任何 App,打开一个 URL 即可
 - 🤖 **MCP 工具** —— 把同一套设备端 API 暴露给 AI 客户端(Claude Code / Desktop)
 
@@ -41,7 +42,7 @@
 │   ├ AuthGate + DNS-rebinding 防护(中间件)          │
 │   ├ Router → PluginRegistry → WSHub                  │
 │   └ 插件:net·fs·db·logs·screen·hierarchy·ws·         │
-│          perf·bundle·defaults·device·deeplink         │
+│          perf·bundle·defaults·device·deeplink·notify  │
 │  对外提供:                                          │
 │   • Web 控制台 (/, /assets/*)                        │
 │   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │

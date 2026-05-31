@@ -460,3 +460,46 @@ export interface DeepLinkInfo {
   schemes: string[];
   urlTypes: DeepLinkUrlType[];
 }
+
+// --- Notifications tester (the `notify` plugin) ---
+
+export interface NotifySettings {
+  supported: boolean;
+  authorizationStatus: string;
+  alert: string;
+  sound: string;
+  badge: string;
+  lockScreen: string;
+  notificationCenter: string;
+}
+
+export interface NotifyAuthResult {
+  granted: boolean;
+  status: string;
+}
+
+export interface PendingNotification {
+  id: string;
+  title: string;
+  body: string;
+  triggerSeconds: number | null;
+  repeats: boolean;
+}
+
+export interface DeliveredNotification {
+  id: string;
+  title: string;
+  body: string;
+  date: number;
+}
+
+export interface SendLocalBody {
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  badge?: number;
+  sound?: boolean;
+  delay?: number;
+  identifier?: string;
+  userInfo?: Record<string, unknown>;
+}
