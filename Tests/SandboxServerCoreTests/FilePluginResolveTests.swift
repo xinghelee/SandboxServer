@@ -70,6 +70,19 @@ final class FilePluginResolveTests: XCTestCase {
                      "a symlink escaping the root must not resolve")
     }
 
+    func testRelativePathResolvesAgainstPrimaryRoot() {
+        // A bare relative path lands under the primary (app-container) root, not the process cwd —
+        // so an AI/human can pass "Documents/app.sqlite" instead of the full container path.
+        let first = FilePlugin.roots(ctx).first!.resolvingSymlinksInPath().standardizedFileURL
+        let resolved = FilePlugin.resolve("Documents/app.sqlite", ctx)?.standardizedFileURL.path
+        XCTAssertEqual(resolved, first.appendingPathComponent("Documents/app.sqlite").standardizedFileURL.path)
+    }
+
+    func testRelativeTraversalStillRejected() {
+        // Relative resolution must not become an escape hatch: `..` that climbs out is still nil.
+        XCTAssertNil(FilePlugin.resolve("../../../../etc/passwd", ctx))
+    }
+
     func testHandlerReturns403ForOutOfBoundsPath() {
         let req = SBRequest(method: "GET", path: "list", query: ["path": "/etc"])
         let resp = FilePlugin.list(req, ctx)
