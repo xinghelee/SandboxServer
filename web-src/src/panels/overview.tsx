@@ -153,7 +153,12 @@ export function OverviewPanel({ health, plugins }: { health: Health | null; plug
             <div class="ov-screen-off muted">{t('home.screen.off')}</div>
           ) : frameUrl ? (
             <button class="ov-screen-thumb" onClick={() => open('screen')} title={t('home.screen.open')}>
-              <img src={frameUrl} alt={t('home.screen.title')} draggable={false} />
+              <div class="device-frame ov-device-frame">
+                <span class="device-island" aria-hidden="true" />
+                <div class="screen-frame">
+                  <img class="screen-img" src={frameUrl} alt={t('home.screen.title')} draggable={false} />
+                </div>
+              </div>
             </button>
           ) : (
             <div class="ov-screen-off muted">{t('home.screen.waiting')}</div>

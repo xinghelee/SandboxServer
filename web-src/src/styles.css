@@ -127,22 +127,35 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   flex: 0 0 auto;
   color: var(--accent-ink);
-  background: var(--accent);
-  border-radius: 8px;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16), 0 10px 20px -16px var(--accent);
+  background:
+    radial-gradient(circle at 64% 28%, rgba(255, 255, 255, 0.28), transparent 24px),
+    linear-gradient(145deg, color-mix(in srgb, var(--accent) 82%, white), color-mix(in srgb, var(--accent) 76%, #0b2114));
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.22),
+    inset 0 -10px 18px rgba(0,0,0,0.12),
+    0 12px 26px -18px var(--accent);
 }
 .logo-icon {
-  width: 24px;
-  height: 24px;
+  width: 25px;
+  height: 25px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.15;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.logo-icon .logo-box-lid {
+  fill: currentColor;
+  fill-opacity: 0.14;
+}
+.logo-icon .logo-box-fold {
+  opacity: 0.62;
+  stroke-width: 1.65;
 }
 .brand-copy {
   display: flex;
@@ -1800,12 +1813,46 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 .ov-dim { font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); }
 .ov-open { font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--link); background: transparent; border: 0; padding: 0; }
 .ov-open:hover { text-decoration: underline; }
-.ov-screen-thumb { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; line-height: 0; }
-.ov-screen-thumb img {
-  width: 100%; height: auto; display: block; border-radius: 16px;
-  border: 1px solid var(--line-2); background: #000; box-shadow: var(--shadow); transition: filter 0.15s;
+.ov-screen-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
 }
-.ov-screen-thumb:hover img { filter: brightness(1.05); }
+.ov-screen-thumb .ov-device-frame {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px;
+  border-radius: 30px;
+  transition: filter 0.15s;
+}
+.ov-screen-thumb .ov-device-frame::before,
+.ov-screen-thumb .ov-device-frame::after {
+  display: none;
+}
+.ov-screen-thumb .device-island {
+  top: 19px;
+  width: 88px;
+  height: 24px;
+  border-radius: 13px;
+}
+.ov-screen-thumb .screen-frame {
+  border-radius: 22px;
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow);
+}
+.ov-screen-thumb .screen-img {
+  width: 100%;
+  max-height: none;
+  height: auto;
+}
+.ov-screen-thumb:hover .ov-device-frame {
+  filter: brightness(1.05);
+}
 .ov-screen-off {
   display: flex; align-items: center; justify-content: center; min-height: 300px; padding: 24px;
   text-align: center; font-size: 13px; border: 1px dashed var(--line); border-radius: 14px; background: var(--bg-2);

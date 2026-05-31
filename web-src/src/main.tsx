@@ -130,10 +130,11 @@ function Header({ health }: { health: Health | null }) {
       <div class="brand">
         <span class="logo" aria-hidden="true">
           <svg class="logo-icon" viewBox="0 0 24 24" focusable="false">
-            <path d="M6.2 7.4 2.8 12l3.4 4.6" />
-            <path d="M17.8 7.4 21.2 12l-3.4 4.6" />
-            <path d="M9.2 17.2 14.8 6.8" />
-            <circle cx="12" cy="12" r="2.3" />
+            <path class="logo-box-lid" d="m12 4.4 7.1 4.1-7.1 4.1-7.1-4.1z" />
+            <path class="logo-box-line" d="m4.9 8.5 7.1 4.1 7.1-4.1" />
+            <path class="logo-box-line" d="M4.9 8.5v6.9l7.1 4.2 7.1-4.2V8.5" />
+            <path class="logo-box-line" d="M12 12.6v7" />
+            <path class="logo-box-fold" d="m8.2 6.3 7.3 4.1M15.8 6.3l-7.3 4.1" />
           </svg>
         </span>
         <span class="brand-copy">
