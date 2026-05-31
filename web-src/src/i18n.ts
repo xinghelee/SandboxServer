@@ -30,6 +30,7 @@ const EN: Dict = {
   'nav.group.data': 'data',
   'nav.group.ui': 'interface',
   'nav.group.app': 'app',
+  'nav.group.ai': 'AI',
   'nav.group.other': 'other',
   'nav.foot': 'served over localhost · debug-only',
 
@@ -519,6 +520,7 @@ const ZH: Dict = {
   'nav.group.data': '数据',
   'nav.group.ui': '界面',
   'nav.group.app': '应用',
+  'nav.group.ai': 'AI',
   'nav.group.other': '其它',
   'nav.foot': '经 localhost 提供 · 仅调试',
 

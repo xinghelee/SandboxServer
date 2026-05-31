@@ -232,6 +232,25 @@ function groupPlugins(plugins: Plugin[]): { key: string; items: Plugin[] }[] {
   return groups;
 }
 
+// Collapsed nav groups persist across reloads (set of group keys).
+const NAV_COLLAPSE_KEY = 'sbx_nav_collapsed';
+function loadCollapsedGroups(): Set<string> {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(NAV_COLLAPSE_KEY) : null;
+    if (raw) return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    /* ignore malformed/unavailable storage */
+  }
+  return new Set();
+}
+function saveCollapsedGroups(groups: Set<string>): void {
+  try {
+    localStorage.setItem(NAV_COLLAPSE_KEY, JSON.stringify([...groups]));
+  } catch {
+    /* ignore */
+  }
+}
+
 function NavLink({
   target,
   active,
@@ -250,6 +269,7 @@ function NavLink({
       href={`#${target}`}
       class={`nav-item ${active ? 'active' : ''}`}
       aria-current={active ? 'page' : undefined}
+      title={`${title} · ${code}`}
       style={`--item-accent:${visual.accent}`}
       onClick={(e) => {
         e.preventDefault();
@@ -269,6 +289,15 @@ function NavLink({
 
 function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
   const { t } = useI18n();
+  const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsedGroups);
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      saveCollapsedGroups(next);
+      return next;
+    });
   const overviewActive = route === '/' || route === '/overview';
   return (
     <nav class="nav">
@@ -281,26 +310,42 @@ function Nav({ plugins, route }: { plugins: Plugin[]; route: string }) {
           visual={navVisual('home')}
         />
       </div>
-      {groupPlugins(plugins).map((group) => (
-        <div class="nav-section" key={group.key}>
-          <div class="nav-label">{t(`nav.group.${group.key}`)}</div>
-          {group.items.map((p) => {
-            const key = p.panelKey || p.id;
-            const target = `/${key}`;
-            return (
-              <NavLink
-                key={key}
-                target={target}
-                active={route === target}
-                title={moduleName(p.id, p.title)}
-                code={moduleSubtitle(p.id)}
-                visual={navVisual(p.id, key)}
-              />
-            );
-          })}
-        </div>
-      ))}
-      <div class="nav-section">
+      {groupPlugins(plugins).map((group) => {
+        const isCollapsed = collapsed.has(group.key);
+        return (
+          <div class="nav-section" key={group.key}>
+            <button
+              type="button"
+              class="nav-label nav-label-toggle"
+              aria-expanded={!isCollapsed}
+              onClick={() => toggleGroup(group.key)}
+            >
+              <span class="nav-label-main">
+                <span class={`nav-chevron ${isCollapsed ? 'collapsed' : ''}`} aria-hidden="true">▾</span>
+                <span>{t(`nav.group.${group.key}`)}</span>
+              </span>
+            </button>
+            {isCollapsed
+              ? null
+              : group.items.map((p) => {
+                  const key = p.panelKey || p.id;
+                  const target = `/${key}`;
+                  return (
+                    <NavLink
+                      key={key}
+                      target={target}
+                      active={route === target}
+                      title={moduleName(p.id, p.title)}
+                      code={moduleSubtitle(p.id)}
+                      visual={navVisual(p.id, key)}
+                    />
+                  );
+                })}
+          </div>
+        );
+      })}
+      <div class="nav-section nav-section-mcp">
+        <div class="nav-label nav-label-static">{t('nav.group.ai')}</div>
         <NavLink
           target="/mcp"
           active={route === '/mcp'}
