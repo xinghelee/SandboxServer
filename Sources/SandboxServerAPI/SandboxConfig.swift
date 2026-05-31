@@ -55,8 +55,11 @@ public struct BuiltInPlugins: OptionSet, Sendable {
     /// Deep-link / URL-scheme trigger — list the app's declared URL schemes and open a URL
     /// (scheme or universal link) in the host app. iOS only; a no-op on other platforms.
     public static let deepLink = BuiltInPlugins(rawValue: 1 << 11)
+    /// Notification tester — inspect authorization/settings, request authorization, fire local
+    /// notifications, list pending/delivered, and simulate a remote push payload. iOS only.
+    public static let notifications = BuiltInPlugins(rawValue: 1 << 12)
 
-    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle, .performance, .userDefaults, .device, .deepLink]
+    public static let all: BuiltInPlugins = [.network, .files, .database, .logs, .screen, .hierarchy, .websocket, .appBundle, .performance, .userDefaults, .device, .deepLink, .notifications]
     public static let none: BuiltInPlugins = []
 }
 

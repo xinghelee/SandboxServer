@@ -38,6 +38,11 @@ import type {
   DefaultsEntry,
   DeviceInfo,
   DeepLinkInfo,
+  NotifySettings,
+  NotifyAuthResult,
+  PendingNotification,
+  DeliveredNotification,
+  SendLocalBody,
 } from './types';
 
 export const API_PREFIX = '/__sandbox/api/v1';
@@ -437,5 +442,35 @@ export const api = {
       method: 'POST',
       body: { url },
     });
+  },
+
+  // --- Notifications tester ---
+
+  notifySettings(signal?: AbortSignal): Promise<NotifySettings> {
+    return request<NotifySettings>('/notify', { signal });
+  },
+
+  notifyRequestAuth(opts: { alert?: boolean; sound?: boolean; badge?: boolean } = {}): Promise<NotifyAuthResult> {
+    return request<NotifyAuthResult>('/notify/auth', { method: 'POST', body: opts });
+  },
+
+  notifySendLocal(body: SendLocalBody): Promise<{ id: string; scheduledInSeconds: number }> {
+    return request<{ id: string; scheduledInSeconds: number }>('/notify/local', { method: 'POST', body });
+  },
+
+  notifyPending(signal?: AbortSignal): Promise<ListPayload<PendingNotification>> {
+    return request<ListPayload<PendingNotification>>('/notify/pending', { signal });
+  },
+
+  notifyDelivered(signal?: AbortSignal): Promise<ListPayload<DeliveredNotification>> {
+    return request<ListPayload<DeliveredNotification>>('/notify/delivered', { signal });
+  },
+
+  notifySimulateRemote(payload: Record<string, unknown>): Promise<{ delivered: boolean }> {
+    return request<{ delivered: boolean }>('/notify/remote', { method: 'POST', body: { payload } });
+  },
+
+  notifyClear(scope: 'pending' | 'delivered' | 'all' = 'all'): Promise<{ cleared: string }> {
+    return request<{ cleared: string }>('/notify', { method: 'DELETE', query: { scope } });
   },
 };

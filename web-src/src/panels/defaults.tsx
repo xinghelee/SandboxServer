@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { api, ApiRequestError } from '../api/client';
 import type { DefaultsEntry, DefaultsListing } from '../api/types';
+import { useI18n } from '../i18n';
 
 const CHIP =
   'font-size:10px;letter-spacing:0.04em;text-transform:uppercase;opacity:0.7;' +
@@ -32,6 +33,7 @@ function Row({
   onSave: (key: string, value: unknown) => Promise<void>;
   onDelete: (key: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const original = toEditString(entry.value);
   const [draft, setDraft] = useState(original);
   const [busy, setBusy] = useState(false);
@@ -62,11 +64,11 @@ function Row({
           }}
           style={`font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid var(--accent);background:${dirty ? 'var(--accent)' : 'transparent'};color:${dirty ? '#000' : 'var(--ink-dim)'};cursor:${dirty ? 'pointer' : 'default'}`}
         >
-          save
+          {t('act.save')}
         </button>
         <button
           disabled={busy}
-          title="delete key"
+          title={t('defaults.delete.title')}
           onClick={async () => {
             setBusy(true);
             try {
@@ -90,6 +92,7 @@ function Row({
  * suite name). Values are edited as JSON so types round-trip; null saves remove the key.
  */
 export function DefaultsPanel() {
+  const { t } = useI18n();
   const [suite, setSuite] = useState('');
   const [scope, setScope] = useState<'app' | 'all'>('app');
   const [prefix, setPrefix] = useState('');
@@ -144,8 +147,8 @@ export function DefaultsPanel() {
     setNewValue('');
   };
   const onReset = async () => {
-    const domain = suite || listing?.suite || 'this app';
-    if (!confirm(`Reset (delete ALL keys in) the "${domain}" defaults domain? This cannot be undone.`)) return;
+    const domain = suite || listing?.suite || t('defaults.title');
+    if (!confirm(t('defaults.reset.confirm', { domain }))) return;
     try {
       await api.defaultsReset(suite || undefined);
       await load();
@@ -159,40 +162,40 @@ export function DefaultsPanel() {
   return (
     <div class="panel">
       <div class="panel-toolbar" style="flex-wrap:wrap;gap:8px">
-        <h2>Defaults</h2>
+        <h2>{t('defaults.title')}</h2>
         {listing ? <span class="count-chip">{listing.count}</span> : null}
         <div class="spacer" />
         <input
-          placeholder="suite (App Group)…"
+          placeholder={t('defaults.suite')}
           value={suite}
           onInput={(e) => setSuite((e.target as HTMLInputElement).value)}
           onChange={() => load()}
           style="font-size:12px;padding:4px 8px;border:1px solid rgba(128,128,128,0.3);border-radius:6px;background:transparent;color:inherit;width:150px"
         />
         <input
-          placeholder="prefix filter…"
+          placeholder={t('defaults.prefix')}
           value={prefix}
           onInput={(e) => setPrefix((e.target as HTMLInputElement).value)}
           style="font-size:12px;padding:4px 8px;border:1px solid rgba(128,128,128,0.3);border-radius:6px;background:transparent;color:inherit;width:130px"
         />
         <button
           onClick={() => setScope((s) => (s === 'app' ? 'all' : 'app'))}
-          title="app = this app's own keys; all = full resolved dictionary"
+          title={t('defaults.scope.hint')}
           style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid rgba(128,128,128,0.3);background:transparent;color:inherit;cursor:pointer"
         >
-          scope: {scope}
+          {t('defaults.scope', { s: scope })}
         </button>
         <button
           onClick={() => load()}
           style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid rgba(128,128,128,0.3);background:transparent;color:inherit;cursor:pointer"
         >
-          refresh
+          {t('act.refresh')}
         </button>
         <button
           onClick={onReset}
           style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid rgba(248,81,73,0.5);background:transparent;color:#f85149;cursor:pointer"
         >
-          reset domain
+          {t('defaults.reset')}
         </button>
       </div>
 
@@ -201,13 +204,13 @@ export function DefaultsPanel() {
       {/* Add a new key */}
       <div style="display:grid;grid-template-columns:minmax(140px,1fr) minmax(160px,1.6fr) auto;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid rgba(128,128,128,0.18);background:rgba(128,128,128,0.03)">
         <input
-          placeholder="new key"
+          placeholder={t('defaults.new.key')}
           value={newKey}
           onInput={(e) => setNewKey((e.target as HTMLInputElement).value)}
           style="font-family:var(--mono,monospace);font-size:12px;padding:4px 7px;border:1px solid rgba(128,128,128,0.3);border-radius:6px;background:transparent;color:inherit"
         />
         <input
-          placeholder='value as JSON, e.g. true, 42, "text", [1,2]'
+          placeholder={t('defaults.new.value')}
           value={newValue}
           spellcheck={false}
           onInput={(e) => setNewValue((e.target as HTMLInputElement).value)}
@@ -221,14 +224,14 @@ export function DefaultsPanel() {
           disabled={!newKey.trim()}
           style="font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#000;cursor:pointer"
         >
-          add
+          {t('act.add')}
         </button>
       </div>
 
       {loading && !listing ? (
-        <div style="padding:24px;opacity:0.6">Loading…</div>
+        <div style="padding:24px;opacity:0.6">{t('act.loading')}</div>
       ) : items.length === 0 ? (
-        <div style="padding:24px;opacity:0.6">No defaults{prefix ? ` matching "${prefix}"` : ''}.</div>
+        <div style="padding:24px;opacity:0.6">{prefix ? t('defaults.empty.match', { prefix }) : t('defaults.empty')}</div>
       ) : (
         <div>
           {items.map((entry) => (
@@ -237,10 +240,7 @@ export function DefaultsPanel() {
         </div>
       )}
 
-      <div style="font-size:11px;opacity:0.55;padding:10px 14px">
-        Values are edited as JSON (e.g. <code>true</code>, <code>42</code>, <code>"text"</code>, <code>[1,2]</code>). scope
-        “app” lists this app’s own persisted keys; “all” shows the full resolved dictionary incl. global domains.
-      </div>
+      <div style="font-size:11px;opacity:0.55;padding:10px 14px">{t('defaults.note')}</div>
     </div>
   );
 }

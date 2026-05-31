@@ -116,6 +116,7 @@ public final class SandboxServerCore: SandboxServerEngine, @unchecked Sendable {
         if cfg.builtInPlugins.contains(.userDefaults) { allPlugins.append(DefaultsPlugin()) }
         if cfg.builtInPlugins.contains(.device) { allPlugins.append(DevicePlugin()) }
         if cfg.builtInPlugins.contains(.deepLink) { allPlugins.append(DeepLinkPlugin()) }
+        if cfg.builtInPlugins.contains(.notifications) { allPlugins.append(NotifyPlugin()) }
         allPlugins.append(contentsOf: plugins) // host-registered custom plugins
 
         for plugin in allPlugins {

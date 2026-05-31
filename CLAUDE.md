@@ -126,6 +126,16 @@ single multiplexed connection (`{channel, type, seq, payload}`, `seq` monotonic 
   `CFBundleURLTypes` + `supported`, `POST /deeplink/open {url}` (`deeplink_open`) opens a scheme / universal link via
   `UIApplication.open` (public API; we always attempt the open rather than gating on `canOpenURL`, which is restricted
   by `LSApplicationQueriesSchemes`). 503 + `supported=false` on a non-UIKit host. Gated by `BuiltInPlugins.deepLink`.
+  Notify plugin is **live (iOS)**: `GET /notify` (`notify_settings`) reports authorization status + per-type settings,
+  `POST /notify/auth` (`notify_request_auth`) fires the system permission prompt, `POST /notify/local`
+  (`notify_send_local`) schedules a `UNNotificationRequest` (`{title,subtitle,body,badge,sound,delay,identifier,userInfo}`;
+  delay>0 → `UNTimeIntervalNotificationTrigger`, else immediate), `GET /notify/pending` + `GET /notify/delivered` list
+  requests, `POST /notify/remote` (`notify_simulate_remote`) hands an aps-style payload to the app delegate's
+  `application(_:didReceiveRemoteNotification:fetchCompletionHandler:)` in-process (best-effort, **not** APNs; returns
+  `delivered:false` if unimplemented), `DELETE /notify?scope=pending|delivered|all` clears (destructive). All
+  `UNUserNotificationCenter` work is isolated in a `NotifyService` type compiled **only** under `canImport(UIKit)` so a
+  CLI/test host never trips the macOS "no bundle" crash; off-UIKit every route degrades to `supported:false`/503. Gated
+  by `BuiltInPlugins.notifications`.
 
 ## DEBUG-only gating — four independent layers (do not weaken)
 

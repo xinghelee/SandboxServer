@@ -25,6 +25,7 @@ import { PerfPanel } from './panels/perf';
 import { DefaultsPanel } from './panels/defaults';
 import { DevicePanel } from './panels/device';
 import { DeepLinkPanel } from './panels/deeplink';
+import { NotifyPanel } from './panels/notify';
 import './styles.css';
 
 // Consume any bootstrap ?token= before anything reads sessionStorage.
@@ -65,6 +66,8 @@ function panelFor(plugin: Plugin) {
       return <DevicePanel />;
     case 'deeplink':
       return <DeepLinkPanel />;
+    case 'notify':
+      return <NotifyPanel />;
     default:
       return <EmptyState icon="?" title={plugin.panelKey} subKey="err.unknownpanel" />;
   }
@@ -191,6 +194,7 @@ const NAV_VISUALS: Record<string, NavVisual> = {
   defaults: { icon: '⚙', accent: '#e3b341' },
   device: { icon: '▢', accent: '#58a6ff' },
   deeplink: { icon: '⛓', accent: '#a371f7' },
+  notify: { icon: '◔', accent: '#db61a2' },
   mcp: { icon: '⌘', accent: '#39c5bb' },
 };
 

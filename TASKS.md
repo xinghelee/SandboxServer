@@ -184,6 +184,20 @@ MCP:`device_info`。面板按分组卡片展示。
 面板:scheme 一键填充 + URL 输入 + 打开结果回显。
 **涉及** `Plugins/DeepLinkPlugin/` · `web-src/src/panels/deeplink.tsx`
 
+### [x] G4 · `notify` 插件 —— 通知测试 ✅
+**影响** 中高 · `BuiltInPlugins.notifications`
+`GET /notify` 查看授权态 + 各类型设置;`POST /notify/auth` 触发系统授权弹窗;`POST /notify/local` 发本地通知
+(标题/正文/角标/声音/延迟/userInfo,延迟>0 用 `UNTimeIntervalNotificationTrigger`);`GET /notify/pending`·
+`GET /notify/delivered` 列待发/已送达;`POST /notify/remote` 把 aps 风格负载交给 AppDelegate 的
+`didReceiveRemoteNotification`(进程内 best-effort,非 APNs);`DELETE /notify?scope=` 清除(destructive)。
+所有 `UNUserNotificationCenter` 调用隔离在 `NotifyService`,仅 `canImport(UIKit)` 下编译,避免 macOS CLI 崩溃;
+非 UIKit host 全路由降级 `supported:false`/503。MCP:`notify_settings/request_auth/send_local/list_pending/
+list_delivered/simulate_remote/clear`。面板:授权 + 发本地通知表单 + 模拟远程 + 待发/已送达列表。
+**涉及** `Plugins/NotifyPlugin/` · `web-src/src/panels/notify.tsx` · `NotifyPluginTests`
+
+> **i18n:** 四个新面板(defaults/device/deeplink/notify)的全部可见文案 + 导航名(`mod.*`)均已接入
+> `i18n.ts` 的 EN/ZH 双语表(共享 `act.*` 操作词),并校验 EN/ZH 键集完全对称(各 447 键,零缺漏)。
+
 > **下一批候选(调研排序,未做):** 一键诊断快照 / Bug 报告导出(聚合 device+logs+net+screenshot+perf,M)·
 > 网络 Mock / 改写 / 限速(扩展 `SandboxURLProtocol`,L,护城河功能)· Keychain 查看器(S–M)·
 > Cookie / URLCache 查看(扩展 net,S)· 崩溃 / 异常捕获(M)。

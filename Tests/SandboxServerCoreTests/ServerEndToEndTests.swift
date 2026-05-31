@@ -44,7 +44,7 @@ final class ServerEndToEndTests: XCTestCase {
         XCTAssertEqual(status, 200)
         let items = ((json["data"] as? [String: Any])?["items"] as? [[String: Any]]) ?? []
         let ids = Set(items.compactMap { $0["id"] as? String })
-        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen", "hierarchy", "ws", "bundle", "perf", "defaults", "device", "deeplink"])
+        XCTAssertEqual(ids, ["net", "fs", "db", "logs", "screen", "hierarchy", "ws", "bundle", "perf", "defaults", "device", "deeplink", "notify"])
         // The bundle plugin advertises its inspector tools.
         let bundle = items.first { $0["id"] as? String == "bundle" }
         let bundleTools = (bundle?["mcpTools"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
