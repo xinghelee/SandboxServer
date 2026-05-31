@@ -11,6 +11,13 @@ node_modules/
 mcp-bridge/dist/
 web-src/dist/
 
+# Desktop console (Electron wrapper) — commit source only, never the build output
+desktop/dist/
+/dist/
+
+# Abandoned Tauri experiment (Electron was chosen) — only build artifacts remain, no source
+desktop-tauri/
+
 # macOS / editors
 .DS_Store
 .vscode/

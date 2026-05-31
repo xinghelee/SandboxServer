@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect to a device</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(1200px 600px at 50% -10%, #161b22, #0d1117);
+        color: #e6edf3; font: 14px/1.5 -apple-system, system-ui, sans-serif;
+      }
+      .card {
+        width: 380px; padding: 28px; border: 1px solid #30363d; border-radius: 14px;
+        background: rgba(22, 27, 34, 0.7); box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      }
+      .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+      .logo svg { width: 26px; height: 26px; }
+      h1 { font-size: 16px; margin: 0; }
+      .sub { color: #7d8590; font-size: 12px; margin: 2px 0 20px; }
+      label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #7d8590; margin: 12px 0 5px; }
+      input {
+        width: 100%; padding: 9px 11px; border: 1px solid #30363d; border-radius: 8px;
+        background: #0d1117; color: #e6edf3; font: inherit;
+      }
+      input:focus { outline: none; border-color: #2f81f7; }
+      .row { display: flex; gap: 10px; }
+      .row .host { flex: 1; }
+      .row .port { width: 96px; }
+      button {
+        width: 100%; margin-top: 20px; padding: 10px; border: 0; border-radius: 8px;
+        background: #2f81f7; color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+      }
+      button:hover { background: #4493f8; }
+      .found { margin-top: 20px; }
+      .found-head { display: flex; align-items: center; justify-content: space-between; }
+      .found-head span { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #7d8590; }
+      .mini { width: auto; margin: 0; padding: 3px 9px; font-size: 11px; font-weight: 500; background: transparent; border: 1px solid #30363d; color: #7d8590; border-radius: 6px; }
+      .mini:hover { background: rgba(255,255,255,0.04); color: #e6edf3; }
+      .muted { color: #7d8590; font-size: 12px; padding: 8px 2px; }
+      .recent { margin-top: 18px; }
+      .recent .item {
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        padding: 7px 10px; border: 1px solid #30363d; border-radius: 8px; margin-top: 6px;
+        cursor: pointer; font-size: 12px;
+      }
+      .recent .item:hover { border-color: #2f81f7; background: rgba(47,129,247,0.08); }
+      .recent .item .ep { font-family: ui-monospace, monospace; }
+      .recent .item .x { color: #7d8590; padding: 0 4px; }
+      .err { color: #f85149; font-size: 12px; min-height: 16px; margin-top: 8px; }
+      .hint { color: #7d8590; font-size: 11px; margin-top: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2f81f7" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.2 7.4 2.8 12l3.4 4.6" /><path d="M17.8 7.4 21.2 12l-3.4 4.6" />
+          <path d="M9.2 17.2 14.8 6.8" /><circle cx="12" cy="12" r="2.3" />
+        </svg>
+        <h1>SandboxServer Console</h1>
+      </div>
+      <div class="sub">Connect to a device's debug console.</div>
+
+      <form id="f">
+        <label>Host</label>
+        <div class="row">
+          <input class="host" id="host" placeholder="127.0.0.1 or device IP" autocomplete="off" spellcheck="false" />
+          <input class="port" id="port" placeholder="8080" inputmode="numeric" autocomplete="off" />
+        </div>
+        <label>Token <span style="text-transform:none;color:#7d8590">(only if the device uses token auth)</span></label>
+        <input id="token" placeholder="optional" autocomplete="off" spellcheck="false" />
+        <button type="submit">Connect</button>
+        <div class="err" id="err"></div>
+      </form>
+
+      <div class="found" id="foundWrap" style="display:none">
+        <div class="found-head">
+          <span>On your network</span>
+          <button type="button" class="mini" id="rescan">rescan</button>
+        </div>
+        <div id="peers"></div>
+      </div>
+
+      <div class="recent" id="recent"></div>
+      <div class="hint">The window loads the device's own console, so it behaves exactly like a browser tab.</div>
+    </div>
+
+    <script>
+      const KEY = "sbx.recentDevices";
+      const $ = (id) => document.getElementById(id);
+      const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; } };
+      const save = (list) => { try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, 5))); } catch {} };
+
+      function endpointURL(host, port, token) {
+        const h = host.trim();
+        const p = (port || "").trim() || "8080";
+        const t = (token || "").trim();
+        const base = "http://" + h + ":" + p + "/";
+        return t ? base + "?token=" + encodeURIComponent(t) : base;
+      }
+
+      function remember(host, port, token) {
+        const list = load().filter((d) => !(d.host === host && d.port === port));
+        list.unshift({ host, port, token: token || "" });
+        save(list);
+      }
+
+      function renderRecent() {
+        const list = load();
+        const box = $("recent");
+        box.replaceChildren();
+        list.forEach((d, i) => {
+          const item = document.createElement("div");
+          item.className = "item";
+          const ep = document.createElement("span");
+          ep.className = "ep";
+          ep.textContent = d.host + ":" + d.port + (d.token ? " · token" : "");
+          const x = document.createElement("span");
+          x.className = "x";
+          x.textContent = "✕";
+          x.title = "forget";
+          x.onclick = (e) => { e.stopPropagation(); const l = load(); l.splice(i, 1); save(l); renderRecent(); };
+          item.append(ep, x);
+          item.onclick = () => { window.location.href = endpointURL(d.host, d.port, d.token); };
+          box.appendChild(item);
+        });
+      }
+
+      $("f").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const host = $("host").value.trim();
+        const port = $("port").value.trim() || "8080";
+        const token = $("token").value.trim();
+        if (!host) { $("err").textContent = "Enter a host."; return; }
+        remember(host, port, token);
+        window.location.href = endpointURL(host, port, token);
+      });
+
+      // Prefill from the most recent device.
+      const last = load()[0];
+      if (last) { $("host").value = last.host; $("port").value = last.port; $("token").value = last.token || ""; }
+      else { $("port").value = "8080"; }
+      renderRecent();
+      $("host").focus();
+
+      // --- Bonjour discovery (Electron main process via preload) ---
+      function muted(text) {
+        const d = document.createElement("div");
+        d.className = "muted";
+        d.textContent = text;
+        return d;
+      }
+      function connectPeer(p) {
+        if (p.requiresAuth && !p.token) {
+          $("host").value = p.host;
+          $("port").value = String(p.port);
+          $("token").focus();
+          $("err").textContent = "This device requires a token — paste it, then Connect.";
+          return;
+        }
+        remember(p.host, String(p.port), p.token || "");
+        window.location.href = endpointURL(p.host, String(p.port), p.token || "");
+      }
+      async function scan() {
+        const box = $("peers");
+        box.replaceChildren(muted("scanning…"));
+        let peers = [];
+        try { peers = await window.sbx.discover(1500); } catch { peers = []; }
+        box.replaceChildren();
+        if (!peers.length) {
+          box.appendChild(muted("no devices found — is the device on the same Wi-Fi, bound to .localNetwork?"));
+          return;
+        }
+        peers.forEach((p) => {
+          const item = document.createElement("div");
+          item.className = "item";
+          const ep = document.createElement("span");
+          ep.className = "ep";
+          ep.textContent =
+            (p.deviceName || p.name || "device") + " · " + p.host + ":" + p.port + (p.requiresAuth ? " · auth" : "");
+          item.appendChild(ep);
+          item.onclick = () => connectPeer(p);
+          box.appendChild(item);
+        });
+      }
+      if (window.sbx && window.sbx.discover) {
+        $("foundWrap").style.display = "";
+        $("rescan").onclick = scan;
+        scan();
+      }
+    </script>
+  </body>
+</html>
