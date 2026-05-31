@@ -80,6 +80,10 @@ actor TransactionStore {
     private let maxCount: Int
     private let maxBytes: Int
     private var publisher: (any PluginContext)?
+    /// Optional host hook to render an encrypted/encoded body as readable text. Display-only: it
+    /// feeds the body PREVIEW shown in the console/MCP and nothing else — never the replay path
+    /// (which uses `reqBodyFull`) nor the bytes the host app actually sends/receives.
+    private var decoder: NetworkBodyDecoder?
     private var redacted: Set<String> = [
         "authorization", "cookie", "set-cookie", "proxy-authorization", "x-api-key",
     ]
@@ -95,10 +99,11 @@ actor TransactionStore {
 
     func attach(context: any PluginContext) {
         publisher = context
+        decoder = context.config.networkBodyDecoder
         for header in context.config.extraRedactedHeaders { redacted.insert(header.lowercased()) }
     }
 
-    func detach() { publisher = nil }
+    func detach() { publisher = nil; decoder = nil }
 
     func begin(id: String, method: String, url: URL?, headers: [String: String], reqBody: Data?) async {
         let urlString = url?.absoluteString ?? "(unknown)"
@@ -108,7 +113,8 @@ actor TransactionStore {
             startedAtMs: startedAt, status: nil, durationMs: nil,
             reqHeaders: redact(headers),
             respHeaders: [:],
-            reqBodyPreview: preview(reqBody, contentType: headers["content-type"]),
+            reqBodyPreview: preview(reqBody, direction: .request, url: urlString,
+                                    method: method, headers: headers, contentType: headers["content-type"]),
             respBodyPreview: nil,
             reqBytes: reqBody?.count ?? 0, respBytes: 0, error: nil,
             reqHeadersRaw: headers,
@@ -126,7 +132,8 @@ actor TransactionStore {
         txn.status = status
         txn.durationMs = now - txn.startedAtMs
         txn.respHeaders = redact(headers)
-        txn.respBodyPreview = preview(body, contentType: contentType)
+        txn.respBodyPreview = preview(body, direction: .response, url: txn.url,
+                                      method: txn.method, headers: headers, contentType: contentType)
         let added = body?.count ?? 0
         txn.respBytes = added
         totalBytes += added
@@ -228,8 +235,23 @@ actor TransactionStore {
         }
     }
 
-    private func preview(_ data: Data?, contentType: String?) -> String? {
+    /// Build the human-readable body preview. The optional host `decoder` is consulted FIRST so an
+    /// app can surface its own encrypted/encoded bodies; returning nil falls through to the built-in
+    /// rendering. This is display-only — the bytes the host app sends/receives and the raw body kept
+    /// for replay are untouched regardless of what the decoder does.
+    private func preview(_ data: Data?, direction: NetworkBody.Direction, url: String,
+                         method: String, headers: [String: String], contentType: String?) -> String? {
         guard let data, !data.isEmpty else { return nil }
+        if let decoder, let decoded = decoder(NetworkBody(
+            direction: direction, url: url, method: method,
+            headers: headers, contentType: contentType, body: data
+        )) {
+            return decoded.count > bodyPreviewLimit
+                ? String(decoded.prefix(bodyPreviewLimit)) + "\n… (truncated, decoded \(decoded.count) chars total)"
+                : decoded
+        }
+        // Built-in key-free transforms (gzip/zlib), magic-byte gated so they never touch plain text.
+        if let inflated = KeylessBodyDecoder.decode(data) { return inflated }
         let isText = (contentType ?? "").range(of: "json|text|xml|x-www-form-urlencoded|javascript",
                                                 options: .regularExpression) != nil
             || contentType == nil

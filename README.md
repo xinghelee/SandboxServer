@@ -133,6 +133,24 @@ await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
 `.localNetwork` requires `NSLocalNetworkUsageDescription` (and `NSBonjourServices` listing
 `_sandboxserver._tcp`) in your **debug** Info.plist.
 
+### Reading encrypted / encoded request bodies
+
+HTTPS is **already plaintext here** — capture is in-process, above TLS, so you never install a
+proxy CA. `gzip`/`zlib` bodies are auto-inflated. For bodies your app encrypts/encodes at the
+**application layer**, plug in a display-only decoder — it runs in-process (keys never leave the
+app or reach the console/MCP), only feeds the body *preview*, and never alters the bytes your app
+actually sends/receives or what `replay` re-issues:
+
+```swift
+var config = SandboxConfig(bindingPolicy: .localNetwork)
+config.networkBodyDecoder = { body in            // body: NetworkBody (direction/url/headers/contentType/raw bytes)
+    guard body.url.contains("api.myapp.com") else { return nil }   // nil → fall back to the default preview
+    guard let clear = MyCrypto.decrypt(body.body) else { return "⚠️ decrypt failed (\(body.body.count)B)" }
+    return String(data: clear, encoding: .utf8)                    // shown in the console/MCP only
+}
+await SandboxServer.shared.start(config)
+```
+
 ---
 
 ## MCP (AI tools)

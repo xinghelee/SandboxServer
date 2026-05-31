@@ -88,6 +88,13 @@ public struct SandboxConfig: Sendable {
     /// body) then sends nothing is dropped after this long, so a slow-loris can't pin a read task.
     /// The WS frame loop is exempt (legitimately idle between events). Default 30s.
     public var requestReadTimeout: TimeInterval
+    /// Optional, display-only hook the `network` plugin calls to turn an encrypted/encoded captured
+    /// body into readable text for the console and MCP (e.g. decrypt the host app's own AES
+    /// envelope). It runs in-process off the request's critical path and only feeds the body
+    /// preview — it never alters, delays, or replaces the bytes the host app actually sends or
+    /// receives, and `replay` always re-issues the original raw bytes. `nil` (the default) keeps
+    /// the built-in preview (UTF-8 text, else `<binary N bytes>`). See ``NetworkBodyDecoder``.
+    public var networkBodyDecoder: NetworkBodyDecoder?
 
     public init(
         bindingPolicy: BindingPolicy = .loopback,
@@ -98,7 +105,8 @@ public struct SandboxConfig: Sendable {
         serviceName: String? = nil,
         extraRedactedHeaders: [String] = [],
         captureConsole: Bool = false,
-        requestReadTimeout: TimeInterval = 30
+        requestReadTimeout: TimeInterval = 30,
+        networkBodyDecoder: NetworkBodyDecoder? = nil
     ) {
         self.bindingPolicy = bindingPolicy
         self.auth = auth
@@ -109,6 +117,7 @@ public struct SandboxConfig: Sendable {
         self.extraRedactedHeaders = extraRedactedHeaders
         self.captureConsole = captureConsole
         self.requestReadTimeout = requestReadTimeout
+        self.networkBodyDecoder = networkBodyDecoder
     }
 
     public static var `default`: SandboxConfig { SandboxConfig() }

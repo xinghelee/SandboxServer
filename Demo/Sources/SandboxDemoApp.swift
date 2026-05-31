@@ -8,6 +8,18 @@ import SandboxServerAPI
 // SQLite wants this for TEXT binds that it should copy (the Swift String is transient).
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
+/// Toy symmetric "encryption" (XOR with a fixed key) standing in for whatever real envelope a host
+/// app uses. The point of the demo: the key lives in the app, never in the debug tool — the
+/// `networkBodyDecoder` calls back into here to render bodies, but the console only sees the result.
+enum DemoCrypto {
+    private static let key = Array("sandbox-demo-key".utf8)
+    /// XOR is its own inverse, so this both "encrypts" and "decrypts".
+    static func xor(_ data: Data) -> Data? {
+        guard !data.isEmpty else { return nil }
+        return Data(data.enumerated().map { $0.element ^ key[$0.offset % key.count] })
+    }
+}
+
 @main
 struct SandboxDemoApp: App {
     // A classic AppDelegate so the notify plugin's `notify_simulate_remote` has a real
@@ -134,7 +146,17 @@ final class ServerModel: ObservableObject {
         // Token validation is off by default, including local-network binding; opt into
         // auth: .token if you need credentials on the LAN.
         // captureConsole mirrors print/NSLog into the Logs panel; SandboxServer.log adds structured lines.
-        let result = await server.start(SandboxConfig(bindingPolicy: .localNetwork, captureConsole: true))
+        var config = SandboxConfig(bindingPolicy: .localNetwork, captureConsole: true)
+        // Demo of the display-only body decoder: this app "encrypts" some bodies at the app layer
+        // (DemoCrypto, a toy XOR). The hook renders them as readable JSON in the Network panel/MCP,
+        // while the request on the wire still carries the ciphertext and replay re-sends it verbatim.
+        config.networkBodyDecoder = { body in
+            guard body.headers.contains(where: { $0.key.caseInsensitiveCompare("X-Demo-Encrypted") == .orderedSame }),
+                  let clear = DemoCrypto.xor(body.body),
+                  let json = String(data: clear, encoding: .utf8) else { return nil }
+            return "🔓 decoded by host hook (demo XOR):\n\(json)"
+        }
+        let result = await server.start(config)
         switch result {
         case .started(let info):
             consoleURL = info.consoleURL.absoluteString
@@ -148,6 +170,7 @@ final class ServerModel: ObservableObject {
             seedLogs(250)        // a few hundred log lines + a live heartbeat
             fireLocalBatch(150)  // a few hundred captured requests (net virtualization + replay)
             fireSampleRequest()  // a few real external requests too, best-effort
+            fireEncryptedRequest()  // one app-layer-"encrypted" body, decoded only in the console
             openWebSocket()      // a live WebSocket so the WebSocket panel has traffic
         case .disabled:
             state = .disabled
@@ -379,6 +402,27 @@ final class ServerModel: ObservableObject {
         task.receive { [weak self] result in
             guard case .success = result else { return } // stop on close/error
             self?.receiveLoop(task)
+        }
+    }
+
+    /// POSTs a body the demo "encrypts" (XOR) at the app layer, to show the display-only
+    /// `networkBodyDecoder` turning it back into readable JSON in the Network panel — while the
+    /// bytes on the wire stay ciphertext and `net_replay_request` re-issues them verbatim.
+    func fireEncryptedRequest() {
+        guard var base = apiBase?.absoluteString else { return }
+        if !base.hasSuffix("/") { base += "/" }
+        guard let url = URL(string: base + "healthz"),
+              let cipher = DemoCrypto.xor(Data(#"{"secret":"hunter2","note":"ciphertext on the wire; decoded only in the console"}"#.utf8))
+        else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.httpBody = cipher
+        req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        req.setValue("xor", forHTTPHeaderField: "X-Demo-Encrypted")
+        if let authToken { req.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization") }
+        Task {
+            _ = try? await URLSession.shared.data(for: req)
+            await MainActor.run { self.requestCount += 1; self.lastRequest = "POST healthz (encrypted)" }
         }
     }
 
