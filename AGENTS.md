@@ -36,10 +36,11 @@ VITE_API_BASE=http://<device-ip>:<port> npm run dev       # HMR proxied to a run
 # MCP bridge:
 cd mcp-bridge && npm install && npm run build             # tsc → dist/
 
-# iOS demo (xcodegen + simulator) — proves the SDK on a real iOS app end-to-end:
-cd Demo && ./run.sh                                        # build → install → launch → open console URL
-# manual: xcodegen generate; xcodebuild -project Demo/SandboxServerDemo.xcodeproj \
-#   -scheme SandboxServerDemo -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build
+# iOS demos (xcodegen + simulator) — prove the SDK on a real iOS app end-to-end. Two live under
+# Examples/: `Showcase` seeds every panel full of data; `Tasks` is a realistic app (organic data).
+cd Examples/Showcase && ./run.sh                          # build → install → launch → open console URL
+# manual: xcodegen generate; xcodebuild -project Examples/Showcase/SandboxShowcaseDemo.xcodeproj \
+#   -scheme SandboxShowcaseDemo -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build
 
 # Run the server on macOS for quick browser testing:
 swift run --traits SandboxServerEnabled SandboxServerDevHost
@@ -133,7 +134,7 @@ the facade against both. If you add a public method to one engine, add it to the
 (the recommended, Release-safe facade), `SandboxServerNoOp`, `SandboxServerAPI` (depend on this to
 author custom plugins), and `SandboxServerCore` (the real server, **ungated**). The Core product
 exists because Xcode 26 / xcodegen 2.42 cannot yet enable an SPM trait from a generated `.xcodeproj`,
-so the `Demo/` app and `SandboxServerDevHost` link `SandboxServerCore` directly. Do **not** ship the
+so the `Examples/` apps and `SandboxServerDevHost` link `SandboxServerCore` directly. Do **not** ship the
 Core product in a Release app — production integration is the facade + trait (enabled via Xcode's
 Package Dependencies pane). The built-in plugins are `internal`; the host opts in via
 `SandboxConfig.builtInPlugins` (auto-registered in `start()`), never by naming the plugin types.

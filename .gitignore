@@ -25,7 +25,7 @@ desktop-tauri/
 # Misc
 *.log
 
-# Demo (xcodegen-generated)
-Demo/.build/
-Demo/SandboxServerDemo.xcodeproj/
-Demo/Generated/
+# Examples (xcodegen-generated; .build/ + *.xcodeproj already covered above)
+Examples/*/.build/
+Examples/*/*.xcodeproj/
+Examples/*/Generated/

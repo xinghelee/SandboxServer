@@ -217,7 +217,7 @@ PORT=8092 LOGSEED=1 SEED=1 swift run --traits SandboxServerEnabled SandboxServer
 
 It binds loopback and registers the temp dir as an extra browsable/writable root. Being a macOS
 host it has no UIKit, so the **screen mirror** and **view hierarchy** panels report unsupported —
-use `Demo/run.sh` (iOS Simulator) for those. There are no fallback ports, so if `PORT` is busy it
+use `Examples/Showcase/run.sh` (iOS Simulator) for those. There are no fallback ports, so if `PORT` is busy it
 fails fast — pick a free one.
 
 See `CLAUDE.md` for the full architecture notes and open questions.

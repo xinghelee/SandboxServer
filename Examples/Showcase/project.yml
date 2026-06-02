@@ -1,4 +1,4 @@
-name: SandboxServerDemo
+name: SandboxShowcaseDemo
 options:
   bundleIdPrefix: com.sandboxserver
   deploymentTarget:
@@ -7,10 +7,11 @@ options:
 
 packages:
   SandboxServer:
-    path: ../
+    # Two levels up: Examples/Showcase → repo root (the Swift package).
+    path: ../../
 
 targets:
-  SandboxServerDemo:
+  SandboxShowcaseDemo:
     type: application
     platform: iOS
     sources:
@@ -18,7 +19,7 @@ targets:
     info:
       path: Generated/Info.plist
       properties:
-        CFBundleDisplayName: Sandbox Demo
+        CFBundleDisplayName: Sandbox Showcase
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -44,4 +45,4 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
-        PRODUCT_BUNDLE_IDENTIFIER: com.sandboxserver.demo
+        PRODUCT_BUNDLE_IDENTIFIER: com.sandboxserver.showcase

@@ -18,16 +18,16 @@ fi
 open -a Simulator || true
 
 echo "▸ Building for the simulator…"
-xcodebuild -project SandboxServerDemo.xcodeproj -scheme SandboxServerDemo \
+xcodebuild -project SandboxShowcaseDemo.xcodeproj -scheme SandboxShowcaseDemo \
   -destination "id=$SIM_ID,arch=arm64" -derivedDataPath .build -quiet build
 
-APP=$(find .build/Build/Products -name SandboxServerDemo.app | head -1)
+APP=$(find .build/Build/Products -name SandboxShowcaseDemo.app | head -1)
 echo "▸ Installing…"
 xcrun simctl install "$SIM_ID" "$APP"
 
 LOG=$(mktemp)
 echo "▸ Launching…"
-xcrun simctl launch --console-pty "$SIM_ID" com.sandboxserver.demo >"$LOG" 2>&1 &
+xcrun simctl launch --console-pty "$SIM_ID" com.sandboxserver.showcase >"$LOG" 2>&1 &
 LP=$!
 
 for _ in $(seq 1 25); do grep -q "console:" "$LOG" 2>/dev/null && break; sleep 1; done

@@ -189,7 +189,7 @@ PORT=8092 LOGSEED=1 SEED=1 swift run --traits SandboxServerEnabled SandboxServer
 ```
 
 它绑定 loopback,并把临时目录注册为额外的可浏览/可写根。作为 macOS 宿主没有 UIKit,所以
-**屏幕镜像** 与 **视图层级** 面板会报不支持 —— 这两项请用 `Demo/run.sh`(iOS 模拟器)。它没有
+**屏幕镜像** 与 **视图层级** 面板会报不支持 —— 这两项请用 `Examples/Showcase/run.sh`(iOS 模拟器)。它没有
 备用端口,`PORT` 被占就会快速失败 —— 换一个空闲端口即可。
 
 完整架构说明与待决问题见 `CLAUDE.md`。
