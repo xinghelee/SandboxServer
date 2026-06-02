@@ -1826,24 +1826,51 @@ table.grid td { font-family: var(--mono); font-size: 12.5px; }
 .ov-screen-thumb .ov-device-frame {
   box-sizing: border-box;
   width: 100%;
-  padding: 8px;
-  border-radius: 30px;
+  padding: 9px;
+  /* Large, continuous-radius corners + a titanium rim over a black inner bezel, so the thumbnail
+     reads as an iPhone rather than a plain rounded rectangle (overrides the full-size frame look). */
+  border-radius: 46px;
+  background: linear-gradient(155deg, #23272e 0%, #161920 46%, #0f1115 100%);
+  box-shadow:
+    0 28px 56px -22px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 0 3px #04060a;
   transition: filter 0.15s;
 }
+/* Re-enable scaled-down side buttons (the full-size frame's are too big here): a volume rocker on
+   the left and the side/power button on the right — strong visual cues that this is a phone. */
 .ov-screen-thumb .ov-device-frame::before,
 .ov-screen-thumb .ov-device-frame::after {
-  display: none;
+  display: block;
+  top: 17%;
+  height: 12%;
+  width: 3px;
+  background: linear-gradient(180deg, #4a4f57, #2c3037);
+  box-shadow: -1px 0 1px rgba(0, 0, 0, 0.5);
+}
+.ov-screen-thumb .ov-device-frame::before { /* left volume rocker */
+  left: -2px;
+  border-radius: 3px 1px 1px 3px;
+}
+.ov-screen-thumb .ov-device-frame::after { /* right side button */
+  left: auto;
+  right: -2px;
+  top: 24%;
+  height: 9%;
+  border-radius: 1px 3px 3px 1px;
+  box-shadow: 1px 0 1px rgba(0, 0, 0, 0.5);
 }
 .ov-screen-thumb .device-island {
-  top: 19px;
-  width: 88px;
-  height: 24px;
-  border-radius: 13px;
+  top: 3%;
+  width: 27%;
+  height: 3.4%;
+  min-height: 17px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 .ov-screen-thumb .screen-frame {
-  border-radius: 22px;
-  border: 1px solid var(--line-2);
-  box-shadow: var(--shadow);
+  border-radius: 37px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.9);
 }
 .ov-screen-thumb .screen-img {
   width: 100%;

@@ -10,7 +10,9 @@ const THEME_KEY = 'sbx_theme';
 function detectTheme(): Theme {
   const stored = (typeof localStorage !== 'undefined' && localStorage.getItem(THEME_KEY)) as Theme | null;
   if (stored === 'dark' || stored === 'light') return stored;
-  if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+  // Dark is the product default — only an explicit toggle (persisted above) switches to light.
+  // (Deliberately does not follow `prefers-color-scheme`, which would surprise light-mode OS users
+  // and mismatch index.html's dark pre-paint, causing a flash.)
   return 'dark';
 }
 
