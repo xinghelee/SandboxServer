@@ -77,19 +77,23 @@ render *and* which MCP tools the bridge registers.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/SandboxServer.git", from: "0.1.0"),
+    // Enable the SandboxServerEnabled trait when adding the dependency:
+    .package(url: "https://github.com/xinghelee/SandboxServer.git", from: "0.1.0",
+             traits: ["SandboxServerEnabled"]),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        // Enable the real server ONLY in your debug build configuration:
-        .product(name: "SandboxServer", package: "SandboxServer",
-                 condition: .when(traits: ["SandboxServerEnabled"])),
+        .product(name: "SandboxServer", package: "SandboxServer"),
     ]),
 ]
 ```
 
-Enable the `SandboxServerEnabled` trait for your debug builds. Without it (Release), the package
-links the inert no-op product and the server is physically absent.
+In an Xcode app project, add the package via **Package Dependencies** and tick the
+`SandboxServerEnabled` trait there instead (requires Xcode 16.3+ / Swift 6.1 traits support).
+
+Even with the trait on, Release builds still link the inert no-op — the facade is gated on
+`#if DEBUG && SandboxServerEnabled`. Without the trait, the real server is physically absent
+from every build.
 
 ### CocoaPods
 

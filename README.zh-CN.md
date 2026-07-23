@@ -72,18 +72,22 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/SandboxServer.git", from: "0.1.0"),
+    // 添加依赖时启用 SandboxServerEnabled trait:
+    .package(url: "https://github.com/xinghelee/SandboxServer.git", from: "0.1.0",
+             traits: ["SandboxServerEnabled"]),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [
-        // 仅在 debug 构建配置里启用真实服务:
-        .product(name: "SandboxServer", package: "SandboxServer",
-                 condition: .when(traits: ["SandboxServerEnabled"])),
+        .product(name: "SandboxServer", package: "SandboxServer"),
     ]),
 ]
 ```
 
-为 debug 构建启用 `SandboxServerEnabled` trait。不启用(Release)时,包会链接惰性的 no-op 产品,服务在物理上不存在。
+Xcode 工程请通过 **Package Dependencies** 面板添加包,并在那里勾选 `SandboxServerEnabled`
+trait(需要 Xcode 16.3+ / Swift 6.1 的 traits 支持)。
+
+即使启用了 trait,Release 构建仍会链接惰性的 no-op —— 门面以 `#if DEBUG && SandboxServerEnabled`
+双重把关。不启用 trait 时,真实服务在任何构建里都物理上不存在。
 
 ### CocoaPods
 

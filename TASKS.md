@@ -209,7 +209,7 @@ list_delivered/simulate_remote/clear`。面板:授权 + 发本地通知表单 + 
 > 你确认是团队/组织内部使用,以下都不阻塞当前工作;若哪天要发到公共 SPM/CocoaPods/npm 再做。
 
 - [ ] **F1** 补 MIT `LICENSE` 并打进 npm tarball(`pod lib lint`/`npm publish` 才需)〔原 P0-1, S〕
-- [ ] **F2** 替换 `your-org` 占位 URL(`SandboxServer.podspec:12,15`、两个 README SPM 片段)〔原 P0-2, S〕
+- [x] **F2** 替换 `your-org` 占位 URL(`SandboxServer.podspec:12,15`、两个 README SPM 片段)→ `xinghelee`;README SPM 片段同时修正为 `.package(..., traits:)` 写法(2026-07-23)
 - [ ] **F3** `pod lib lint` 验证单模块折叠并接入 CI(依赖 F1/F2)〔原 P1-7, M〕
 - [ ] **F4** MCP bridge 发布就绪:版本单一来源、npm 元数据、删 token-in-TXT 死分支〔原 P2-6, S〕
 - [ ] **F5** CHANGELOG + 跨件套版本同步守卫〔原 P2-7, S〕
