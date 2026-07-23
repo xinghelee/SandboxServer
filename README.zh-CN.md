@@ -126,6 +126,38 @@ await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
 `.localNetwork` 需要在 **debug** 的 Info.plist 里配置 `NSLocalNetworkUsageDescription`(以及
 `NSBonjourServices` 列出 `_sandboxserver._tcp`)。
 
+### SwiftUI 生命周期
+
+`start()` 是 `async`,而 `App.init()` 不是,所以在初始化器里用一个 `Task` 启动(根视图的
+`.task {}` 也行)。这行代码在 Release 里照样能编译 —— 此时 facade 是空壳 —— 但包一层 `#if DEBUG`
+能让意图更清晰:
+
+```swift
+import SwiftUI
+import SandboxServer            // 只 import 这一个产品,公共类型会自动带进来
+
+@main
+struct MyApp: App {
+    init() {
+        #if DEBUG
+        Task {
+            let result = await SandboxServer.shared.start()        // 默认 .loopback、全部内置插件
+            if case .started(let info) = result {
+                print("🧰 Sandbox 控制台 → \(info.consoleURL)")
+            }
+        }
+        #endif
+    }
+
+    var body: some Scene {
+        WindowGroup { ContentView() }
+    }
+}
+```
+
+**真机** 上传入 `SandboxConfig(bindingPolicy: .localNetwork, auth: .token)`,并补上上面的 Info.plist
+键;打印出的 URL 会自带 `?token=…`,浏览器据此自动完成鉴权。
+
 ---
 
 ## MCP(AI 工具)

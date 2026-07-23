@@ -133,6 +133,38 @@ await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
 `.localNetwork` requires `NSLocalNetworkUsageDescription` (and `NSBonjourServices` listing
 `_sandboxserver._tcp`) in your **debug** Info.plist.
 
+### SwiftUI lifecycle
+
+`start()` is `async` and `App.init()` is not, so kick it off from a `Task` in the initializer (a
+root-view `.task {}` works too). The call site compiles unchanged in Release — the facade is a
+no-op there — but wrapping it in `#if DEBUG` keeps the intent explicit:
+
+```swift
+import SwiftUI
+import SandboxServer            // import this one product; the public types come along
+
+@main
+struct MyApp: App {
+    init() {
+        #if DEBUG
+        Task {
+            let result = await SandboxServer.shared.start()        // .loopback, all built-ins
+            if case .started(let info) = result {
+                print("🧰 Sandbox console → \(info.consoleURL)")
+            }
+        }
+        #endif
+    }
+
+    var body: some Scene {
+        WindowGroup { ContentView() }
+    }
+}
+```
+
+On a **device**, pass `SandboxConfig(bindingPolicy: .localNetwork, auth: .token)` and add the
+Info.plist keys above; the printed URL then carries `?token=…` for the browser to bootstrap from.
+
 ### Reading encrypted / encoded request bodies
 
 HTTPS is **already plaintext here** — capture is in-process, above TLS, so you never install a
