@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   DESC
   s.homepage         = 'https://github.com/xinghelee/SandboxServer'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'SandboxServer' => 'hi@xinghelee.com' }
+  s.author           = { 'xinghe' => 'hi@xinghelee.com' }
   s.source           = { :git => 'https://github.com/xinghelee/SandboxServer.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '14.0'
