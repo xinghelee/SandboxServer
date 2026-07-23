@@ -9,10 +9,10 @@ Pod::Spec.new do |s|
     drive it. The server is off by default, requires an explicit start() and a per-session token,
     binds loopback by default, and is physically absent from Release/App Store builds.
   DESC
-  s.homepage         = 'https://github.com/your-org/SandboxServer'
+  s.homepage         = 'https://github.com/xinghelee/SandboxServer'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 'SandboxServer' => 'hi@xinghelee.com' }
-  s.source           = { :git => 'https://github.com/your-org/SandboxServer.git', :tag => s.version.to_s }
+  s.source           = { :git => 'https://github.com/xinghelee/SandboxServer.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '14.0'
   s.swift_versions   = ['5.9', '6.0']
@@ -30,8 +30,10 @@ Pod::Spec.new do |s|
     'Sources/SandboxServerCore/**/*.swift',
     'Sources/SandboxServer/**/*.swift',
   ]
+  # The directory form (no glob) copies `web/` itself into the bundle, preserving hierarchy —
+  # ResourceBundle.webRoot expects `SandboxServerWebConsole.bundle/web/index.html`.
   s.resource_bundles = {
-    'SandboxServerWebConsole' => ['Sources/SandboxServerCore/Resources/web/**/*']
+    'SandboxServerWebConsole' => ['Sources/SandboxServerCore/Resources/web']
   }
 
   s.frameworks = 'Foundation', 'Network', 'CryptoKit'
