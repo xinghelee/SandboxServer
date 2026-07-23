@@ -1,83 +1,80 @@
 # SandboxServer
 
-**English** · [简体中文](README.zh-CN.md)
+[English](README.en.md) · **简体中文**
 
-A **DEBUG-only iOS SDK** that turns any app into a browsable debug target. Integrate it, call
-`start()`, and from a browser on the same network you get:
+https://github.com/user-attachments/assets/1f2cda8f-da85-492a-ac19-24ed8d34d778
 
-- 🗂 **Sandbox file browser** — list / preview / edit / download / delete, Range streaming, root-confined (**live**)
-- 🌐 **Live network capture** — every `URLSession` request, inspectable in real time (**live**)
-- 🗄 **Database viewer** — discover SQLite DBs, browse tables/schema, run read-only SQL (**live**; Core Data/Realm + writes later)
-- 📜 **Live logs** — stream the app's console output (`SandboxServer.log`, plus `print`/`NSLog` when console capture is on) to the browser, level-filtered (**live**)
-- 📱 **Screen mirror + control** — watch the app's UI live in the browser and drive it: tap (UIControls / SwiftUI buttons), **swipe/scroll & drag** (real synthesized touch), type, and paste (**live, iOS**)
-- 🌳 **View hierarchy** — inspect the live view tree (frames, classes, labels, thumbnails) as a list or a **3D layer explorer** in the browser (**live, iOS**)
-- 🔌 **WebSocket capture** — every `URLSessionWebSocketTask` connection and its sent/received frames, streamed live (**live**)
-- 📈 **Performance HUD** — live FPS / CPU / memory footprint / thermal state, streamed and charted (**live**)
-- 📦 **App bundle inspector** — Info.plist, Mach-O architectures + hardening, provisioning, privacy, plist decode (**live**)
-- ⚙️ **UserDefaults editor** — browse, edit, delete & reset the app's persisted defaults and App Group suites (**live**)
-- 📲 **Device info** — model / OS / locale / screen + safe-area / battery / memory / free disk at a glance (**live**)
-- ⛓️ **Deep-link trigger** — list the app's URL schemes and open any scheme / universal link in the app (**live, iOS**)
-- 🔔 **Notification tester** — inspect/request authorization, fire local notifications, simulate a remote push payload (**live, iOS**)
-- 🖥 **A web console** served by the SDK itself — no app to install, just open a URL
-- 🤖 **MCP tools** — the same on-device API re-exposed to AI clients (Claude Code / Desktop)
+一个 **仅 DEBUG 生效的 iOS SDK**,集成后即可把任意 App 变成可在浏览器里调试的目标。调用 `start()`
+后,用同一局域网内的浏览器即可:
 
-It runs an embedded HTTP + WebSocket server **inside the host process** on Apple's
-Network.framework, with **zero third-party runtime dependencies**.
+- 🗂 **沙盒文件浏览** —— 列目录 / 预览 / 编辑 / 下载 / 删除,支持 Range 流式,路径限定在允许根内(**已上线**)
+- 🌐 **网络请求实时抓取** —— 每条 `URLSession` 请求都可实时查看(**已上线**)
+- 🗄 **数据库查看** —— 发现 SQLite 库、浏览表/结构、运行只读 SQL(**已上线**;Core Data/Realm 与写入后续)
+- 📜 **实时日志** —— 把 App 的控制台输出(`SandboxServer.log`,以及开启控制台捕获后的 `print`/`NSLog`)实时推到浏览器,可按级别过滤(**已上线**)
+- 📱 **屏幕镜像 + 操作** —— 在浏览器里实时看到 App 界面并操作:点按(UIControl / SwiftUI 按钮)、**滑动/滚动与拖拽**(真实合成触摸)、输入、粘贴(**已上线,iOS**)
+- 🌳 **视图层级** —— 在浏览器里以列表或 **3D 图层浏览器** 查看实时视图树(尺寸、类名、标签、缩略图)(**已上线,iOS**)
+- 🔌 **WebSocket 抓取** —— 每个 `URLSessionWebSocketTask` 连接及其收发帧,实时(**已上线**)
+- 📈 **性能 HUD** —— 实时 FPS / CPU / 内存占用 / 温度状态,推流并绘制图表(**已上线**)
+- 📦 **App Bundle 检查器** —— Info.plist、Mach-O 架构与加固、描述文件、隐私、plist 解码(**已上线**)
+- ⚙️ **UserDefaults 编辑** —— 浏览、编辑、删除、重置 App 的持久化偏好与 App Group suite(**已上线**)
+- 📲 **设备信息** —— 一眼看全机型 / 系统 / 语言区域 / 屏幕与安全区 / 电量 / 内存 / 剩余磁盘(**已上线**)
+- ⛓️ **Deep Link 触发** —— 列出 App 的 URL scheme,并在 App 内打开任意 scheme / universal link(**已上线,iOS**)
+- 🔔 **通知测试** —— 查看/请求通知授权、发本地通知、模拟远程 push 负载(**已上线,iOS**)
+- 🖥 **内置 Web 控制台** —— 由 SDK 自己提供,无需安装任何 App,打开一个 URL 即可
+- 🤖 **MCP 工具** —— 把同一套设备端 API 暴露给 AI 客户端(Claude Code / Desktop)
 
-> ⚠️ This SDK exposes full read/write access to the host app's sandbox. It is **off by default**,
-> requires an explicit `start()`, binds loopback by default, and is **physically absent from
-> Release/App Store builds**. Token auth is opt-in; if you bind to `.localNetwork` without enabling
-> it, every device on the trusted LAN can reach the console. Use non-production accounts on a
-> trusted network.
+它在宿主进程内、基于 Apple 的 Network.framework 跑一个内嵌 HTTP + WebSocket 服务,**零第三方运行时依赖**。
+
+> ⚠️ 本 SDK 会开放宿主 App 沙盒的完整读写权限。它 **默认关闭**,必须显式 `start()`,默认只绑定
+> loopback,且在 Release/App Store 构建里 **物理上不存在**。Token 鉴权是可选项；如果用
+> `.localNetwork` 且不启用 token,同一可信 LAN 上的设备都能访问控制台。请用非生产账号、在可信网络下使用。
 
 ---
 
-## Architecture
+## 架构
 
 ```
-┌─ host iOS app (DEBUG) ──────────────────────────────┐
+┌─ 宿主 iOS App(DEBUG)──────────────────────────────┐
 │  SandboxServer.shared.start()                        │
 │     │                                                │
 │     ▼                                                │
 │  SandboxServerCore                                   │
-│   ├ NetworkFrameworkTransport  (NWListener/NWConn)   │
-│   ├ HTTP/1.1 + RFC 6455 WebSocket  (hand-rolled)     │
-│   ├ AuthGate + DNS-rebinding guard  (middleware)     │
+│   ├ NetworkFrameworkTransport (NWListener/NWConn)    │
+│   ├ HTTP/1.1 + RFC 6455 WebSocket(手写)             │
+│   ├ AuthGate + DNS-rebinding 防护(中间件)          │
 │   ├ Router → PluginRegistry → WSHub                  │
-│   └ Plugins:  net·fs·db·logs·screen·hierarchy·ws·    │
-│              perf·bundle·defaults·device·deeplink·    │
-│              notify                                   │
-│  serves:                                             │
-│   • web console  (/, /assets/*)                      │
+│   └ 插件:net·fs·db·logs·screen·hierarchy·ws·         │
+│          perf·bundle·defaults·device·deeplink·notify  │
+│  对外提供:                                          │
+│   • Web 控制台 (/, /assets/*)                        │
 │   • REST + WS API (/__sandbox/api/v1, /__sandbox/ws) │
 └──────────────────────────────────────────────────────┘
-        ▲ LAN / localhost                ▲ LAN / localhost
+        ▲ 局域网 / localhost              ▲ 局域网 / localhost
         │                                │
-   browser (Preact console)        sandbox-mcp (stdio) ──► Claude Code / Desktop
+   浏览器(Preact 控制台)         sandbox-mcp(stdio)──► Claude Code / Desktop
 ```
 
-The core is tiny and feature-agnostic — **everything is a `SandboxPlugin`**. A plugin's
-self-described capabilities (`GET /__sandbox/api/v1/plugins`) drive *both* which console panels
-render *and* which MCP tools the bridge registers.
+内核极小、与具体功能无关 —— **一切皆 `SandboxPlugin`**。插件自描述的能力
+(`GET /__sandbox/api/v1/plugins`)同时驱动:控制台渲染哪些面板、以及 MCP 桥注册哪些工具。
 
-| Module | Role |
+| 模块 | 职责 |
 | --- | --- |
-| `SandboxServerAPI` | Dependency-free public contract (`SandboxPlugin`, request/response, config). |
-| `SandboxServer` | Always-linked facade. Forwards to Core (DEBUG + trait) or the no-op stub. |
-| `SandboxServerNoOp` | Inert mirror linked in Release / disabled builds. |
-| `SandboxServerCore` | The real server: transport, router, hub, registry, built-in plugins, web assets. |
-| `web-src/` | The Preact + TypeScript console (Vite). Build output is committed under `Sources/SandboxServerCore/Resources/web/`. |
-| `mcp-bridge/` | Standalone `sandbox-mcp` npm package (separate from the Swift SDK). |
+| `SandboxServerAPI` | 零依赖的公开契约(`SandboxPlugin`、请求/响应、配置)。 |
+| `SandboxServer` | 始终被链接的门面。DEBUG + trait 时转发到 Core,否则转发到 no-op 桩。 |
+| `SandboxServerNoOp` | Release / 关闭态构建中链接的惰性镜像。 |
+| `SandboxServerCore` | 真实服务:传输、路由、Hub、注册表、内置插件、Web 资源。 |
+| `web-src/` | Preact + TypeScript 控制台(Vite)。构建产物提交在 `Sources/SandboxServerCore/Resources/web/`。 |
+| `mcp-bridge/` | 独立的 `sandbox-mcp` npm 包(与 Swift SDK 分离)。 |
 
 ---
 
-## Install
+## 安装
 
-### Swift Package Manager (recommended)
+### Swift Package Manager(推荐)
 
 ```swift
 dependencies: [
-    // Enable the SandboxServerEnabled trait when adding the dependency:
+    // 添加依赖时启用 SandboxServerEnabled trait:
     .package(url: "https://github.com/xinghelee/SandboxServer.git", from: "0.1.0",
              traits: ["SandboxServerEnabled"]),
 ],
@@ -88,12 +85,11 @@ targets: [
 ]
 ```
 
-In an Xcode app project, add the package via **Package Dependencies** and tick the
-`SandboxServerEnabled` trait there instead (requires Xcode 16.3+ / Swift 6.1 traits support).
+Xcode 工程请通过 **Package Dependencies** 面板添加包,并在那里勾选 `SandboxServerEnabled`
+trait(需要 Xcode 16.3+ / Swift 6.1 的 traits 支持)。
 
-Even with the trait on, Release builds still link the inert no-op — the facade is gated on
-`#if DEBUG && SandboxServerEnabled`. Without the trait, the real server is physically absent
-from every build.
+即使启用了 trait,Release 构建仍会链接惰性的 no-op —— 门面以 `#if DEBUG && SandboxServerEnabled`
+双重把关。不启用 trait 时,真实服务在任何构建里都物理上不存在。
 
 ### CocoaPods
 
@@ -101,60 +97,59 @@ from every build.
 pod 'SandboxServer', :configurations => ['Debug']
 ```
 
-`:configurations => ['Debug']` keeps the binary **and the web assets** out of Release builds.
-(CocoaPods support is preliminary — validate with `pod lib lint` before publishing.)
+`:configurations => ['Debug']` 能把二进制 **以及 Web 资源** 都挡在 Release 之外。
+(CocoaPods 支持目前为初步状态 —— 发布前请用 `pod lib lint` 校验。)
 
 ---
 
-## Use
+## 使用
 
 ```swift
 import SandboxServer
 
 #if DEBUG
 Task {
-    // Built-in plugins (network/files/db) are auto-registered from the config.
-    let result = await SandboxServer.shared.start()        // .loopback, all built-ins, by default
+    // 内置插件(网络/文件/数据库)由配置自动注册。
+    let result = await SandboxServer.shared.start()        // 默认 .loopback、全部内置插件
     if case .started(let info) = result {
-        print("Open \(info.consoleURL)")                   // add auth: .token if you want ?token=
+        print("打开 \(info.consoleURL)")                    // 需要 ?token= 时显式设置 auth: .token
     }
 }
 
-// Opt into a subset, or add your own plugin (conform to the public `SandboxPlugin`):
+// 只启用部分内置插件,或注册你自己的插件(实现公开的 `SandboxPlugin` 协议):
 // SandboxServer.shared.register(MyCustomPlugin())
 // await SandboxServer.shared.start(SandboxConfig(builtInPlugins: [.network]))
 #endif
 ```
 
-The console URL is printed to the Xcode console. On the **Simulator** open it directly
-(`http://127.0.0.1:<port>/`). On a **device**, start with `.localNetwork` and open the printed LAN
-URL from a browser on the same Wi-Fi:
+控制台 URL 会打印到 Xcode 控制台。在 **模拟器** 上直接打开
+(`http://127.0.0.1:<port>/`)。在 **真机** 上,用 `.localNetwork` 启动,再用同一 Wi-Fi 下的浏览器打开打印出的局域网 URL:
 
 ```swift
 await SandboxServer.shared.start(SandboxConfig(bindingPolicy: .localNetwork))
 ```
 
-`.localNetwork` requires `NSLocalNetworkUsageDescription` (and `NSBonjourServices` listing
-`_sandboxserver._tcp`) in your **debug** Info.plist.
+`.localNetwork` 需要在 **debug** 的 Info.plist 里配置 `NSLocalNetworkUsageDescription`(以及
+`NSBonjourServices` 列出 `_sandboxserver._tcp`)。
 
-### SwiftUI lifecycle
+### SwiftUI 生命周期
 
-`start()` is `async` and `App.init()` is not, so kick it off from a `Task` in the initializer (a
-root-view `.task {}` works too). The call site compiles unchanged in Release — the facade is a
-no-op there — but wrapping it in `#if DEBUG` keeps the intent explicit:
+`start()` 是 `async`,而 `App.init()` 不是,所以在初始化器里用一个 `Task` 启动(根视图的
+`.task {}` 也行)。这行代码在 Release 里照样能编译 —— 此时 facade 是空壳 —— 但包一层 `#if DEBUG`
+能让意图更清晰:
 
 ```swift
 import SwiftUI
-import SandboxServer            // import this one product; the public types come along
+import SandboxServer            // 只 import 这一个产品,公共类型会自动带进来
 
 @main
 struct MyApp: App {
     init() {
         #if DEBUG
         Task {
-            let result = await SandboxServer.shared.start()        // .loopback, all built-ins
+            let result = await SandboxServer.shared.start()        // 默认 .loopback、全部内置插件
             if case .started(let info) = result {
-                print("🧰 Sandbox console → \(info.consoleURL)")
+                print("🧰 Sandbox 控制台 → \(info.consoleURL)")
             }
         }
         #endif
@@ -166,33 +161,14 @@ struct MyApp: App {
 }
 ```
 
-On a **device**, pass `SandboxConfig(bindingPolicy: .localNetwork, auth: .token)` and add the
-Info.plist keys above; the printed URL then carries `?token=…` for the browser to bootstrap from.
-
-### Reading encrypted / encoded request bodies
-
-HTTPS is **already plaintext here** — capture is in-process, above TLS, so you never install a
-proxy CA. `gzip`/`zlib` bodies are auto-inflated. For bodies your app encrypts/encodes at the
-**application layer**, plug in a display-only decoder — it runs in-process (keys never leave the
-app or reach the console/MCP), only feeds the body *preview*, and never alters the bytes your app
-actually sends/receives or what `replay` re-issues:
-
-```swift
-var config = SandboxConfig(bindingPolicy: .localNetwork)
-config.networkBodyDecoder = { body in            // body: NetworkBody (direction/url/headers/contentType/raw bytes)
-    guard body.url.contains("api.myapp.com") else { return nil }   // nil → fall back to the default preview
-    guard let clear = MyCrypto.decrypt(body.body) else { return "⚠️ decrypt failed (\(body.body.count)B)" }
-    return String(data: clear, encoding: .utf8)                    // shown in the console/MCP only
-}
-await SandboxServer.shared.start(config)
-```
+**真机** 上传入 `SandboxConfig(bindingPolicy: .localNetwork, auth: .token)`,并补上上面的 Info.plist
+键;打印出的 URL 会自带 `?token=…`,浏览器据此自动完成鉴权。
 
 ---
 
-## MCP (AI tools)
+## MCP(AI 工具)
 
-The `mcp-bridge/` package is a standalone MCP server that proxies the device API. Point your AI
-client at it:
+`mcp-bridge/` 是一个独立的 MCP 服务,代理设备 API。把 AI 客户端指向它:
 
 ```json
 {
@@ -206,54 +182,52 @@ client at it:
 }
 ```
 
-It discovers the device (env/flags → single Bonjour match), then registers one MCP tool per
-plugin-declared capability (`net_list_requests`, `fs_read_file`, `db_query`, …). See
-`mcp-bridge/README.md`.
+它会先发现设备(env/flags → 单个 Bonjour 匹配),再按插件声明的能力动态注册 MCP 工具
+(`net_list_requests`、`fs_read_file`、`db_query` 等)。详见 `mcp-bridge/README.md`。
 
 ---
 
-## Develop
+## 开发
 
 ```bash
-# Swift package (the SDK)
-swift build --traits SandboxServerEnabled          # build the real core
-swift test  --traits SandboxServerEnabled          # unit + end-to-end tests
-swift build                                        # build the Release-safe no-op path
+# Swift 包(SDK 本体)
+swift build --traits SandboxServerEnabled          # 构建真实内核
+swift test  --traits SandboxServerEnabled          # 单元 + 端到端测试
+swift build                                        # 构建 Release 安全的 no-op 路径
 
-# Web console (Preact)
-cd web-src && npm install && npm run build          # output → Sources/SandboxServerCore/Resources/web
-VITE_API_BASE=http://<device-ip>:<port> npm run dev # HMR against a running device
+# Web 控制台(Preact)
+cd web-src && npm install && npm run build          # 产物 → Sources/SandboxServerCore/Resources/web
+VITE_API_BASE=http://<device-ip>:<port> npm run dev # 对着运行中的设备做 HMR
 
-# MCP bridge
+# MCP 桥
 cd mcp-bridge && npm install && npm run build
 ```
 
-### Local dev host (browser, no device)
+### 本地开发宿主(浏览器,无需设备)
 
-`SandboxServerDevHost` boots the real core on macOS so you can open the console in a browser
-without an iOS app — handy when working on `web-src/` or the REST/WS API:
+`SandboxServerDevHost` 在 macOS 上启动真实内核,让你**无需 iOS App** 就能在浏览器里打开控制台 ——
+联调 `web-src/` 或 REST/WS API 时很方便:
 
 ```bash
-swift run --traits SandboxServerEnabled SandboxServerDevHost   # then open the printed http://127.0.0.1:8080/ URL
+swift run --traits SandboxServerEnabled SandboxServerDevHost   # 然后打开它打印的 http://127.0.0.1:8080/ 地址
 ```
 
-Env knobs (each is "set = on"); `Ctrl-C` to stop:
+环境变量(都是“设了即开”);`Ctrl-C` 停止:
 
-| Var | Effect | Default |
+| 变量 | 作用 | 默认 |
 | --- | --- | --- |
-| `PORT` | Listen port | `8080` |
-| `TOKEN` | Require a session token (URL becomes `…/?token=…`) | off (`auth: .none`) |
-| `CAPTURE` | Redirect `print` / `NSLog` into the logs panel (`captureConsole`) | off |
-| `LOGSEED` | Emit sample log lines + a 2 s heartbeat so the logs panel has data | off |
-| `SEED` | Fire a few sample requests so the network panel has data | off |
+| `PORT` | 监听端口 | `8080` |
+| `TOKEN` | 要求会话 token(地址变成 `…/?token=…`) | 关(`auth: .none`) |
+| `CAPTURE` | 把 `print` / `NSLog` 重定向进日志面板(`captureConsole`) | 关 |
+| `LOGSEED` | 启动即发示例日志 + 每 2 秒一条心跳,让日志面板有数据 | 关 |
+| `SEED` | 发几条示例请求,让网络面板有数据 | 关 |
 
 ```bash
 PORT=8092 LOGSEED=1 SEED=1 swift run --traits SandboxServerEnabled SandboxServerDevHost
 ```
 
-It binds loopback and registers the temp dir as an extra browsable/writable root. Being a macOS
-host it has no UIKit, so the **screen mirror** and **view hierarchy** panels report unsupported —
-use `Examples/Showcase/run.sh` (iOS Simulator) for those. There are no fallback ports, so if `PORT` is busy it
-fails fast — pick a free one.
+它绑定 loopback,并把临时目录注册为额外的可浏览/可写根。作为 macOS 宿主没有 UIKit,所以
+**屏幕镜像** 与 **视图层级** 面板会报不支持 —— 这两项请用 `Examples/Showcase/run.sh`(iOS 模拟器)。它没有
+备用端口,`PORT` 被占就会快速失败 —— 换一个空闲端口即可。
 
-See `CLAUDE.md` for the full architecture notes and open questions.
+完整架构说明与待决问题见 `CLAUDE.md`。
